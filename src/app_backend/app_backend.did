@@ -1,0 +1,9 @@
+type solana = service {
+    whoami: () -> (text);
+    send_tx: () -> ();
+    app_vetkd_public_key: (vec blob) -> (text);
+    symmetric_key_verification_key: () -> (text);
+    encrypted_symmetric_key_for_caller: (blob) -> (text);
+};
+
+service : () -> solana

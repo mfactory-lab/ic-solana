@@ -1,0 +1,28 @@
+{
+  "canisters": {
+    "system_api": {
+      "_candid": "vetkd_system_api.did",
+      "_wasm": "vetkd_system_api.wasm",
+      "_type": "custom",
+      "candid": "src/system_api/vetkd_system_api.did",
+      "package": "vetkd_system_api",
+      "type": "rust"
+    },
+    "app_backend": {
+      "dependencies": [
+        "system_api"
+      ],
+      "candid": "src/app_backend/app_backend.did",
+      "package": "app_backend",
+      "type": "rust"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}

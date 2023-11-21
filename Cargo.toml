@@ -1,0 +1,6 @@
+[workspace]
+resolver = "2"
+members = [
+    "src/system_api",
+    "src/app_backend",
+]
