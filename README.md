@@ -1,4 +1,4 @@
-# Signing module for Albus on IC
+# Threshold EdDSA signature canister for Albus on IC
 
 ## Problem
 
@@ -6,6 +6,6 @@ Albus Protocol is currently deployed on Solana, which uses EdDSA as a digital si
 
 ## Solution
 
-The signing module uses the VETKD threshold scheme to reassemble a user's secret key and derive a key to sign transactions sent from the IC component to the Solana component of Albus on IC. For details on how it works, please see comments in the code.
+The threshold EdDSA signature canister uses the VETKD canister to reassemble a user's secret key and derive a key to sign transactions sent from the IC component to the Solana component of Albus on IC. For details on how it works, please see comments in the code.
 
 **Note**: this is a preliminary version developed for demonstration purposes only. It’s open to discussion and modification.
