@@ -90,7 +90,7 @@ async fn call_solana(method: &str, params: Value) -> CallResult<(HttpResponse,)>
     http_request(request).await
 }
 
-/// Retrieves a Solana keypair for the current user's principal using the VetKD (Vessel Key Derivation) system.
+/// Retrieves a Solana keypair for the current user's principal using the VetKD system.
 ///
 /// This function performs the following steps:
 /// 1. Calls the `vetkd_encrypted_key` method to obtain an encrypted key.
