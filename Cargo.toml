@@ -1,6 +1,70 @@
-[workspace]
-resolver = "2"
-members = [
-    "src/system_api",
-    "src/app_backend",
-]
+[package]
+name = "solana_rpc"
+version = "0.1.0"
+description = "Interact with Solana blockchain from the Internet Computer."
+authors = ["mFactry team"]
+edition = "2021"
+
+[profile.release]
+debug = false
+lto = true
+strip = true
+opt-level = 's'
+
+# Required by `ic-test-utilities-load-wasm`
+[profile.canister-release]
+inherits = "release"
+
+[dependencies]
+anyhow = "1.0.86"
+base64 = "0.22.1"
+bs58 = "0.5.1"
+candid = { workspace = true }
+getrandom = { workspace = true }
+ic-canister-log = { workspace = true }
+ic-cdk = { workspace = true }
+ic-cdk-macros = { workspace = true }
+ic-crypto-internal-bls12-381-vetkd = { workspace = true }
+ic-crypto-internal-bls12-381-type = { workspace = true }
+ic-crypto-ed25519 = { workspace = true }
+ic-canisters-http-types = { workspace = true }
+ic-metrics-encoder = { workspace = true }
+ic-types = { workspace = true }
+hex = "0.4.3"
+lazy_static = "1.4.*"
+serde = "1"
+serde_json = "^1.0.117"
+serde_bytes = "^0.11.14"
+zeroize = "1.8.1"
+url = "2.5.0"
+thiserror = "^1.0.61"
+semver = "1.0.23"
+num-traits = "0.2.17"
+
+#[dev-dependencies]
+#ic-ic00-types = { git = "https://github.com/dfinity/ic", rev = "release-2023-09-27_23-01" }
+#ic-base-types = { git = "https://github.com/dfinity/ic", rev = "release-2023-09-27_23-01" }
+#ic-config = { git = "https://github.com/dfinity/ic", rev = "release-2023-09-27_23-01" }
+#ic-state-machine-tests = { git = "https://github.com/dfinity/ic", rev = "release-2023-09-27_23-01" }
+#ic-test-utilities-load-wasm = { git = "https://github.com/dfinity/ic", rev = "release-2023-09-27_23-01" }
+#assert_matches = "1.5"
+
+[workspace.dependencies]
+candid = { version = "0.10" }
+getrandom = { version = "0.2", features = ["custom"] }
+ic-crypto-ed25519 = { git = "https://github.com/dfinity/ic", package = "ic-crypto-ed25519" }
+ic-canisters-http-types = { git = "https://github.com/dfinity/ic", package = "ic-canisters-http-types" }
+ic-crypto-internal-bls12-381-vetkd = { git = "https://github.com/dfinity/ic", package = "ic-crypto-internal-bls12-381-vetkd" }
+ic-crypto-internal-bls12-381-type = { git = "https://github.com/dfinity/ic", package = "ic-crypto-internal-bls12-381-type" }
+#cketh-common = { git = "https://github.com/dfinity/ic", package = "ic-cketh-minter" }
+ic-canister-log = "0.2"
+ic-metrics-encoder = "1.1"
+ic-cdk = "0.14"
+ic-cdk-macros = "0.14"
+ic-types = "0.7"
+
+#[patch.crates-io]
+#wasm-bindgen = { git = "https://github.com/dfinity/wasm-bindgen", rev = "9cde9c9a88c1fad13a8663277650e01b5671843e" }
+#
+#[workspace]
+#members = ["e2e/rust"]

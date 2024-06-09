@@ -1,0 +1,34 @@
+type RpcError = variant {
+    RpcRequestError: text;
+    RpcResponseError: record {
+        code: int;
+        message: text;
+        data: opt text;
+    };
+    ParseError: text;
+    Text: text;
+};
+
+type lamports = nat64;
+
+type RequestResult = variant { Ok : text; Err : RpcError };
+type RequestCostResult = variant { Ok : nat; Err : RpcError };
+type GetBalanceResult = variant { Ok : lamports; Err : RpcError };
+
+type Cluster = text;
+type Pubkey = text;
+
+type InitArgs = record {
+  rpcUrl: opt text;
+  nodesInSubnet: opt nat32;
+};
+
+service solana : (InitArgs) -> {
+  request: (method: text, params: text, max_response_bytes: nat64) -> (RequestResult);
+
+  requestCost: (payload: text, max_response_bytes: nat64) -> (RequestCostResult) query;
+
+  verify_eddsa: (addr: Pubkey, message: text, signature: text) -> (bool) query;
+
+  sol_getBalance: (addr: Pubkey) -> (GetBalanceResult);
+}

@@ -2,7 +2,7 @@
 .PHONY: build
 .SILENT: build
 build:
-	dfx canister create app_backend
+	dfx canister create solana_rpc
 	dfx build
 
 .PHONY: start
@@ -11,24 +11,50 @@ start:
 
 .PHONY: test
 test:
-	#dfx stop
-	#bash ./pre_deploy.sh
-	#echo "Pre deploy script succeeded"
-#	pnpm install
-	rm -fr .dfx
-	#dfx start --clean --background
-	#dfx deploy internet_identity --argument '(null)'
-	#dfx canister create system_api --specified-id s55qq-oqaaa-aaaaa-aaakq-cai
-	#dfx deploy system_api
-	dfx deploy app_backend
-	dfx generate app_backend
-	#dfx deploy www
-	echo "Deployment succeeded"
-	echo "Start testing..."
-	dfx canister call app_backend send_tx
-	dfx canister call app_backend send_tx
-	#sh test_whoami.sh
-	echo "TESTS PASSED"
+	dfx canister create --all
+	dfx deploy solana_rpc --argument "(record {nodesInSubnet = opt 28})" --mode reinstall -y
+	dfx canister call solana_rpc sol_getBalance '("AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY")'
+	#dfx canister logs solana_rpc
+#	dfx stop
+#	echo "BUILD_ENV is ${BUILD_ENV}"
+##	bash ./pre_deploy.sh
+##	echo "Pre deploy script succeeded"
+#	npm install
+#	rm -fr .dfx
+#	dfx start --clean --background
+#	dfx canister create --all
+#	dfx deploy internet_identity --argument '(null)'
+#	dfx canister create vetkd_system_api --specified-id s55qq-oqaaa-aaaaa-aaakq-cai
+#	dfx deploy vetkd_system_api
+#	dfx deploy encrypted_notes_${BUILD_ENV}
+#	dfx generate encrypted_notes_${BUILD_ENV}
+#	dfx deploy www
+#	echo "Deployment succeeded"
+#	echo "Start testing..."
+#	dfx canister call encrypted_notes_${BUILD_ENV} whoami
+#	sh test_whoami.sh
+#	echo "ENCRYPTED NOTES E2E TESTS PASSED"
+
+#.PHONY: test
+#test:
+#	#dfx stop
+#	#bash ./pre_deploy.sh
+#	#echo "Pre deploy script succeeded"
+##	pnpm install
+#	rm -fr .dfx
+#	#dfx start --clean --background
+#	#dfx deploy internet_identity --argument '(null)'
+#	#dfx canister create system_api --specified-id s55qq-oqaaa-aaaaa-aaakq-cai
+#	#dfx deploy system_api
+#	dfx deploy solana_rpc
+#	dfx generate solana_rpc
+#	#dfx deploy www
+#	echo "Deployment succeeded"
+#	echo "Start testing..."
+#	dfx canister call solana_rpc send_tx
+#	dfx canister call solana_rpc send_tx
+#	#sh test_whoami.sh
+#	echo "TESTS PASSED"
 
 .PHONY: test-unit
 test-unit:

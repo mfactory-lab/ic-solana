@@ -1,11 +1,8 @@
 {
-  "app_backend": {
-    "ic": "nchwv-baaaa-aaaak-ae5ra-cai"
+  "solana_rpc": {
+    "ic": "bkyz2-fmaaa-aaaaa-qaaaq-cai"
   },
-  "app_frontend_js": {
-    "ic": "nfgqb-myaaa-aaaak-ae5rq-cai"
-  },
-  "system_api": {
+  "vetkd_system_api": {
     "ic": "nqbbm-nqaaa-aaaak-ae5sa-cai"
   }
 }

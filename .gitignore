@@ -22,3 +22,5 @@ dist/
 
 # environment variables
 .env
+
+/tmp

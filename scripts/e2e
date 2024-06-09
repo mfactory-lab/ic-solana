@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Reinstall all canisters and run E2E tests in your local environment.
+(
+    dfx canister create --all &&
+    npm run generate &&
+    dfx deploy solana_rpc --mode reinstall -y &&
+#    dfx deploy solana_rpc --argument "(record {nodesInSubnet = 28})" --mode reinstall -y &&
+#    dfx deploy solana_rpc_staging_13_node --argument "(record {nodesInSubnet = 13})" --mode reinstall -y &&
+#    dfx deploy solana_rpc_staging_fiduciary --argument "(record {nodesInSubnet = 28})" --mode reinstall -y &&
+#    dfx deploy e2e_rust &&
+    dfx canister call solana_rpc request &&
+#    dfx deploy e2e_motoko &&
+#    dfx canister call e2e_motoko test &&
+    echo Done
+)
