@@ -1,0 +1,54 @@
+type Account = record {
+  executable : bool;
+  owner : blob;
+  lamports : nat64;
+  data : blob;
+  rent_epoch : nat64;
+};
+type AccountMeta = record {
+  is_signer : bool;
+  pubkey : blob;
+  is_writable : bool;
+};
+type InitArgs = record {
+  rpc_url : opt text;
+  schnorr_canister : opt text;
+  schnorr_key_name : opt text;
+  key_name : opt text;
+  nodes_in_subnet : opt nat32;
+};
+type Instruction = record {
+  data : blob;
+  program_id : blob;
+  accounts : vec AccountMeta;
+};
+type Result = variant { Ok : text; Err : RpcError };
+type Result_1 = variant { Ok : opt Account; Err : RpcError };
+type Result_2 = variant { Ok : nat64; Err : RpcError };
+type Result_3 = variant { Ok : UiTokenAmount; Err : RpcError };
+type RpcError = variant {
+  Text : text;
+  ParseError : text;
+  RpcResponseError : record { code : int64; data : opt text; message : text };
+  RpcRequestError : text;
+};
+type SendTransactionRequest = record {
+  instructions : vec Instruction;
+  recent_blockhash : opt text;
+};
+type UiTokenAmount = record {
+  decimals : nat8;
+  ui_amount : opt float64;
+  ui_amount_string : text;
+  amount : text;
+};
+service : (InitArgs) -> {
+  get_sol_address : () -> (text);
+  request : (text, text, nat64) -> (Result);
+  requestCost : (text, nat64) -> (nat) query;
+  sol_getAccountInfo : (text) -> (Result_1);
+  sol_getBalance : (text) -> (Result_2);
+  sol_getTokenBalance : (text) -> (Result_3);
+  sol_sendRawTransaction : (text) -> (Result);
+  sol_sendTransaction : (SendTransactionRequest) -> (Result);
+}
