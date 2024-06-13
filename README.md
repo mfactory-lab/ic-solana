@@ -1,4 +1,4 @@
-# SOLANA RPC &nbsp;[![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+# SOLANA RPC Canister &nbsp;[![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 > #### Interact with [Solana blockchain](https://solana.com) from the [Internet Computer](https://internetcomputer.org/).
 
@@ -15,12 +15,12 @@ raw transactions.
 ## Documentation
 
 You can find extensive documentation for the SOLANA RPC canister in
-the [ICP developer docs](https://internetcomputer.org/docs/current/developer-docs/multi-chain/ethereum/evm-rpc/overview).
+the ...
 
 ## Canister
 
 The SOLANA RPC canister runs on the 28-node fiduciary subnet with the following
-principal: [`7hfb6-caaaa-aaaar-qadga-cai`](https://dashboard.internetcomputer.org/canister/7hfb6-caaaa-aaaar-qadga-cai).
+principal: [`bkyz2-fmaaa-aaaaa-qaaaq-cai`](https://dashboard.internetcomputer.org/canister/bkyz2-fmaaa-aaaaa-qaaaq-cai).
 
 Refer to the [Reproducible Builds](#reproducible-builds) section for information on how to verify the hash of the
 deployed WebAssembly module.
@@ -35,11 +35,12 @@ available canisters above):
   "canisters": {
     "solana_rpc": {
       "type": "custom",
-      "candid": ".../solana_rpc.did",
-      "wasm": ".../solana_rpc.wasm.gz",
+      "candid": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/solana_rpc.did",
+      "wasm": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/solana_rpc.wasm.gz",
       "remote": {
         "id": {
-          "ic": "7hfb6-caaaa-aaaar-qadga-cai"
+          "ic": "bkyz2-fmaaa-aaaaa-qaaaq-cai",
+          "playground": "bkyz2-fmaaa-aaaaa-qaaaq-cai"
         }
       }
     }
@@ -47,15 +48,47 @@ available canisters above):
 }
 ```
 
-Run the following commands to deploy the canister in your local environment:
+## Running the project locally
+
+If you want to test your project locally, you can use the following commands:
+
+```bash
+# Starts the replica, running in the background
+dfx start --clean --background
+
+# Deploys your canisters to the replica and generates your candid interface
+./scripts/deploy.sh
+```
+
+Once the job is completed, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
+
+### Testing
+
+We use [PocketIC](https://github.com/dfinity/pocketic) for integration testing. Please make sure to have it installed
+and the `POCKET_IC_BIN` environment variable set to the path of the `pocket-ic` binary.
+
+You can run the tests with the following command:
 
 ```sh
-# Start the local replica
-dfx start --background
-
-# Locally deploy the `solana_rpc` canister
-dfx deploy solana_rpc
+./scripts/test.sh
 ```
+
+## Deployment on the Internet Computer
+
+The canister is deployed to `bkyz2-fmaaa-aaaaa-qaaaq-cai`.
+
+You can check the Canid UI
+at [`https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=bkyz2-fmaaa-aaaaa-qaaaq-cai`](https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=bkyz2-fmaaa-aaaaa-qaaaq-cai).
+
+### Interact with Blast Playground
+
+You can interact with the canister using
+the [Blast Playground](#).
+
+## To Do
+
+- [ ] Versioned transactions.
+- [ ] Threshold EdDSA.
 
 ## Reproducible Builds
 
@@ -64,17 +97,23 @@ supports [reproducible builds](https://internetcomputer.org/docs/current/develop
 
 1. Ensure [Docker](https://www.docker.com/get-started/) is installed on your machine.
 2. Run `scripts/docker-build` in your terminal.
-4. Run `sha256sum evm_rpc.wasm.gz` on the generated file to view the SHA-256 hash.
+4. Run `sha256sum solana_rpc.wasm.gz` on the generated file to view the SHA-256 hash.
 
 In order to verify the latest SOLANA RPC Wasm file, please make sure to download the corresponding version of the source
 code from the latest GitHub release.
 
 ## Learn More
 
-* [Candid interface](https://github.com/internet-computer-protocol/evm-rpc-canister/blob/main/candid/evm_rpc.did)
+## Credits
+
+* [Candid interface](https://github.com/mfactory-lab/ic-solana/blob/main/solana_rpc.did)
+
+This canister is monitored by [CycleOps](https://cycleops.dev).
 
 ## Related Projects
 
+* [Solana Galactic Bridge](https://github.com/weichain/galactic-bridge-sol): This program implements a secure deposit
+  and withdrawal functionality for a Solana treasury account.
 * [Bitcoin canister](https://github.com/dfinity/bitcoin-canister): interact with the Bitcoin blockchain from the
   Internet Computer.
 * [ckETH](https://forum.dfinity.org/t/cketh-a-canister-issued-ether-twin-token-on-the-ic/22819): a canister-issued Ether
