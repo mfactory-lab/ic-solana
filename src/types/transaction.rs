@@ -1,14 +1,12 @@
-use crate::pubkey::Pubkey;
 use crate::types::account::{ParsedAccount, UiTokenAmount};
-use crate::types::blockhash::BlockHash;
 use crate::types::message::{Message, UiMessage};
+use crate::types::pubkey::Pubkey;
 use crate::types::reward::Rewards;
 use crate::types::signature::Signature;
 use crate::types::transaction_error::TransactionError;
 use crate::types::{Slot, UnixTimestamp};
 use crate::utils::short_vec;
 use crate::utils::OptionSerializer;
-use candid::CandidType;
 use ic_crypto_ed25519::PrivateKey;
 use serde::de::Error;
 use serde::{Deserialize, Serialize};

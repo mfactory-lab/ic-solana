@@ -1,4 +1,4 @@
-use crate::pubkey::Pubkey;
+use crate::types::pubkey::Pubkey;
 use crate::types::Epoch;
 use candid::{CandidType, Deserialize};
 use serde::Serialize;

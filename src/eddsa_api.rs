@@ -1,5 +1,5 @@
 use crate::state::read_state;
-use crate::Principal;
+use candid::Principal;
 
 use ic_management_canister_types::{
     DerivationPath, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgs, SchnorrPublicKeyResponse,

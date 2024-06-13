@@ -1,8 +1,6 @@
 use crate::cluster::Cluster;
-use crate::commitment::CommitmentConfig;
 use crate::constants::*;
 use crate::logs::{DEBUG, TRACE_HTTP};
-use crate::pubkey::Pubkey;
 use crate::request::RpcRequest;
 use crate::response::{
     EncodedConfirmedBlock, OptionalContext, RpcBlockhash,
@@ -11,11 +9,13 @@ use crate::response::{
 use crate::state::{mutate_state, State};
 use crate::types::account::{Account, UiTokenAmount};
 use crate::types::blockhash::BlockHash;
+use crate::types::commitment::CommitmentConfig;
 use crate::types::config::{
     RpcAccountInfoConfig, RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
     RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSupplyConfig,
 };
 use crate::types::epoch_info::EpochInfo;
+use crate::types::pubkey::Pubkey;
 use crate::types::signature::Signature;
 use crate::types::transaction::{
     EncodedConfirmedTransactionWithStatusMeta, Transaction, TransactionStatus,

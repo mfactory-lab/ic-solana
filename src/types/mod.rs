@@ -1,5 +1,6 @@
 pub mod account;
 pub mod blockhash;
+pub mod commitment;
 mod compiled_keys;
 pub mod config;
 pub mod epoch_info;
@@ -8,6 +9,7 @@ pub mod filter;
 pub mod instruction;
 pub mod instruction_error;
 pub mod message;
+pub mod pubkey;
 pub mod reward;
 pub mod signature;
 pub mod transaction;

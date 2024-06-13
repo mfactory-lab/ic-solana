@@ -1,8 +1,8 @@
-use crate::pubkey::Pubkey;
 use crate::types::account::ParsedAccount;
 use crate::types::blockhash::BlockHash;
 use crate::types::compiled_keys::CompiledKeys;
 use crate::types::instruction::{CompiledInstruction, Instruction};
+use crate::types::pubkey::Pubkey;
 use crate::types::transaction::{UiAddressTableLookup, UiCompiledInstruction, UiInstruction};
 use crate::utils::short_vec;
 use serde::{Deserialize, Serialize};

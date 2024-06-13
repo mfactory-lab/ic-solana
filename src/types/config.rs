@@ -1,5 +1,5 @@
-use crate::commitment::{CommitmentConfig, CommitmentLevel};
 use crate::types::account::UiAccountEncoding;
+use crate::types::commitment::{CommitmentConfig, CommitmentLevel};
 use crate::types::filter::RpcFilterType;
 use crate::types::transaction::{TransactionDetails, UiTransactionEncoding};
 use crate::types::{Epoch, Slot};

@@ -1,4 +1,4 @@
-use crate::pubkey::Pubkey;
+use crate::types::pubkey::Pubkey;
 use crate::utils::short_vec;
 use bincode::serialize;
 use candid::CandidType;
