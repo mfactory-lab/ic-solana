@@ -2,22 +2,34 @@
   "dfx": "0.18.0",
   "canisters": {
     "solana_rpc": {
-      "dependencies": [
-        "vetkd_system_api"
-      ],
-      "candid": "candid/solana_rpc.did",
+      "type": "rust",
       "package": "solana_rpc",
-      "type": "rust"
+      "candid": "solana_rpc.did",
+      "gzip": true
     },
-    "vetkd_system_api": {
-      "candid": "vetkd_system_api.did",
+    "schnorr_canister": {
       "type": "custom",
-      "wasm": "vetkd_system_api.wasm"
+      "candid": "https://github.com/domwoe/schnorr_canister/releases/latest/download/schnorr_canister.did",
+      "wasm": "https://github.com/domwoe/schnorr_canister/releases/latest/download/schnorr_canister.wasm.gz",
+      "remote": {
+        "id": {
+          "ic": "6fwhw-fyaaa-aaaap-qb7ua-cai",
+          "playground": "6fwhw-fyaaa-aaaap-qb7ua-cai"
+        }
+      }
     }
   },
-  "defaults": {
-    "build": {
-      "packtool": "npm run --silent sources"
+  "networks": {
+    "local": {
+      "bind": "localhost:4943",
+      "type": "ephemeral",
+      "solana": {
+        "enabled": true,
+        "nodes": [
+          "0.0.0.0:8899"
+        ],
+        "log_level": "error"
+      }
     }
   },
   "output_env_file": ".env",
