@@ -19,22 +19,15 @@
 //     thiserror::Error,
 // };
 
+use crate::types::account::UiAccount;
 use crate::types::fee_calculator::FeeCalculator;
 use crate::types::reward::Rewards;
-use crate::types::transaction::EncodedTransactionWithStatusMeta;
+use crate::types::transaction::{EncodedTransactionWithStatusMeta, TransactionConfirmationStatus};
+use crate::types::transaction_error::TransactionError;
 use crate::types::{Slot, UnixTimestamp};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-const HASH_BYTES: usize = 32;
-
-pub struct Hash(pub [u8; HASH_BYTES]);
-
-impl fmt::Display for Hash {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", bs58::encode(self.0).into_string())
-    }
-}
 /// Wrapper for rpc return types of methods that provide responses both with and without context.
 /// The Main purpose of this is to fix methods that lack context information in their return type,
 /// without breaking backwards compatibility.
@@ -157,14 +150,14 @@ pub struct RpcFeeCalculator {
 //     pub foundation: f64,
 //     pub epoch: Epoch,
 // }
-//
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcKeyedAccount {
-//     pub pubkey: String,
-//     pub account: UiAccount,
-// }
-//
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcKeyedAccount {
+    pub pubkey: String,
+    pub account: UiAccount,
+}
+
 // #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 // pub struct SlotInfo {
 //     pub slot: Slot,
@@ -298,33 +291,33 @@ pub struct RpcFeeCalculator {
 //     pub by_identity: HashMap<String, (usize, usize)>,
 //     pub range: RpcBlockProductionRange,
 // }
-//
-// #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-// #[serde(rename_all = "kebab-case")]
-// pub struct RpcVersionInfo {
-//     /// The current version of solana-core
-//     pub solana_core: String,
-//     /// first 4 bytes of the FeatureSet identifier
-//     pub feature_set: Option<u32>,
-// }
-//
-// impl fmt::Debug for RpcVersionInfo {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "{}", self.solana_core)
-//     }
-// }
-//
-// impl fmt::Display for RpcVersionInfo {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         if let Some(version) = self.solana_core.split_whitespace().next() {
-//             // Display just the semver if possible
-//             write!(f, "{version}")
-//         } else {
-//             write!(f, "{}", self.solana_core)
-//         }
-//     }
-// }
-//
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct RpcVersionInfo {
+    /// The current version of solana-core
+    pub solana_core: String,
+    /// first 4 bytes of the FeatureSet identifier
+    pub feature_set: Option<u32>,
+}
+
+impl fmt::Debug for RpcVersionInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.solana_core)
+    }
+}
+
+impl fmt::Display for RpcVersionInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(version) = self.solana_core.split_whitespace().next() {
+            // Display just the semver if possible
+            write!(f, "{version}")
+        } else {
+            write!(f, "{}", self.solana_core)
+        }
+    }
+}
+
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 // #[serde(rename_all = "kebab-case")]
 // pub struct RpcIdentity {
@@ -448,7 +441,7 @@ pub struct EncodedConfirmedBlock {
     pub block_time: Option<UnixTimestamp>,
     pub block_height: Option<u64>,
 }
-
+//
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 // #[serde(rename_all = "camelCase")]
 // pub struct RpcTokenAccountBalance {
@@ -456,18 +449,18 @@ pub struct EncodedConfirmedBlock {
 //     #[serde(flatten)]
 //     pub amount: UiTokenAmount,
 // }
-//
-// #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcConfirmedTransactionStatusWithSignature {
-//     pub signature: String,
-//     pub slot: Slot,
-//     pub err: Option<TransactionError>,
-//     pub memo: Option<String>,
-//     pub block_time: Option<UnixTimestamp>,
-//     pub confirmation_status: Option<TransactionConfirmationStatus>,
-// }
-//
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcConfirmedTransactionStatusWithSignature {
+    pub signature: String, // base 58 encoded signature
+    pub slot: Slot,
+    pub err: Option<TransactionError>,
+    pub memo: Option<String>,
+    pub block_time: Option<UnixTimestamp>,
+    pub confirmation_status: Option<TransactionConfirmationStatus>,
+}
+
 // #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 // #[serde(rename_all = "camelCase")]
 // pub struct RpcPerfSample {
@@ -505,26 +498,6 @@ pub struct EncodedConfirmedBlock {
 //     pub err: Option<RpcBlockUpdateError>,
 // }
 //
-// impl From<ConfirmedTransactionStatusWithSignature> for RpcConfirmedTransactionStatusWithSignature {
-//     fn from(value: ConfirmedTransactionStatusWithSignature) -> Self {
-//         let ConfirmedTransactionStatusWithSignature {
-//             signature,
-//             slot,
-//             err,
-//             memo,
-//             block_time,
-//         } = value;
-//         Self {
-//             signature: signature.to_string(),
-//             slot,
-//             err,
-//             memo,
-//             block_time,
-//             confirmation_status: None,
-//         }
-//     }
-// }
-//
 // #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 // pub struct RpcSnapshotSlotInfo {
 //     pub full: Slot,
@@ -536,69 +509,4 @@ pub struct EncodedConfirmedBlock {
 // pub struct RpcPrioritizationFee {
 //     pub slot: Slot,
 //     pub prioritization_fee: u64,
-// }
-//
-// #[cfg(test)]
-// pub mod tests {
-//
-//     use {super::*, serde_json::json};
-//
-//     // Make sure that `RpcPerfSample` can read previous version JSON, one without the
-//     // `num_non_vote_transactions` field.
-//     #[test]
-//     fn rpc_perf_sample_deserialize_old() {
-//         let slot = 424;
-//         let num_transactions = 2597;
-//         let num_slots = 2783;
-//         let sample_period_secs = 398;
-//
-//         let input = json!({
-//             "slot": slot,
-//             "numTransactions": num_transactions,
-//             "numSlots": num_slots,
-//             "samplePeriodSecs": sample_period_secs,
-//         })
-//         .to_string();
-//
-//         let actual: RpcPerfSample =
-//             serde_json::from_str(&input).expect("Can parse RpcPerfSample from string as JSON");
-//         let expected = RpcPerfSample {
-//             slot,
-//             num_transactions,
-//             num_non_vote_transactions: None,
-//             num_slots,
-//             sample_period_secs,
-//         };
-//
-//         assert_eq!(actual, expected);
-//     }
-//
-//     // Make sure that `RpcPerfSample` serializes into the new `num_non_vote_transactions` field.
-//     #[test]
-//     fn rpc_perf_sample_serializes_num_non_vote_transactions() {
-//         let slot = 1286;
-//         let num_transactions = 1732;
-//         let num_non_vote_transactions = Some(757);
-//         let num_slots = 393;
-//         let sample_period_secs = 197;
-//
-//         let input = RpcPerfSample {
-//             slot,
-//             num_transactions,
-//             num_non_vote_transactions,
-//             num_slots,
-//             sample_period_secs,
-//         };
-//         let actual =
-//             serde_json::to_value(input).expect("Can convert RpcPerfSample into a JSON value");
-//         let expected = json!({
-//             "slot": slot,
-//             "numTransactions": num_transactions,
-//             "numNonVoteTransactions": num_non_vote_transactions,
-//             "numSlots": num_slots,
-//             "samplePeriodSecs": sample_period_secs,
-//         });
-//
-//         assert_eq!(actual, expected);
-//     }
 // }

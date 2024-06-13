@@ -1,15 +1,115 @@
-use crate::types::account::ParsedAccount;
-use crate::types::message::UiMessage;
+use crate::pubkey::Pubkey;
+use crate::types::account::{ParsedAccount, UiTokenAmount};
+use crate::types::blockhash::BlockHash;
+use crate::types::message::{Message, UiMessage};
 use crate::types::reward::Rewards;
+use crate::types::signature::Signature;
 use crate::types::transaction_error::TransactionError;
 use crate::types::{Slot, UnixTimestamp};
+use crate::utils::short_vec;
 use crate::utils::OptionSerializer;
-use candid::Deserialize;
-use serde::Serialize;
+use candid::CandidType;
+use ic_crypto_ed25519::PrivateKey;
+use serde::de::Error;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
+use std::fmt::Display;
+use std::str::FromStr;
 
 pub type TransactionResult<T> = Result<T, TransactionError>;
+
+#[derive(Debug, PartialEq, Default, Eq, Clone, Serialize, Deserialize)]
+pub struct Transaction {
+    #[serde(with = "short_vec")]
+    pub signatures: Vec<Signature>,
+    pub message: Message,
+}
+
+impl Transaction {
+    pub fn new_unsigned(message: Message) -> Self {
+        Self {
+            signatures: vec![Signature::default(); message.header.num_required_signatures as usize],
+            message,
+        }
+    }
+
+    pub fn data(&self, instruction_index: usize) -> &[u8] {
+        &self.message.instructions[instruction_index].data
+    }
+
+    pub fn key(&self, instruction_index: usize, accounts_index: usize) -> Option<&Pubkey> {
+        self.key_index(instruction_index, accounts_index)
+            .and_then(|account_keys_index| self.message.account_keys.get(account_keys_index))
+    }
+
+    pub fn signer_key(&self, instruction_index: usize, accounts_index: usize) -> Option<&Pubkey> {
+        match self.key_index(instruction_index, accounts_index) {
+            None => None,
+            Some(signature_index) => {
+                if signature_index >= self.signatures.len() {
+                    return None;
+                }
+                self.message.account_keys.get(signature_index)
+            }
+        }
+    }
+
+    /// Return the message containing all data that should be signed.
+    pub fn message(&self) -> &Message {
+        &self.message
+    }
+
+    /// Return the serialized message data to sign.
+    pub fn message_data(&self) -> Vec<u8> {
+        self.message().serialize()
+    }
+
+    pub fn is_signed(&self) -> bool {
+        self.signatures
+            .iter()
+            .all(|signature| *signature != Signature::default())
+    }
+
+    pub fn sign(&mut self, position: usize, signer: &[u8]) {
+        let pk = PrivateKey::deserialize_raw(signer).unwrap();
+        let signature = Signature(pk.sign_message(&self.message_data()));
+        self.add_signature(position, signature)
+    }
+
+    pub fn add_signature(&mut self, position: usize, signature: Signature) {
+        self.signatures[position] = signature;
+    }
+
+    fn key_index(&self, instruction_index: usize, accounts_index: usize) -> Option<usize> {
+        self.message
+            .instructions
+            .get(instruction_index)
+            .and_then(|instruction| instruction.accounts.get(accounts_index))
+            .map(|&account_keys_index| account_keys_index as usize)
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        bincode::serialize(self).expect("Transaction serialization failed")
+    }
+}
+
+impl Display for Transaction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", bs58::encode(self.serialize()).into_string())
+    }
+}
+
+impl FromStr for Transaction {
+    type Err = bincode::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = bs58::decode(s)
+            .into_vec()
+            .map_err(|_| bincode::Error::custom("Transaction deserialization failed"))?;
+        bincode::deserialize(&bytes)
+    }
+}
 
 /// Type that serializes to the string "legacy"
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,17 +146,7 @@ pub enum UiTransactionEncoding {
     JsonParsed,
 }
 
-impl UiTransactionEncoding {
-    pub fn into_binary_encoding(&self) -> Option<TransactionBinaryEncoding> {
-        match self {
-            Self::Binary | Self::Base58 => Some(TransactionBinaryEncoding::Base58),
-            Self::Base64 => Some(TransactionBinaryEncoding::Base64),
-            _ => None,
-        }
-    }
-}
-
-impl fmt::Display for UiTransactionEncoding {
+impl Display for UiTransactionEncoding {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let v = serde_json::to_value(self).map_err(|_| fmt::Error)?;
         let s = v.as_str().ok_or(fmt::Error)?;
@@ -77,24 +167,6 @@ impl Default for TransactionDetails {
     fn default() -> Self {
         Self::Full
     }
-}
-
-/// A compact encoding of an instruction.
-///
-/// A `CompiledInstruction` is a component of a multi-instruction [`Message`],
-/// which is the core of a Solana transaction. It is created during the
-/// construction of `Message`. Most users will not interact with it directly.
-///
-/// [`Message`]: crate::message::Message
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct CompiledInstruction {
-    /// Index into the transaction keys array indicating the program account that executes this instruction.
-    pub program_id_index: u8,
-    /// Ordered indices into the transaction keys array indicating which accounts to pass to the program.
-    pub accounts: Vec<u8>,
-    /// The program input data.
-    pub data: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -124,16 +196,16 @@ pub struct UiCompiledInstruction {
     pub stack_height: Option<u32>,
 }
 
-impl UiCompiledInstruction {
-    fn from(instruction: &CompiledInstruction, stack_height: Option<u32>) -> Self {
-        Self {
-            program_id_index: instruction.program_id_index,
-            accounts: instruction.accounts.clone(),
-            data: bs58::encode(&instruction.data).into_string(),
-            stack_height,
-        }
-    }
-}
+// impl UiCompiledInstruction {
+//     fn from(instruction: &CompiledInstruction, stack_height: Option<u32>) -> Self {
+//         Self {
+//             program_id_index: instruction.program_id_index,
+//             accounts: instruction.accounts.clone(),
+//             data: bs58::encode(&instruction.data).into_string(),
+//             stack_height,
+//         }
+//     }
+// }
 
 /// A partially decoded CompiledInstruction that includes explicit account addresses
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -318,15 +390,6 @@ pub struct UiInnerInstructions {
     pub instructions: Vec<UiInstruction>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct UiTokenAmount {
-    pub ui_amount: Option<f64>,
-    pub decimals: u8,
-    pub amount: String,
-    pub ui_amount_string: String,
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTransactionTokenBalance {
@@ -343,4 +406,50 @@ pub struct UiTransactionTokenBalance {
         skip_serializing_if = "OptionSerializer::should_skip"
     )]
     pub program_id: OptionSerializer<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::blockhash::BlockHash;
+    use crate::types::instruction::{AccountMeta, Instruction};
+    use bincode::{deserialize, serialize};
+
+    fn create_sample_transaction() -> Transaction {
+        let pk = PrivateKey::deserialize_raw(&[
+            255, 101, 36, 24, 124, 23, 167, 21, 132, 204, 155, 5, 185, 58, 121, 75, 156, 227, 116,
+            193, 215, 38, 142, 22, 8, 14, 229, 239, 119, 93, 5, 218,
+        ])
+        .unwrap();
+
+        let pubkey = Pubkey::from(pk.public_key().serialize_raw());
+
+        let to = Pubkey::from([
+            1, 1, 1, 4, 5, 6, 7, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 7, 6, 5, 4,
+            1, 1, 1,
+        ]);
+
+        let program_id = Pubkey::from([
+            2, 2, 2, 4, 5, 6, 7, 8, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 8, 7, 6, 5, 4,
+            2, 2, 2,
+        ]);
+        let account_metas = vec![AccountMeta::new(pubkey, true), AccountMeta::new(to, false)];
+        let instruction =
+            Instruction::new_with_bincode(program_id, &(1u8, 2u8, 3u8), account_metas);
+
+        let message = Message::new_with_blockhash(&[instruction], None, &BlockHash::default());
+
+        let mut tx = Transaction::new_unsigned(message);
+        tx.sign(0, &pk.serialize_raw());
+
+        tx
+    }
+
+    #[test]
+    fn test_transaction_serialize() {
+        let tx = create_sample_transaction();
+        let ser = serialize(&tx).unwrap();
+        let deser = deserialize(&ser).unwrap();
+        assert_eq!(tx, deser);
+    }
 }

@@ -2,14 +2,13 @@ pub use candid::Principal;
 
 pub mod cluster;
 pub mod commitment;
-pub mod config;
 pub mod constants;
-pub mod rpc_client;
-// mod keypair;
+pub mod eddsa_api;
 pub mod logs;
-mod request;
-// mod response;
+pub mod pubkey;
+pub mod request;
 pub mod response;
+pub mod rpc_client;
 pub mod state;
 pub mod types;
 pub mod utils;

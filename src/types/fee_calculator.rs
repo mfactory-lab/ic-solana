@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-#[repr(C)]
 #[derive(Serialize, Deserialize, Default, PartialEq, Eq, Clone, Copy, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct FeeCalculator {

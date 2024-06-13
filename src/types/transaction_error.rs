@@ -1,3 +1,4 @@
+use crate::types::instruction_error::InstructionError;
 use candid::Deserialize;
 use serde::Serialize;
 

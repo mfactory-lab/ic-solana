@@ -1,3 +1,5 @@
+use candid::CandidType;
+use ic_crypto_ed25519::PublicKey;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{fmt, mem};
@@ -9,7 +11,9 @@ pub const PUBKEY_BYTES: usize = 32;
 /// Maximum string length of a base58 encoded pubkey
 const MAX_BASE58_LEN: usize = 44;
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(
+    Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, CandidType,
+)]
 pub struct Pubkey(pub(crate) [u8; PUBKEY_BYTES]);
 
 #[derive(Error, Debug, Serialize, Clone, PartialEq, Eq)]
@@ -23,6 +27,18 @@ pub enum ParsePubkeyError {
 impl Pubkey {
     pub fn new(key: [u8; PUBKEY_BYTES]) -> Self {
         Self(key)
+    }
+
+    pub fn to_bytes(self) -> [u8; PUBKEY_BYTES] {
+        self.0
+    }
+
+    /// Verify an Ed25519 signature
+    ///
+    /// Returns Ok if the signature is valid, or Err otherwise
+    pub fn verify_signature(&self, msg: &[u8], signature: &[u8]) -> bool {
+        let pubkey = PublicKey::deserialize_raw(&self.0).expect("invalid public key");
+        pubkey.verify_signature(msg, signature).is_ok()
     }
 }
 

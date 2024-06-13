@@ -1,59 +1,63 @@
-use candid::candid_method;
+use candid::{CandidType, Principal};
 use ic_cdk::api::management_canister::http_request::{HttpResponse, TransformArgs};
 use ic_cdk::{query, update};
-use ic_cdk_macros::{init, post_upgrade};
-use ic_crypto_ed25519::PublicKey;
+use serde::{Deserialize, Serialize};
+use serde_bytes::ByteBuf;
 use serde_json::json;
-use solana_rpc::cluster::Cluster;
-use solana_rpc::config::RpcAccountInfoConfig;
-use solana_rpc::constants::NODES_IN_FIDUCIARY_SUBNET;
+use solana_rpc::eddsa_api::{eddsa_public_key, sign_with_eddsa};
+use solana_rpc::pubkey::Pubkey;
 use solana_rpc::rpc_client::{RpcClient, RpcResult};
-use solana_rpc::state::{mutate_state, read_state, State, STATE};
-use solana_rpc::types::account::{Account, UiAccountEncoding};
-use solana_rpc::types::transaction::EncodedConfirmedTransactionWithStatusMeta;
-use solana_rpc::types::InitArgs;
+use solana_rpc::state::{mutate_state, read_state, InitArgs, State, STATE};
+use solana_rpc::types::account::{Account, UiAccountEncoding, UiTokenAmount};
+use solana_rpc::types::blockhash::BlockHash;
+use solana_rpc::types::config::{RpcAccountInfoConfig, RpcContextConfig, RpcSendTransactionConfig};
+use solana_rpc::types::instruction::Instruction;
+use solana_rpc::types::message::Message;
+use solana_rpc::types::transaction::{EncodedConfirmedTransactionWithStatusMeta, Transaction};
 use solana_rpc::utils::get_http_request_cost;
+use std::str::FromStr;
 
-#[cfg(not(any(target_arch = "wasm32", test)))]
-fn main() {
-    candid::export_service!();
-    std::print!("{}", __export_service());
+fn validate_caller_not_anonymous() -> Principal {
+    let caller = ic_cdk::caller();
+    if caller == Principal::anonymous() {
+        panic!("Anonymous principal not allowed to make calls.")
+    }
+    caller
 }
 
-#[cfg(any(target_arch = "wasm32", test))]
-fn main() {}
-
-/// Verify an EdDSA signature (message signed by Solana wallet).
-#[query]
-#[candid_method]
-pub fn verify_eddsa(pubkey: String, msg: String, signature: String) -> bool {
-    let pubkey = PublicKey::deserialize_raw(pubkey.as_bytes()).expect("invalid public key");
-    pubkey
-        .verify_signature(msg.as_bytes(), signature.as_bytes())
-        .is_ok()
-}
-
-/// Calls a JSON-RPC method on a Solana node at the specified URL.
+///
+/// Returns the public key of the Solana wallet for the caller.
+///
 #[update]
-#[candid_method]
+pub async fn get_sol_address() -> String {
+    let caller = validate_caller_not_anonymous();
+    let key_name = read_state(|s| s.schnorr_key_name.clone());
+    let derived_path = vec![ByteBuf::from(caller.as_slice())];
+    let pk = eddsa_public_key(key_name, derived_path).await;
+    Pubkey::try_from(pk.as_slice())
+        .expect("Invalid public key")
+        .to_string()
+}
+
+///
+/// Calls a JSON-RPC method on a Solana node at the specified URL.
+///
+#[update]
 pub async fn request(method: String, params: String, max_response_bytes: u64) -> RpcResult<String> {
     let client = read_state(RpcClient::from_state);
-
     let payload = serde_json::to_string(&json!({
         "jsonrpc": "2.0",
         "id": mutate_state(State::next_request_id),
         "method": &method,
         "params": params
     }))?;
-
-    let res = client.call(&payload, max_response_bytes).await?;
-
-    Ok(res)
+    client.call(&payload, max_response_bytes).await
 }
 
+///
 /// Calculates the cost of an RPC request.
+///
 #[query(name = "requestCost")]
-#[candid_method(query, rename = "requestCost")]
 pub fn request_cost(payload: String, max_response_bytes: u64) -> u128 {
     let client = read_state(RpcClient::from_state);
     get_http_request_cost(
@@ -63,21 +67,46 @@ pub fn request_cost(payload: String, max_response_bytes: u64) -> u128 {
     )
 }
 
+///
+/// Returns the lamport balance of the account of provided Pubkey.
+///
 #[update(name = "sol_getBalance")]
-#[candid_method(rename = "sol_getBalance")]
-pub async fn sol_get_balance(address: String) -> RpcResult<u64> {
+pub async fn sol_get_balance(pubkey: String) -> RpcResult<u64> {
     let client = read_state(RpcClient::from_state);
-    let balance = client.get_balance(&address, None).await?;
+    let balance = client
+        .get_balance(
+            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
+            RpcContextConfig::default(),
+        )
+        .await?;
     Ok(balance)
 }
 
+///
+/// Returns the token balance of an SPL Token account.
+///
+#[update(name = "sol_getTokenBalance")]
+pub async fn sol_get_token_balance(pubkey: String) -> RpcResult<UiTokenAmount> {
+    let client = read_state(RpcClient::from_state);
+    let commitment = None;
+    let balance = client
+        .get_token_account_balance(
+            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
+            commitment,
+        )
+        .await?;
+    Ok(balance)
+}
+
+///
+/// Returns all information associated with the account of provided Pubkey.
+///
 #[update(name = "sol_getAccountInfo")]
-#[candid_method(rename = "sol_getAccountInfo")]
-pub async fn sol_get_account_info(address: String) -> RpcResult<Option<Account>> {
+pub async fn sol_get_account_info(pubkey: String) -> RpcResult<Option<Account>> {
     let client = read_state(RpcClient::from_state);
     let balance = client
         .get_account_info(
-            &address,
+            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
             RpcAccountInfoConfig {
                 encoding: Some(UiAccountEncoding::Base58),
                 data_slice: None,
@@ -90,76 +119,86 @@ pub async fn sol_get_account_info(address: String) -> RpcResult<Option<Account>>
     Ok(balance)
 }
 
-#[update(name = "sol_getTransaction")]
-#[candid_method(rename = "sol_getTransaction")]
-pub async fn sol_get_transaction(
-    signature: String,
-) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
-    let client = read_state(RpcClient::from_state);
-    let response = client.get_transaction(&signature, None, 10 * 1024).await?;
-    Ok(response)
+// ///
+// /// Returns transaction details for a confirmed transaction.
+// ///
+// #[update(name = "sol_getTransaction")]
+// #[candid_method(rename = "sol_getTransaction")]
+// pub async fn sol_get_transaction(
+//     signature: String,
+// ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
+//     let client = read_state(RpcClient::from_state);
+//     let signature = Signature::from_str(&signature).expect("Invalid signature");
+//     let response = client.get_transaction(&signature, None).await?;
+//     Ok(response)
+// }
+
+#[derive(CandidType, Deserialize, Serialize, Debug)]
+pub struct SendTransactionRequest {
+    instructions: Vec<Instruction>,
+    recent_blockhash: Option<String>,
 }
 
-// #[update(name = "sendRawTransaction")]
-// #[candid_method(rename = "sendRawTransaction")]
-// pub async fn _send_raw_transaction(
-//     source: RpcServices,
-//     config: Option<RpcConfig>,
-//     raw_signed_transaction_hex: String,
-// ) -> MultiRpcResult<candid_types::SendRawTransactionStatus> {
-//     match CandidRpcClient::new(source, config) {
-//         Ok(source) => {
-//             source
-//                 .eth_send_raw_transaction(raw_signed_transaction_hex)
-//                 .await
-//         }
-//         Err(err) => Err(err).into(),
-//     }
-// }
+///
+/// Send a transaction to the network.
+///
+#[update(name = "sol_sendTransaction")]
+pub async fn sol_send_transaction(req: SendTransactionRequest) -> RpcResult<String> {
+    let caller = validate_caller_not_anonymous();
+    let client = read_state(RpcClient::from_state);
 
-// #[update]
-// async fn send_tx() {
-//     let user = caller();
-//
-//     debug_println_caller("send_tx");
-//
-//     // api::print(format!("| balance start: {}", api::canister_balance()));
-//
-//     // let kp = get_solana_keypair().await;
-//     //
-//     // api::print(format!("solana keypair: {:?}", kp.sk.as_ref()));
-//     // api::print(format!("solana keypair: {}", hex::encode(kp.pk.as_ref())));
-//
-//     // api::print(format!("| balance end: {}", api::canister_balance()));
-//
-//     // let program_id = pubkey!("ALBs64hsiHgdg53mvd4bcvNZLfDRhctSVaP7PwAPpsZL");
-//     //
-//     // let ix_data = 0u8;
-//     // let ix = Instruction::new_with_borsh(program_id, &ix_data, vec![]);
-//     //
-//     // let msg = Message::new(&[ix], None);
-//     //
-//     // api::print(format!("msg: {:?}", msg.serialize()));
-//     //
-//     // let blockhash = Hash::new(&[]);
-//     // let tx = Transaction::new(&[&payer], msg, blockhash);
-//
-//     // TODO: sign transaction
-//
-//     // let res = call_solana("getLatestBlockhash", Value::Null)
-//     //     .await
-//     //     .unwrap();
-//     //
-//     // let data: Value = serde_json::from_slice(&res.0.body).unwrap();
-//
-//     // api::print(format!("response: {:?}", data));
-// }
+    let recent_blockhash = match req.recent_blockhash {
+        Some(r) => BlockHash::from_str(&r).expect("Invalid recent blockhash"),
+        None => {
+            client
+                .get_latest_blockhash(RpcContextConfig::default())
+                .await?
+        }
+    };
+
+    let message = Message::new_with_blockhash(&req.instructions, None, &recent_blockhash);
+
+    let mut tx = Transaction::new_unsigned(message);
+
+    let key_name = read_state(|s| s.schnorr_key_name.clone());
+    let derived_path = vec![ByteBuf::from(caller.as_slice())];
+
+    let signature = sign_with_eddsa(key_name, derived_path, tx.message_data())
+        .await
+        .try_into()
+        .expect("Invalid signature");
+
+    tx.add_signature(0, signature);
+
+    let signature = client
+        .send_transaction(tx, RpcSendTransactionConfig::default())
+        .await?;
+
+    Ok(signature.to_string())
+}
+
+///
+/// Submits a signed transaction to the cluster for processing.
+///
+#[update(name = "sol_sendRawTransaction")]
+pub async fn send_raw_transaction(raw_signed_transaction: String) -> RpcResult<String> {
+    let client = read_state(RpcClient::from_state);
+
+    let tx = Transaction::from_str(&raw_signed_transaction).expect("Invalid transaction");
+
+    let signature = client
+        .send_transaction(tx, RpcSendTransactionConfig::default())
+        .await?;
+
+    Ok(signature.to_string())
+}
 
 /// Cleans up the HTTP response headers to make them deterministic.
 ///
 /// # Arguments
 ///
 /// * `args` - Transformation arguments containing the HTTP response.
+///
 #[query(hidden = true)]
 fn cleanup_response(mut args: TransformArgs) -> HttpResponse {
     // The response header contains non-deterministic fields that make it impossible to reach consensus!
@@ -169,18 +208,14 @@ fn cleanup_response(mut args: TransformArgs) -> HttpResponse {
     args.response
 }
 
-#[init]
+#[ic_cdk::init]
 fn init(args: InitArgs) {
     STATE.with(|s| {
-        *s.borrow_mut() = Some(State {
-            nodes_in_subnet: args.nodes_in_subnet.unwrap_or(NODES_IN_FIDUCIARY_SUBNET),
-            rpc_url: args.rpc_url.unwrap_or(Cluster::Devnet.to_string()),
-            http_request_counter: 0,
-        })
+        *s.borrow_mut() = Some(args.into());
     });
 }
 
-#[post_upgrade]
+#[ic_cdk::post_upgrade]
 fn post_upgrade(args: InitArgs) {
     if let Some(v) = args.nodes_in_subnet {
         mutate_state(|s| s.nodes_in_subnet = v);
@@ -189,3 +224,6 @@ fn post_upgrade(args: InitArgs) {
         mutate_state(|s| s.rpc_url = v);
     }
 }
+
+fn main() {}
+ic_cdk::export_candid!();

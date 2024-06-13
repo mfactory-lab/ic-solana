@@ -3,9 +3,7 @@ use std::fmt;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum RpcRequest {
-    Custom {
-        method: &'static str,
-    },
+    Custom { method: &'static str },
     DeregisterNode,
     GetAccountInfo,
     GetBalance,
@@ -16,43 +14,9 @@ pub enum RpcRequest {
     GetBlocksWithLimit,
     GetBlockTime,
     GetClusterNodes,
-    #[deprecated(since = "1.7.0", note = "Please use RpcRequest::GetBlock instead")]
-    GetConfirmedBlock,
-    #[deprecated(since = "1.7.0", note = "Please use RpcRequest::GetBlocks instead")]
-    GetConfirmedBlocks,
-    #[deprecated(
-        since = "1.7.0",
-        note = "Please use RpcRequest::GetBlocksWithLimit instead"
-    )]
-    GetConfirmedBlocksWithLimit,
-    #[deprecated(
-        since = "1.7.0",
-        note = "Please use RpcRequest::GetSignaturesForAddress instead"
-    )]
-    GetConfirmedSignaturesForAddress2,
-    #[deprecated(
-        since = "1.7.0",
-        note = "Please use RpcRequest::GetTransaction instead"
-    )]
-    GetConfirmedTransaction,
     GetEpochInfo,
     GetEpochSchedule,
-    #[deprecated(
-        since = "1.9.0",
-        note = "Please use RpcRequest::GetFeeForMessage instead"
-    )]
-    GetFeeCalculatorForBlockhash,
     GetFeeForMessage,
-    #[deprecated(
-        since = "1.9.0",
-        note = "Please do not use, will no longer be available in the future"
-    )]
-    GetFeeRateGovernor,
-    #[deprecated(
-        since = "1.9.0",
-        note = "Please use RpcRequest::GetFeeForMessage instead"
-    )]
-    GetFees,
     GetFirstAvailableBlock,
     GetGenesisHash,
     GetHealth,
@@ -68,19 +32,9 @@ pub enum RpcRequest {
     GetMinimumBalanceForRentExemption,
     GetMultipleAccounts,
     GetProgramAccounts,
-    #[deprecated(
-        since = "1.9.0",
-        note = "Please use RpcRequest::GetLatestBlockhash instead"
-    )]
-    GetRecentBlockhash,
     GetRecentPerformanceSamples,
     GetRecentPrioritizationFees,
     GetHighestSnapshotSlot,
-    #[deprecated(
-        since = "1.9.0",
-        note = "Please use RpcRequest::GetHighestSnapshotSlot instead"
-    )]
-    GetSnapshotSlot,
     GetSignaturesForAddress,
     GetSignatureStatuses,
     GetSlot,
@@ -126,17 +80,9 @@ impl fmt::Display for RpcRequest {
             RpcRequest::GetBlocksWithLimit => "getBlocksWithLimit",
             RpcRequest::GetBlockTime => "getBlockTime",
             RpcRequest::GetClusterNodes => "getClusterNodes",
-            RpcRequest::GetConfirmedBlock => "getConfirmedBlock",
-            RpcRequest::GetConfirmedBlocks => "getConfirmedBlocks",
-            RpcRequest::GetConfirmedBlocksWithLimit => "getConfirmedBlocksWithLimit",
-            RpcRequest::GetConfirmedSignaturesForAddress2 => "getConfirmedSignaturesForAddress2",
-            RpcRequest::GetConfirmedTransaction => "getConfirmedTransaction",
             RpcRequest::GetEpochInfo => "getEpochInfo",
             RpcRequest::GetEpochSchedule => "getEpochSchedule",
-            RpcRequest::GetFeeCalculatorForBlockhash => "getFeeCalculatorForBlockhash",
             RpcRequest::GetFeeForMessage => "getFeeForMessage",
-            RpcRequest::GetFeeRateGovernor => "getFeeRateGovernor",
-            RpcRequest::GetFees => "getFees",
             RpcRequest::GetFirstAvailableBlock => "getFirstAvailableBlock",
             RpcRequest::GetGenesisHash => "getGenesisHash",
             RpcRequest::GetHealth => "getHealth",
@@ -152,11 +98,9 @@ impl fmt::Display for RpcRequest {
             RpcRequest::GetMinimumBalanceForRentExemption => "getMinimumBalanceForRentExemption",
             RpcRequest::GetMultipleAccounts => "getMultipleAccounts",
             RpcRequest::GetProgramAccounts => "getProgramAccounts",
-            RpcRequest::GetRecentBlockhash => "getRecentBlockhash",
             RpcRequest::GetRecentPerformanceSamples => "getRecentPerformanceSamples",
             RpcRequest::GetRecentPrioritizationFees => "getRecentPrioritizationFees",
             RpcRequest::GetHighestSnapshotSlot => "getHighestSnapshotSlot",
-            RpcRequest::GetSnapshotSlot => "getSnapshotSlot",
             RpcRequest::GetSignaturesForAddress => "getSignaturesForAddress",
             RpcRequest::GetSignatureStatuses => "getSignatureStatuses",
             RpcRequest::GetSlot => "getSlot",
@@ -222,21 +166,6 @@ mod tests {
         let test_request = RpcRequest::GetEpochInfo;
         let request = test_request.build_request_json(1, Value::Null);
         assert_eq!(request["method"], "getEpochInfo");
-
-        #[allow(deprecated)]
-        let test_request = RpcRequest::GetRecentBlockhash;
-        let request = test_request.build_request_json(1, Value::Null);
-        assert_eq!(request["method"], "getRecentBlockhash");
-
-        #[allow(deprecated)]
-        let test_request = RpcRequest::GetFeeCalculatorForBlockhash;
-        let request = test_request.build_request_json(1, json!([addr]));
-        assert_eq!(request["method"], "getFeeCalculatorForBlockhash");
-
-        #[allow(deprecated)]
-        let test_request = RpcRequest::GetFeeRateGovernor;
-        let request = test_request.build_request_json(1, Value::Null);
-        assert_eq!(request["method"], "getFeeRateGovernor");
 
         let test_request = RpcRequest::GetSlot;
         let request = test_request.build_request_json(1, Value::Null);
