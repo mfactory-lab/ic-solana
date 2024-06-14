@@ -16,22 +16,19 @@ start: ## Start the canisters
 build: ## Build the canisters
 	./scripts/build
 
-.PHONY: e2e
-e2e: build ## Run e2e tests
-	./scripts/e2e
-
 .PHONY: test
 test: ## Run tests
-#	cargo build --release --target wasm32-unknown-unknown --package ic-solana-provider
-#	cargo test -- --nocapture
 	dfx build test_canister; \
 	@{ \
-	  make -f ./src/test_canister/Makefile build; \
 		export IC_SOLANA_PROVIDER_PATH=./target/wasm32-unknown-unknown/release/ic_solana_provider.wasm.gz; \
 		export SCHNORR_CANISTER_PATH=./target/wasm32-unknown-unknown/release/test_canister.wasm.gz; \
 		$(MAKE) build; \
 		cargo test --test integration_tests $(if $(TEST_NAME),-- $(TEST_NAME) --nocapture,-- --nocapture); \
 	}
+
+.PHONY: test-e2e
+test-e2e: build ## Run e2e tests
+	dfx canister call test_canister test
 
 .PHONY: clean
 clean: ## Cleanup
