@@ -1,45 +1,44 @@
-CANISTER_ID=solana_rpc
+#!/usr/bin/make
 
-.PHONY: deploy
-deploy:
-	./deploy.sh
+.DEFAULT_GOAL: help
+
+help: ## Show this help
+	@printf "\033[33m%s:\033[0m\n" 'Available commands'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[32m%-18s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 .PHONY: start
-start:
+start: ## Start the canisters
 	RUST_BACKTRACE=1 dfx start --clean
 
+.PHONY: build
+build: ## Build the canisters
+	./scripts/build
+
+.PHONY: e2e
+e2e: build ## Run e2e tests
+	./scripts/e2e
+
 .PHONY: test
-test:
-	./deploy.sh
-	dfx canister call ${CANISTER_ID} sol_getBalance '("AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY")'
-#dfx canister logs ${CANISTER}
-#	dfx stop
-#	echo "BUILD_ENV is ${BUILD_ENV}"
-##	bash ./pre_deploy.sh
-##	echo "Pre deploy script succeeded"
-#	npm install
-#	rm -fr .dfx
-#	dfx start --clean --background
-#	dfx canister create --all
-#	dfx deploy internet_identity --argument '(null)'
-#	dfx canister create vetkd_system_api --specified-id s55qq-oqaaa-aaaaa-aaakq-cai
-#	dfx deploy vetkd_system_api
-#	dfx deploy encrypted_notes_${BUILD_ENV}
-#	dfx generate encrypted_notes_${BUILD_ENV}
-#	dfx deploy www
-#	echo "Deployment succeeded"
-#	echo "Start testing..."
-#	dfx canister call encrypted_notes_${BUILD_ENV} whoami
-#	sh test_whoami.sh
-#	echo "TESTS PASSED"
+test: ## Run tests
+#	cargo build --release --target wasm32-unknown-unknown --package ic-solana-provider
+#	cargo test -- --nocapture
+	dfx build test_canister; \
+	@{ \
+	  make -f ./src/test_canister/Makefile build; \
+		export IC_SOLANA_PROVIDER_PATH=./target/wasm32-unknown-unknown/release/ic_solana_provider.wasm.gz; \
+		export SCHNORR_CANISTER_PATH=./target/wasm32-unknown-unknown/release/test_canister.wasm.gz; \
+		$(MAKE) build; \
+		cargo test --test integration_tests $(if $(TEST_NAME),-- $(TEST_NAME) --nocapture,-- --nocapture); \
+	}
 
 .PHONY: clean
-clean:
+clean: ## Cleanup
 	rm -rf .dfx
 	rm -rf node_modules
 	rm -rf src/declarations
-#	rm -rf src/frontend/public/build
-#	rm -rf src/frontend/src/lib/backend.ts
-#	rm -rf src/frontend/src/lib/idlFactory.js
-#	rm -rf dfx.json
 	cargo clean
+
+%::
+	@true
