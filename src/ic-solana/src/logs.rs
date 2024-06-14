@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use ic_canister_log::{declare_log_buffer, GlobalBuffer, Sink};
 
 // High-priority messages.

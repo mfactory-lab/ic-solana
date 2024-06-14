@@ -1,20 +1,17 @@
 mod option_serializer;
 pub mod short_vec;
 
-pub use option_serializer::*;
-
 use crate::constants::*;
-use candid::Principal;
 use ic_cdk::api::management_canister::http_request::CanisterHttpRequestArgument;
 
-pub fn debug_println_caller(method_name: &str) {
-    ic_cdk::println!(
-        "{}: caller: {} (isAnonymous: {})",
-        method_name,
-        ic_cdk::caller().to_text(),
-        ic_cdk::caller() == Principal::anonymous()
-    );
-}
+// pub fn debug_println_caller(method_name: &str) {
+//     ic_cdk::println!(
+//         "{}: caller: {} (isAnonymous: {})",
+//         method_name,
+//         ic_cdk::caller().to_text(),
+//         ic_cdk::caller() == Principal::anonymous()
+//     );
+// }
 
 /// Calculates the baseline cost of sending a JSON-RPC request using HTTP outcalls.
 pub fn http_request_required_cycles(
