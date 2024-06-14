@@ -23,4 +23,6 @@ dist/
 # environment variables
 .env
 
+# others
 /tmp
+pocket-ic
