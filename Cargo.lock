@@ -3269,7 +3269,6 @@ dependencies = [
  "candid",
  "ic-cdk 0.14.0",
  "ic-solana",
- "ic-solana-provider",
 ]
 
 [[package]]

@@ -9,6 +9,6 @@ crate-type = ["cdylib"]
 [dependencies]
 candid = { workspace = true }
 ic-cdk = { workspace = true }
-ic-solana-provider = { workspace = true }
+ic-solana = { workspace = true }
 
 [dev-dependencies]

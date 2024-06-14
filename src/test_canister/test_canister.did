@@ -1,0 +1,3 @@
+service: (sol_canister: text) -> {
+    test : () -> ();
+};
