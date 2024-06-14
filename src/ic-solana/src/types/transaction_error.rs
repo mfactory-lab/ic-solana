@@ -1,4 +1,3 @@
-use crate::types::instruction_error::InstructionError;
 use candid::Deserialize;
 use serde::Serialize;
 
@@ -45,7 +44,7 @@ pub enum TransactionError {
     /// An error occurred while processing an instruction. The first element of the tuple
     /// indicates the instruction index in which the error occurred.
     #[error("Error processing Instruction {0}: {1}")]
-    InstructionError(u8, InstructionError),
+    InstructionError(u8, String),
 
     /// Loader call chain is too deep
     #[error("Loader call chain is too deep")]

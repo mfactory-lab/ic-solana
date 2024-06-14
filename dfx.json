@@ -1,10 +1,16 @@
 {
-  "dfx": "0.18.0",
+  "dfx": "0.20.0",
   "canisters": {
-    "solana_rpc": {
+    "ic-solana-provider": {
       "type": "rust",
-      "package": "solana_rpc",
-      "candid": "solana_rpc.did",
+      "package": "ic-solana-provider",
+      "candid": "src/ic-solana-provider/ic-solana-provider.did",
+      "gzip": true
+    },
+    "test_canister": {
+      "type": "rust",
+      "package": "test_canister",
+      "candid": "src/test_canister/test_canister.did",
       "gzip": true
     },
     "schnorr_canister": {
@@ -22,16 +28,8 @@
   "networks": {
     "local": {
       "bind": "localhost:4943",
-      "type": "ephemeral",
-      "solana": {
-        "enabled": true,
-        "nodes": [
-          "0.0.0.0:8899"
-        ],
-        "log_level": "error"
-      }
+      "type": "ephemeral"
     }
   },
-  "output_env_file": ".env",
   "version": 1
 }

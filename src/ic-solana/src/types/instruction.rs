@@ -11,6 +11,7 @@ pub struct Instruction {
     /// Metadata describing accounts that should be passed to the program.
     pub accounts: Vec<AccountMeta>,
     /// Opaque data passed to the program for its own interpretation.
+    #[serde(with = "serde_bytes")]
     pub data: Vec<u8>,
 }
 

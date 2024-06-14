@@ -1,9 +1,7 @@
-use crate::types::account::UiAccount;
-use crate::types::fee_calculator::FeeCalculator;
-use crate::types::reward::Rewards;
-use crate::types::transaction::{EncodedTransactionWithStatusMeta, TransactionConfirmationStatus};
-use crate::types::transaction_error::TransactionError;
-use crate::types::{Slot, UnixTimestamp};
+use crate::types::{
+    EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot, TransactionConfirmationStatus,
+    TransactionError, UiAccount, UnixTimestamp,
+};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

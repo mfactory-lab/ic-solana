@@ -14,7 +14,6 @@ type InitArgs = record {
   rpc_url : opt text;
   schnorr_canister : opt text;
   schnorr_key_name : opt text;
-  key_name : opt text;
   nodes_in_subnet : opt nat32;
 };
 type Instruction = record {
@@ -43,7 +42,7 @@ type UiTokenAmount = record {
   amount : text;
 };
 service : (InitArgs) -> {
-  get_sol_address : () -> (text);
+  get_address : () -> (text);
   request : (text, text, nat64) -> (Result);
   requestCost : (text, nat64) -> (nat) query;
   sol_getAccountInfo : (text) -> (Result_1);

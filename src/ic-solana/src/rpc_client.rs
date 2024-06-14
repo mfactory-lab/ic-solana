@@ -1,28 +1,18 @@
-use crate::cluster::Cluster;
 use crate::constants::*;
 use crate::logs::{DEBUG, TRACE_HTTP};
 use crate::request::RpcRequest;
 use crate::response::{
-    EncodedConfirmedBlock, OptionalContext, RpcBlockhash,
+    EncodedConfirmedBlock, OptionalContext, Response, RpcBlockhash,
     RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcVersionInfo,
 };
-use crate::state::{mutate_state, State};
-use crate::types::account::{Account, UiTokenAmount};
-use crate::types::blockhash::BlockHash;
-use crate::types::commitment::CommitmentConfig;
-use crate::types::config::{
-    RpcAccountInfoConfig, RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-    RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSupplyConfig,
-};
-use crate::types::epoch_info::EpochInfo;
-use crate::types::pubkey::Pubkey;
-use crate::types::signature::Signature;
-use crate::types::transaction::{
-    EncodedConfirmedTransactionWithStatusMeta, Transaction, TransactionStatus,
+use crate::types::{Account, BlockHash, CommitmentConfig, Slot, UiAccount, UiTokenAmount};
+use crate::types::{
+    Cluster, EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
+    RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
+    RpcSignaturesForAddressConfig, RpcSupplyConfig, Signature, Transaction, TransactionStatus,
     UiTransactionEncoding,
 };
-use crate::types::Slot;
-use crate::utils::get_http_request_cost;
+use crate::utils::http_request_required_cycles;
 use anyhow::Result;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
@@ -33,7 +23,12 @@ use ic_cdk::api::management_canister::http_request::{
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::cell::RefCell;
 use std::str::FromStr;
+
+thread_local! {
+    static NEXT_ID: RefCell<u64> = RefCell::default();
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct JsonRpcError {
@@ -88,20 +83,16 @@ pub type RpcResult<T> = Result<T, RpcError>;
 pub struct RpcClient {
     pub cluster: Cluster,
     pub commitment_config: CommitmentConfig,
-    pub header_limit_size: u64,
+    pub nodes_in_subnet: Option<u32>,
 }
 
 impl RpcClient {
     pub fn new(cluster: &str) -> Self {
         Self {
             cluster: Cluster::from_str(cluster).unwrap(),
-            commitment_config: Default::default(),
-            header_limit_size: DEFAULT_HEADER_SIZE_LIMIT,
+            commitment_config: CommitmentConfig::confirmed(),
+            nodes_in_subnet: None,
         }
-    }
-
-    pub fn from_state(state: &State) -> Self {
-        Self::new(&state.rpc_url)
     }
 
     pub fn with_commitment(mut self, commitment_config: CommitmentConfig) -> Self {
@@ -109,8 +100,8 @@ impl RpcClient {
         self
     }
 
-    pub fn with_header_limit_size(mut self, header_limit_size: u64) -> Self {
-        self.header_limit_size = header_limit_size;
+    pub fn with_nodes_in_subnet(mut self, nodes_in_subnet: u32) -> Self {
+        self.nodes_in_subnet = Some(nodes_in_subnet);
         self
     }
 
@@ -137,11 +128,9 @@ impl RpcClient {
     /// * If the HTTP request fails, an `RpcRequestError` is returned with the error details.
     ///
     pub async fn call(&self, payload: &str, max_response_bytes: u64) -> RpcResult<String> {
-        let max_response_bytes = max_response_bytes + self.header_limit_size;
-
         let request = CanisterHttpRequestArgument {
             url: self.cluster.url().to_string(),
-            max_response_bytes: Some(max_response_bytes),
+            max_response_bytes: Some(max_response_bytes + HEADER_SIZE_LIMIT),
             method: HttpMethod::POST,
             headers: vec![HttpHeader {
                 name: "Content-Type".to_string(),
@@ -155,11 +144,17 @@ impl RpcClient {
         };
 
         let url = self.cluster.url();
-        let cycles = get_http_request_cost(url, payload.len() as u64, max_response_bytes);
+        let nodes_in_standard_subnet = 13;
 
-        ic_cdk::println!("call cycles: {cycles}");
+        let cycles = http_request_required_cycles(
+            &request,
+            self.nodes_in_subnet.unwrap_or(nodes_in_standard_subnet),
+        );
 
-        log!(DEBUG, "Calling url: {url}, with payload: {payload}");
+        log!(
+            DEBUG,
+            "Calling url: {url} with payload: {payload}. Cycles: {cycles}"
+        );
 
         match http_request(request, cycles).await {
             Ok((response,)) => {
@@ -181,6 +176,15 @@ impl RpcClient {
         }
     }
 
+    pub fn next_request_id(&self) -> u64 {
+        NEXT_ID.with(|next_id| {
+            let mut next_id = next_id.borrow_mut();
+            let id = *next_id;
+            *next_id = next_id.wrapping_add(1);
+            id
+        })
+    }
+
     ///
     /// Returns the latest blockhash.
     ///
@@ -189,7 +193,7 @@ impl RpcClient {
     ///
     pub async fn get_latest_blockhash(&self, config: RpcContextConfig) -> RpcResult<BlockHash> {
         let payload = RpcRequest::GetLatestBlockhash
-            .build_request_json(mutate_state(State::next_request_id), json!([config]))
+            .build_request_json(self.next_request_id(), json!([config]))
             .to_string();
 
         let response = self.call(&payload, 156).await?;
@@ -221,10 +225,7 @@ impl RpcClient {
     ///
     pub async fn get_balance(&self, pubkey: &Pubkey, config: RpcContextConfig) -> RpcResult<u64> {
         let payload = RpcRequest::GetBalance
-            .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([pubkey, config]),
-            )
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]))
             .to_string();
 
         let response = self.call(&payload, 156).await?;
@@ -252,8 +253,8 @@ impl RpcClient {
     ) -> RpcResult<UiTokenAmount> {
         let payload = RpcRequest::GetTokenAccountBalance
             .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([pubkey, commitment]),
+                self.next_request_id(),
+                json!([pubkey.to_string(), commitment]),
             )
             .to_string();
 
@@ -282,10 +283,7 @@ impl RpcClient {
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Option<Account>> {
         let payload = RpcRequest::GetAccountInfo
-            .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([pubkey.to_string(), config]),
-            )
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]))
             .to_string();
 
         let response = self
@@ -296,13 +294,17 @@ impl RpcClient {
             .await?;
 
         let json_response =
-            serde_json::from_str::<JsonRpcResponse<OptionalContext<Account>>>(&response)?;
+            serde_json::from_str::<JsonRpcResponse<Response<Option<UiAccount>>>>(&response)?;
 
         if let Some(e) = json_response.error {
-            Err(e.into())
-        } else {
-            Ok(Option::from(json_response.result.unwrap().parse_value()))
+            return Err(e.into());
         }
+
+        let not_found_error = || RpcError::Text(format!("AccountNotFound: pubkey={}", pubkey));
+        let rpc_account = json_response.result.ok_or_else(not_found_error)?;
+        let account = rpc_account.value.ok_or_else(not_found_error)?;
+
+        Ok(account.decode())
     }
 
     ///
@@ -310,7 +312,7 @@ impl RpcClient {
     ///
     pub async fn get_version(&self) -> RpcResult<RpcVersionInfo> {
         let payload = RpcRequest::GetVersion
-            .build_request_json(mutate_state(State::next_request_id), Value::Null)
+            .build_request_json(self.next_request_id(), Value::Null)
             .to_string();
 
         let response = self.call(&payload, 128).await?;
@@ -330,7 +332,7 @@ impl RpcClient {
     ///
     pub async fn get_health(&self) -> RpcResult<String> {
         let payload = RpcRequest::GetHealth
-            .build_request_json(mutate_state(State::next_request_id), Value::Null)
+            .build_request_json(self.next_request_id(), Value::Null)
             .to_string();
 
         let response = self.call(&payload, 256).await?;
@@ -353,10 +355,7 @@ impl RpcClient {
         encoding: UiTransactionEncoding,
     ) -> RpcResult<EncodedConfirmedBlock> {
         let payload = RpcRequest::GetBlock
-            .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([slot, encoding]),
-            )
+            .build_request_json(self.next_request_id(), json!([slot, encoding]))
             .to_string();
 
         let response = self
@@ -378,7 +377,7 @@ impl RpcClient {
     ///
     pub async fn get_slot(&self) -> RpcResult<Slot> {
         let payload = RpcRequest::GetSlot
-            .build_request_json(mutate_state(State::next_request_id), Value::Null)
+            .build_request_json(self.next_request_id(), Value::Null)
             .to_string();
 
         let response = self.call(&payload, 128).await?;
@@ -397,7 +396,7 @@ impl RpcClient {
     ///
     pub async fn get_supply(&self, config: RpcSupplyConfig) -> RpcResult<RpcSupply> {
         let payload = RpcRequest::GetSupply
-            .build_request_json(mutate_state(State::next_request_id), json!([config]))
+            .build_request_json(self.next_request_id(), json!([config]))
             .to_string();
 
         let response = self.call(&payload, GET_SUPPLY_SIZE_ESTIMATE).await?;
@@ -419,7 +418,7 @@ impl RpcClient {
     ///
     pub async fn get_epoch_info(&self, config: RpcContextConfig) -> RpcResult<EpochInfo> {
         let payload = RpcRequest::GetEpochInfo
-            .build_request_json(mutate_state(State::next_request_id), json!([config]))
+            .build_request_json(self.next_request_id(), json!([config]))
             .to_string();
 
         let response = self.call(&payload, GET_EPOCH_INFO_SIZE_ESTIMATE).await?;
@@ -447,8 +446,8 @@ impl RpcClient {
     ) -> RpcResult<Vec<RpcKeyedAccount>> {
         let payload = RpcRequest::GetProgramAccounts
             .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([program_id, config]),
+                self.next_request_id(),
+                json!([program_id.to_string(), config]),
             )
             .to_string();
 
@@ -473,8 +472,8 @@ impl RpcClient {
     pub async fn request_airdrop(&self, pubkey: &Pubkey, lamports: u64) -> RpcResult<String> {
         let payload = RpcRequest::RequestAirdrop
             .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([pubkey, lamports]),
+                self.next_request_id(),
+                json!([pubkey.to_string(), lamports]),
             )
             .to_string();
 
@@ -502,10 +501,7 @@ impl RpcClient {
         config: RpcSignaturesForAddressConfig,
     ) -> RpcResult<Vec<RpcConfirmedTransactionStatusWithSignature>> {
         let payload = RpcRequest::GetSignaturesForAddress
-            .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([pubkey, config]),
-            )
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]))
             .to_string();
 
         let max_limit = 1000;
@@ -540,10 +536,7 @@ impl RpcClient {
         config: RpcSignatureStatusConfig,
     ) -> RpcResult<Vec<TransactionStatus>> {
         let payload = RpcRequest::GetSignatureStatuses
-            .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([signatures, config]),
-            )
+            .build_request_json(self.next_request_id(), json!([signatures, config]))
             .to_string();
 
         let response = self.call(&payload, 128).await?;
@@ -571,8 +564,8 @@ impl RpcClient {
     ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
         let payload = RpcRequest::GetTransaction
             .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([ signature, { "commitment": commitment } ]),
+                self.next_request_id(),
+                json!([ signature.to_string(), { "commitment": commitment } ]),
             )
             .to_string();
 
@@ -621,10 +614,7 @@ impl RpcClient {
         };
 
         let payload = RpcRequest::SendTransaction
-            .build_request_json(
-                mutate_state(State::next_request_id),
-                json!([raw_tx, config]),
-            )
+            .build_request_json(self.next_request_id(), json!([raw_tx, config]))
             .to_string();
 
         let response = self.call(&payload, 156).await?;

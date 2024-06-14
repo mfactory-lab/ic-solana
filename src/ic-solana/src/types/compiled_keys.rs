@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::types::instruction::Instruction;
 use crate::types::message::MessageHeader;
 use crate::types::pubkey::Pubkey;
