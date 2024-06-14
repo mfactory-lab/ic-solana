@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 
-CANISTER_ID=solana_rpc
-
 # Reinstall all canisters and run E2E tests in your local environment.
-(
-    dfx canister create --all &&
-    npm run generate &&
-    dfx deploy $CANISTER_ID --mode reinstall -y &&
-#    dfx deploy $CANISTER_ID --argument "(record {nodesInSubnet = 28})" --mode reinstall -y &&
-#    dfx deploy $CANISTER_ID --argument "(record {nodesInSubnet = 13})" --mode reinstall -y &&
-#    dfx deploy $CANISTER_ID --argument "(record {nodesInSubnet = 28})" --mode reinstall -y &&
-    dfx canister call $CANISTER_ID request &&
-    echo Done
-)
+#dfx canister create --all &&
+dfx deploy ic-solana-provider --mode reinstall -y &&
+
+dfx canister call ic-solana-provider get_address '()'
+dfx canister call ic-solana-provider sol_getBalance '("AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY")'
+dfx canister call ic-solana-provider sol_getAccountInfo '("AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY")'
+
+echo Done
