@@ -1,26 +1,39 @@
 #!/usr/bin/env bash
 
-PACKAGE=ic-solana-provider
-WASM_FILE=target/wasm32-unknown-unknown/release/ic_solana_provider.wasm
-DID_PATH=./src/$PACKAGE/$PACKAGE.did
+CANISTER=ic-solana-provider
+CANISTER_WASM=target/wasm32-unknown-unknown/release/$(echo $CANISTER | tr '-' '_').wasm
 
 # Build the canister
-cargo build -j1 --release --target wasm32-unknown-unknown --package $PACKAGE
+cargo build --release --target wasm32-unknown-unknown --package $CANISTER
 
 # Extract the did file
-candid-extractor $WASM_FILE > $DID_PATH
+candid-extractor $CANISTER_WASM > ./src/$CANISTER/$CANISTER.did
 
 # optimize wasm file
-# ic-wasm $WASM_FILE -o $WASM_FILE metadata candid:service -f $DID_PATH -v public
+# ic-wasm $CANISTER_WASM -o $CANISTER_WASM metadata candid:service -f $DID_PATH -v public
 
-gzip --no-name --force $WASM_FILE
-cp $WASM_FILE.gz ./src/$PACKAGE/$PACKAGE.wasm.gz
+gzip --no-name --force $CANISTER_WASM
+cp $CANISTER_WASM.gz ./src/$CANISTER/$CANISTER.wasm.gz
 
 # Deploy schnorr canister
 dfx deploy schnorr_canister
 
 # Get the canister id
-schnorr_canister_id=$(dfx canister id schnorr_canister)
+SCHNORR_CANISTER_ID=$(dfx canister id schnorr_canister)
+
+echo "Schnorr canister id: $CANISTER_ID"
 
 # Deploy the solana canister and set the schnorr canister id
-dfx deploy ic-solana-provider --argument "( record { nodesInSubnet = 28; schnorr_canister = opt \"${schnorr_canister_id}\" } )" --mode=reinstall -y
+dfx deploy ic-solana-provider --argument "( record { nodesInSubnet = 28; schnorr_canister = opt \"${SCHNORR_CANISTER_ID}\" } )" --mode=reinstall -y
+
+# Get the canister id
+CANISTER_ID=$(dfx canister id ic-solana-provider)
+
+echo "Solana canister id: $CANISTER_ID"
+
+# Deploy the test canister
+dfx deploy test_canister --argument "( \"${CANISTER_ID}\" )" --mode=reinstall -y
+
+echo "Test canister id: $CANISTER_ID"
+
+echo "Done"
