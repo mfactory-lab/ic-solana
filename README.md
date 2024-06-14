@@ -33,10 +33,10 @@ available canisters above):
 ```json
 {
   "canisters": {
-    "solana_rpc": {
+    "ic-solana-provider": {
       "type": "custom",
-      "candid": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/solana_rpc.did",
-      "wasm": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/solana_rpc.wasm.gz",
+      "candid": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/ic-solana-provider.did",
+      "wasm": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/ic-solana-provider.wasm.gz",
       "remote": {
         "id": {
           "ic": "bkyz2-fmaaa-aaaaa-qaaaq-cai",
@@ -57,7 +57,7 @@ If you want to test your project locally, you can use the following commands:
 dfx start --clean --background
 
 # Deploys your canisters to the replica and generates your candid interface
-./scripts/deploy.sh
+make deploy
 ```
 
 Once the job is completed, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
@@ -70,7 +70,7 @@ and the `POCKET_IC_BIN` environment variable set to the path of the `pocket-ic` 
 You can run the tests with the following command:
 
 ```sh
-./scripts/test.sh
+make test
 ```
 
 ## Deployment on the Internet Computer
@@ -97,21 +97,22 @@ supports [reproducible builds](https://internetcomputer.org/docs/current/develop
 
 1. Ensure [Docker](https://www.docker.com/get-started/) is installed on your machine.
 2. Run `scripts/docker-build` in your terminal.
-4. Run `sha256sum solana_rpc.wasm.gz` on the generated file to view the SHA-256 hash.
+3. Run `sha256sum ic-solana-provider.wasm.gz` on the generated file to view the SHA-256 hash.
 
-In order to verify the latest SOLANA RPC Wasm file, please make sure to download the corresponding version of the source
+To verify the latest SOLANA RPC Wasm file, please make sure to download the corresponding version of the source
 code from the latest GitHub release.
 
 ## Learn More
 
 ## Credits
 
-* [Candid interface](https://github.com/mfactory-lab/ic-solana/blob/main/solana_rpc.did)
+* [Candid interface](https://github.com/mfactory-lab/ic-solana/blob/main/src/ic-solana-provider/ic-solana-provider.did)
 
 This canister is monitored by [CycleOps](https://cycleops.dev).
 
 ## Related Projects
 
+* [Schnorr Signature](https://github.com/domwoe/schnorr_canister) Schnorr Signature Canister
 * [Solana Galactic Bridge](https://github.com/weichain/galactic-bridge-sol): This program implements a secure deposit
   and withdrawal functionality for a Solana treasury account.
 * [Bitcoin canister](https://github.com/dfinity/bitcoin-canister): interact with the Bitcoin blockchain from the
