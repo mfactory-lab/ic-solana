@@ -8,8 +8,9 @@ use ic_cdk::{query, update};
 use ic_solana::http_request_required_cycles;
 use ic_solana::rpc_client::RpcResult;
 use ic_solana::types::{
-    Account, BlockHash, Message, Pubkey, RpcAccountInfoConfig, RpcContextConfig,
-    RpcSendTransactionConfig, Transaction, UiAccountEncoding, UiTokenAmount,
+    Account, BlockHash, EncodedConfirmedTransactionWithStatusMeta, Instruction, Message, Pubkey,
+    RpcAccountInfoConfig, RpcContextConfig, RpcSendTransactionConfig, RpcTransactionConfig,
+    Signature, Transaction, UiAccountEncoding, UiTokenAmount,
 };
 use serde_bytes::ByteBuf;
 use serde_json::json;
@@ -19,7 +20,7 @@ use std::str::FromStr;
 mod constants;
 pub mod eddsa_api;
 pub mod state;
-mod types;
+pub mod types;
 mod utils;
 
 ///
@@ -105,6 +106,18 @@ pub async fn sol_get_token_balance(pubkey: String) -> RpcResult<UiTokenAmount> {
 }
 
 ///
+/// Returns the latest blockhash.
+///
+#[update(name = "sol_latestBlockhash")]
+pub async fn sol_get_latest_blockhash() -> RpcResult<String> {
+    let client = rpc_client();
+    let blockhash = client
+        .get_latest_blockhash(RpcContextConfig::default())
+        .await?;
+    Ok(blockhash.to_string())
+}
+
+///
 /// Returns all information associated with the account of provided Pubkey.
 ///
 #[update(name = "sol_getAccountInfo")]
@@ -114,7 +127,8 @@ pub async fn sol_get_account_info(pubkey: String) -> RpcResult<Option<Account>> 
         .get_account_info(
             &Pubkey::from_str(&pubkey).expect("Invalid public key"),
             RpcAccountInfoConfig {
-                encoding: Some(UiAccountEncoding::Base58),
+                // Encoded binary (base58) data should be less than 128 bytes, so use base64 encoding.
+                encoding: Some(UiAccountEncoding::Base64),
                 data_slice: None,
                 commitment: None,
                 min_context_slot: None,
@@ -125,19 +139,20 @@ pub async fn sol_get_account_info(pubkey: String) -> RpcResult<Option<Account>> 
     Ok(account_info)
 }
 
-// ///
-// /// Returns transaction details for a confirmed transaction.
-// ///
-// #[update(name = "sol_getTransaction")]
-// #[candid_method(rename = "sol_getTransaction")]
-// pub async fn sol_get_transaction(
-//     signature: String,
-// ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
-//     let client = rpc_client();
-//     let signature = Signature::from_str(&signature).expect("Invalid signature");
-//     let response = client.get_transaction(&signature, None).await?;
-//     Ok(response)
-// }
+///
+/// Returns transaction details for a confirmed transaction.
+///
+#[update(name = "sol_getTransaction")]
+pub async fn sol_get_transaction(
+    signature: String,
+) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
+    let client = rpc_client();
+    let signature = Signature::from_str(&signature).expect("Invalid signature");
+    let response = client
+        .get_transaction(&signature, RpcTransactionConfig::default())
+        .await?;
+    Ok(response)
+}
 
 ///
 /// Send a transaction to the network.
@@ -156,7 +171,13 @@ pub async fn sol_send_transaction(req: SendTransactionRequest) -> RpcResult<Stri
         }
     };
 
-    let message = Message::new_with_blockhash(&req.instructions, None, &recent_blockhash);
+    let ixs = &req
+        .instructions
+        .iter()
+        .map(|s| Instruction::from_str(s).unwrap())
+        .collect::<Vec<_>>();
+
+    let message = Message::new_with_blockhash(ixs, None, &recent_blockhash);
 
     let mut tx = Transaction::new_unsigned(message);
 
@@ -226,4 +247,3 @@ fn post_upgrade(args: InitArgs) {
 }
 
 ic_cdk::export_candid!();
-fn main() {}

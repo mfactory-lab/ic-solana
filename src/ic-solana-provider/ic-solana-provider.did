@@ -5,10 +5,26 @@ type Account = record {
   data : blob;
   rent_epoch : nat64;
 };
-type AccountMeta = record {
-  is_signer : bool;
-  pubkey : blob;
-  is_writable : bool;
+type CompiledInstruction = record {
+  data : blob;
+  accounts : blob;
+  program_id_index : nat8;
+};
+type EncodedConfirmedTransactionWithStatusMeta = record {
+  block_time : opt int64;
+  transaction : EncodedTransactionWithStatusMeta;
+  slot : nat64;
+};
+type EncodedTransaction = variant {
+  Binary : record { text; TransactionBinaryEncoding };
+  Json : UiTransaction;
+  Accounts : UiAccountsList;
+  LegacyBinary : text;
+};
+type EncodedTransactionWithStatusMeta = record {
+  meta : opt TransactionStatusMeta;
+  transaction : EncodedTransaction;
+  version : opt TransactionVersion;
 };
 type InitArgs = record {
   rpc_url : opt text;
@@ -16,15 +32,44 @@ type InitArgs = record {
   schnorr_key_name : opt text;
   nodes_in_subnet : opt nat32;
 };
-type Instruction = record {
-  data : blob;
-  program_id : blob;
-  accounts : vec AccountMeta;
+type InnerInstruction = record {
+  stack_height : opt nat32;
+  instruction : CompiledInstruction;
+};
+type InnerInstructions = record {
+  instructions : vec InnerInstruction;
+  index : nat8;
+};
+type LoadedAddresses = record { writable : vec blob; readonly : vec blob };
+type MessageHeader = record {
+  num_readonly_unsigned_accounts : nat8;
+  num_required_signatures : nat8;
+  num_readonly_signed_accounts : nat8;
+};
+type ParsedAccount = record { space : nat64; parsed : text; program : text };
+type ParsedInstruction = record {
+  program_id : text;
+  stack_height : opt nat32;
+  parsed : blob;
+  program : text;
 };
 type Result = variant { Ok : text; Err : RpcError };
 type Result_1 = variant { Ok : opt Account; Err : RpcError };
 type Result_2 = variant { Ok : nat64; Err : RpcError };
 type Result_3 = variant { Ok : UiTokenAmount; Err : RpcError };
+type Result_4 = variant { Ok; Err : TransactionError };
+type Result_5 = variant {
+  Ok : EncodedConfirmedTransactionWithStatusMeta;
+  Err : RpcError;
+};
+type Reward = record {
+  lamports : int64;
+  commission : opt nat8;
+  pubkey : text;
+  reward_type : opt RewardType;
+  post_balance : nat64;
+};
+type RewardType = variant { Fee; Rent; Voting; Staking };
 type RpcError = variant {
   Text : text;
   ParseError : text;
@@ -32,8 +77,114 @@ type RpcError = variant {
   RpcRequestError : text;
 };
 type SendTransactionRequest = record {
-  instructions : vec Instruction;
+  instructions : vec text;
   recent_blockhash : opt text;
+};
+type TransactionBinaryEncoding = variant { Base58; Base64 };
+type TransactionError = variant {
+  InvalidAccountForFee;
+  AddressLookupTableNotFound;
+  MissingSignatureForFee;
+  WouldExceedAccountDataBlockLimit;
+  AccountInUse;
+  DuplicateInstruction : nat8;
+  AccountNotFound;
+  TooManyAccountLocks;
+  InvalidAccountIndex;
+  AlreadyProcessed;
+  WouldExceedAccountDataTotalLimit;
+  InvalidAddressLookupTableIndex;
+  SanitizeFailure;
+  ResanitizationNeeded;
+  InvalidRentPayingAccount;
+  MaxLoadedAccountsDataSizeExceeded;
+  InvalidAddressLookupTableData;
+  InvalidWritableAccount;
+  WouldExceedMaxAccountCostLimit;
+  InvalidLoadedAccountsDataSizeLimit;
+  InvalidProgramForExecution;
+  InstructionError : record { nat8; text };
+  InsufficientFundsForRent : record { account_index : nat8 };
+  UnsupportedVersion;
+  ClusterMaintenance;
+  WouldExceedMaxVoteCostLimit;
+  SignatureFailure;
+  ProgramAccountNotFound;
+  AccountLoadedTwice;
+  ProgramExecutionTemporarilyRestricted : record { account_index : nat8 };
+  AccountBorrowOutstanding;
+  WouldExceedMaxBlockCostLimit;
+  InvalidAddressLookupTableOwner;
+  InsufficientFundsForFee;
+  CallChainTooDeep;
+  UnbalancedTransaction;
+  BlockhashNotFound;
+};
+type TransactionReturnData = record { data : blob; program_id : blob };
+type TransactionStatusMeta = record {
+  fee : nat64;
+  status : Result_4;
+  inner_instructions : opt vec InnerInstructions;
+  post_token_balances : opt vec TransactionTokenBalance;
+  pre_balances : vec nat64;
+  post_balances : vec nat64;
+  return_data : opt TransactionReturnData;
+  log_messages : opt vec text;
+  rewards : opt vec Reward;
+  loaded_addresses : LoadedAddresses;
+  pre_token_balances : opt vec TransactionTokenBalance;
+  compute_units_consumed : opt nat64;
+};
+type TransactionTokenBalance = record {
+  owner : text;
+  mint : text;
+  program_id : text;
+  account_index : nat8;
+  ui_token_amount : UiTokenAmount;
+};
+type TransactionVersion = variant { Legacy; Number : nat8 };
+type UiAccountsList = record {
+  signatures : vec text;
+  account_keys : vec ParsedAccount;
+};
+type UiAddressTableLookup = record {
+  writable_indexes : blob;
+  readonly_indexes : blob;
+  account_key : text;
+};
+type UiCompiledInstruction = record {
+  data : text;
+  accounts : blob;
+  program_id_index : nat8;
+  stack_height : opt nat32;
+};
+type UiInstruction = variant {
+  Parsed : UiParsedInstruction;
+  Compiled : UiCompiledInstruction;
+};
+type UiMessage = variant { Raw : UiRawMessage; Parsed : UiParsedMessage };
+type UiParsedInstruction = variant {
+  Parsed : ParsedInstruction;
+  PartiallyDecoded : UiPartiallyDecodedInstruction;
+};
+type UiParsedMessage = record {
+  instructions : vec UiInstruction;
+  recent_blockhash : text;
+  address_table_lookups : opt vec UiAddressTableLookup;
+  account_keys : vec ParsedAccount;
+};
+type UiPartiallyDecodedInstruction = record {
+  data : text;
+  program_id : text;
+  accounts : vec text;
+  stack_height : opt nat32;
+};
+type UiRawMessage = record {
+  instructions : vec UiCompiledInstruction;
+  recent_blockhash : text;
+  address_table_lookups : opt vec UiAddressTableLookup;
+  account_keys : vec text;
+  header : MessageHeader;
 };
 type UiTokenAmount = record {
   decimals : nat8;
@@ -41,6 +192,7 @@ type UiTokenAmount = record {
   ui_amount_string : text;
   amount : text;
 };
+type UiTransaction = record { message : UiMessage; signatures : vec text };
 service : (InitArgs) -> {
   get_address : () -> (text);
   request : (text, text, nat64) -> (Result);
@@ -48,6 +200,8 @@ service : (InitArgs) -> {
   sol_getAccountInfo : (text) -> (Result_1);
   sol_getBalance : (text) -> (Result_2);
   sol_getTokenBalance : (text) -> (Result_3);
+  sol_getTransaction : (text) -> (Result_5);
+  sol_latestBlockhash : () -> (Result);
   sol_sendRawTransaction : (text) -> (Result);
   sol_sendTransaction : (SendTransactionRequest) -> (Result);
 }

@@ -1624,6 +1624,7 @@ dependencies = [
 name = "ic-solana-provider"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "candid",
  "flate2",
  "ic-cdk 0.14.0",
@@ -3267,6 +3268,7 @@ version = "0.1.0"
 dependencies = [
  "candid",
  "ic-cdk 0.14.0",
+ "ic-solana",
  "ic-solana-provider",
 ]
 
