@@ -2,7 +2,11 @@ use crate::types::pubkey::Pubkey;
 use crate::utils::short_vec;
 use bincode::serialize;
 use candid::CandidType;
+use serde::de::Error;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::fmt::Display;
+use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, CandidType)]
 pub struct Instruction {
@@ -35,6 +39,27 @@ impl Instruction {
             accounts,
             data: data.to_vec(),
         }
+    }
+}
+
+impl Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            bs58::encode(serialize(self).expect("Instruction serialization failed")).into_string()
+        )
+    }
+}
+
+impl FromStr for Instruction {
+    type Err = bincode::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = bs58::decode(s)
+            .into_vec()
+            .map_err(|_| bincode::Error::custom("Instruction deserialization failed"))?;
+        bincode::deserialize(&bytes)
     }
 }
 
@@ -72,7 +97,7 @@ impl AccountMeta {
 /// which is the core of a Solana transaction. It is created during the
 /// construction of `Message`. Most users will not interact with it directly.
 ///
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct CompiledInstruction {
     /// Index into the transaction keys array indicating the program account that executes this instruction.
@@ -106,4 +131,51 @@ impl CompiledInstruction {
     pub fn program_id<'a>(&self, program_ids: &'a [Pubkey]) -> &'a Pubkey {
         &program_ids[self.program_id_index as usize]
     }
+}
+
+/// A duplicate representation of an Instruction for pretty JSON serialization
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase", untagged)]
+pub enum UiInstruction {
+    Compiled(UiCompiledInstruction),
+    Parsed(UiParsedInstruction),
+    // Parsed(Vec<u8>),
+}
+
+/// A duplicate representation of a CompiledInstruction for pretty JSON serialization
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct UiCompiledInstruction {
+    pub program_id_index: u8,
+    pub accounts: Vec<u8>,
+    pub data: String,
+    pub stack_height: Option<u32>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct ParsedInstruction {
+    pub program: String,
+    pub program_id: String,
+    // pub parsed: Value,
+    #[serde(with = "serde_bytes")]
+    pub parsed: Vec<u8>,
+    pub stack_height: Option<u32>,
+}
+
+/// A partially decoded CompiledInstruction that includes explicit account addresses
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct UiPartiallyDecodedInstruction {
+    pub program_id: String,
+    pub accounts: Vec<String>,
+    pub data: String,
+    pub stack_height: Option<u32>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase", untagged)]
+pub enum UiParsedInstruction {
+    Parsed(ParsedInstruction),
+    PartiallyDecoded(UiPartiallyDecodedInstruction),
 }

@@ -1,8 +1,8 @@
-use candid::Deserialize;
+use candid::{CandidType, Deserialize};
 use serde::Serialize;
 
 /// Reasons a transaction might be rejected.
-#[derive(thiserror::Error, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(thiserror::Error, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, CandidType)]
 pub enum TransactionError {
     /// An account is already being processed in another transaction in a way
     /// that does not support parallelism

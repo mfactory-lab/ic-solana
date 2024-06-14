@@ -1,7 +1,7 @@
-use candid::Deserialize;
+use candid::{CandidType, Deserialize};
 use serde::Serialize;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Copy, CandidType)]
 pub enum RewardType {
     Fee,
     Rent,
@@ -9,7 +9,7 @@ pub enum RewardType {
     Voting,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct Reward {
     pub pubkey: String,

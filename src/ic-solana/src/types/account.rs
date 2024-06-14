@@ -4,7 +4,6 @@ use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use candid::{CandidType, Deserialize};
 use serde::Serialize;
-use serde_json::Value;
 use std::str::FromStr;
 
 /// An Account with data that is stored on a chain
@@ -84,11 +83,12 @@ pub enum UiAccountEncoding {
     Base64Zstd,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct ParsedAccount {
     pub program: String,
-    pub parsed: Value,
+    // pub parsed: Value,
+    pub parsed: String,
     pub space: u64,
 }
 

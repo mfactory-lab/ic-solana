@@ -3,8 +3,9 @@ use crate::types::blockhash::BlockHash;
 use crate::types::compiled_keys::CompiledKeys;
 use crate::types::instruction::{CompiledInstruction, Instruction};
 use crate::types::pubkey::Pubkey;
-use crate::types::transaction::{UiAddressTableLookup, UiCompiledInstruction, UiInstruction};
+use crate::types::{UiCompiledInstruction, UiInstruction};
 use crate::utils::short_vec;
+use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
 /// Bit mask that indicates whether a serialized message is versioned.
@@ -105,7 +106,7 @@ impl Message {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone, Copy, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct MessageHeader {
     /// The number of signatures required for this message to be considered
@@ -122,7 +123,7 @@ pub struct MessageHeader {
     pub num_readonly_unsigned_accounts: u8,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum UiMessage {
     Parsed(UiParsedMessage),
@@ -130,7 +131,7 @@ pub enum UiMessage {
 }
 
 /// A duplicate representation of a Message, in parsed format, for pretty JSON serialization
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiParsedMessage {
     pub account_keys: Vec<ParsedAccount>,
@@ -141,7 +142,7 @@ pub struct UiParsedMessage {
 }
 
 /// A duplicate representation of a Message, in raw format, for pretty JSON serialization
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiRawMessage {
     pub header: MessageHeader,
@@ -150,6 +151,15 @@ pub struct UiRawMessage {
     pub instructions: Vec<UiCompiledInstruction>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub address_table_lookups: Option<Vec<UiAddressTableLookup>>,
+}
+
+/// A duplicate representation of a MessageAddressTableLookup, in raw format, for pretty JSON serialization
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct UiAddressTableLookup {
+    pub account_key: String,
+    pub writable_indexes: Vec<u8>,
+    pub readonly_indexes: Vec<u8>,
 }
 
 fn position(keys: &[Pubkey], key: &Pubkey) -> u8 {
