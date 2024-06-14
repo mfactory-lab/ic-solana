@@ -5,7 +5,9 @@ use crate::response::{
     EncodedConfirmedBlock, OptionalContext, Response, RpcBlockhash,
     RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcVersionInfo,
 };
-use crate::types::{Account, BlockHash, CommitmentConfig, Slot, UiAccount, UiTokenAmount};
+use crate::types::{
+    Account, BlockHash, CommitmentConfig, RpcTransactionConfig, Slot, UiAccount, UiTokenAmount,
+};
 use crate::types::{
     Cluster, EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
     RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
@@ -44,7 +46,7 @@ pub struct JsonRpcResponse<T> {
     pub id: u64,
 }
 
-#[derive(Debug, thiserror::Error, CandidType)]
+#[derive(Debug, thiserror::Error, Deserialize, CandidType)]
 pub enum RpcError {
     #[error("RPC request error: {0}")]
     RpcRequestError(String),
@@ -560,12 +562,12 @@ impl RpcClient {
     pub async fn get_transaction(
         &self,
         signature: &Signature,
-        commitment: Option<CommitmentConfig>,
+        config: RpcTransactionConfig,
     ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
         let payload = RpcRequest::GetTransaction
             .build_request_json(
                 self.next_request_id(),
-                json!([ signature.to_string(), { "commitment": commitment } ]),
+                json!([signature.to_string(), config]),
             )
             .to_string();
 
@@ -619,12 +621,15 @@ impl RpcClient {
 
         let response = self.call(&payload, 156).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<Signature>>(&response)?;
+        let json_response = serde_json::from_str::<JsonRpcResponse<String>>(&response)?;
 
-        if let Some(e) = json_response.error {
-            Err(e.into())
-        } else {
-            Ok(json_response.result.unwrap())
+        match json_response.result {
+            Some(result) => Signature::from_str(&result)
+                .map_err(|_| RpcError::Text("Failed to parse signature".to_string())),
+            None => Err(json_response
+                .error
+                .map(|e| e.into())
+                .unwrap_or_else(|| RpcError::Text("Unknown error".to_string()))),
         }
     }
 }

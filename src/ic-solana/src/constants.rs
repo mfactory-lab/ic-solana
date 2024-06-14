@@ -22,8 +22,8 @@ pub const HTTP_OUTCALL_RESPONSE_COST_PER_BYTE: u128 = 800;
 /// should take care of that.
 pub const HEADER_SIZE_LIMIT: u64 = 2 * 1024;
 
-/// Maximum permitted size of account data (10 MiB).
-pub const MAX_ACCOUNT_DATA_LENGTH: u64 = 10 * 1024 * 1024;
+// /// Maximum permitted size of account data (10 MiB).
+// pub const MAX_ACCOUNT_DATA_LENGTH: u64 = 10 * 1024 * 1024;
 
 /// Maximum permitted size of PDA account data (10 KiB).
 /// However, a PDA can be resized up to the 10 MB limit.
