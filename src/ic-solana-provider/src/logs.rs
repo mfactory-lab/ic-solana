@@ -24,7 +24,7 @@ pub struct PrintProxySink(&'static str, &'static GlobalBuffer);
 impl Sink for PrintProxySink {
     fn append(&self, entry: ic_canister_log::LogEntry) {
         ic_cdk::println!(
-            "IC-SOLANA: {} {}:{} {}",
+            "IS-SOLANA-PROVIDER: {} {}:{} {}",
             self.0,
             entry.file,
             entry.line,

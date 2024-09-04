@@ -1,12 +1,18 @@
-use crate::types::account::ParsedAccount;
-use crate::types::blockhash::BlockHash;
-use crate::types::compiled_keys::CompiledKeys;
-use crate::types::instruction::{CompiledInstruction, Instruction};
-use crate::types::pubkey::Pubkey;
-use crate::types::{UiCompiledInstruction, UiInstruction};
-use crate::utils::short_vec;
-use candid::CandidType;
-use serde::{Deserialize, Serialize};
+use {
+    crate::{
+        types::{
+            account::ParsedAccount,
+            blockhash::BlockHash,
+            compiled_keys::CompiledKeys,
+            instruction::{CompiledInstruction, Instruction},
+            pubkey::Pubkey,
+            UiCompiledInstruction, UiInstruction,
+        },
+        utils::short_vec,
+    },
+    candid::CandidType,
+    serde::{Deserialize, Serialize},
+};
 
 /// Bit mask that indicates whether a serialized message is versioned.
 pub const MESSAGE_VERSION_PREFIX: u8 = 0x80;

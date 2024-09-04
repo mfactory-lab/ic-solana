@@ -1,18 +1,21 @@
-use crate::types::account::{ParsedAccount, UiTokenAmount};
-use crate::types::message::{Message, UiMessage};
-use crate::types::pubkey::Pubkey;
-use crate::types::reward::Rewards;
-use crate::types::signature::Signature;
-use crate::types::transaction_error::TransactionError;
-use crate::types::{BlockHash, CompiledInstruction, Slot, UnixTimestamp};
-use crate::utils::short_vec;
-use candid::CandidType;
-use ic_crypto_ed25519::PrivateKey;
-use serde::de::Error;
-use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::fmt::Display;
-use std::str::FromStr;
+use {
+    crate::{
+        types::{
+            account::{ParsedAccount, UiTokenAmount},
+            message::{Message, UiMessage},
+            pubkey::Pubkey,
+            reward::Rewards,
+            signature::Signature,
+            transaction_error::TransactionError,
+            BlockHash, CompiledInstruction, Slot, UnixTimestamp,
+        },
+        utils::short_vec,
+    },
+    candid::CandidType,
+    ic_crypto_ed25519::PrivateKey,
+    serde::{de::Error, Deserialize, Serialize},
+    std::{fmt, fmt::Display, str::FromStr},
+};
 
 pub type TransactionResult<T> = Result<T, TransactionError>;
 
@@ -282,10 +285,14 @@ pub struct InnerInstruction {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::types::blockhash::BlockHash;
-    use crate::types::instruction::{AccountMeta, Instruction};
-    use bincode::{deserialize, serialize};
+    use {
+        super::*,
+        crate::types::{
+            blockhash::BlockHash,
+            instruction::{AccountMeta, Instruction},
+        },
+        bincode::{deserialize, serialize},
+    };
 
     fn create_sample_transaction() -> Transaction {
         let pk = PrivateKey::deserialize_raw(&[

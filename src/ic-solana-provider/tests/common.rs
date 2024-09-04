@@ -1,10 +1,16 @@
-use candid::{decode_one, encode_one, CandidType, Principal};
-use ic_solana_provider::state::InitArgs;
-use pocket_ic::{PocketIc, WasmResult};
-use rand::distributions::{Distribution, Standard};
-use serde::Deserialize;
+use {
+    candid::{decode_args, decode_one, encode_one, utils::ArgumentDecoder, CandidType, Principal},
+    ic_solana_provider::state::InitArgs,
+    lazy_static::lazy_static,
+    pocket_ic::{CanisterSettings, PocketIc, WasmResult},
+    rand::distributions::{Distribution, Standard},
+    serde::Deserialize,
+};
 
-pub const VALID_PUBKEY: &str = "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM";
+lazy_static! {
+    pub static ref CONTROLLER_PRINCIPAL: Principal = random_principal();
+    pub static ref USER_PRINCIPAL: Principal = random_principal();
+}
 
 // 2T cycles
 const INIT_CYCLES: u128 = 2_000_000_000_000;
@@ -12,11 +18,15 @@ const INIT_CYCLES: u128 = 2_000_000_000_000;
 pub fn init(ic: &PocketIc) -> Principal {
     let (schnorr_canister_id, wasm_module) = create_canister(ic, "SCHNORR_CANISTER_PATH");
 
-    ic.install_canister(schnorr_canister_id, wasm_module, vec![], None);
+    ic.install_canister(
+        schnorr_canister_id,
+        wasm_module,
+        vec![],
+        Some(CONTROLLER_PRINCIPAL.clone()),
+    );
     fast_forward(ic, 5);
 
     let (canister_id, wasm_module) = create_canister(ic, "IC_SOLANA_PROVIDER_PATH");
-    let sender = None;
 
     let args = InitArgs {
         rpc_url: None,
@@ -25,14 +35,26 @@ pub fn init(ic: &PocketIc) -> Principal {
         schnorr_key_name: None,
     };
 
-    ic.install_canister(canister_id, wasm_module, encode_one(args).unwrap(), sender);
+    ic.install_canister(
+        canister_id,
+        wasm_module,
+        encode_one(args).unwrap(),
+        Some(CONTROLLER_PRINCIPAL.clone()),
+    );
     fast_forward(ic, 5);
 
     canister_id
 }
 
 pub fn create_canister(ic: &PocketIc, env_key: &str) -> (Principal, Vec<u8>) {
-    let canister_id = ic.create_canister();
+    let canister_id = ic.create_canister_with_settings(
+        Some(CONTROLLER_PRINCIPAL.clone()),
+        Some(CanisterSettings {
+            controllers: Some(vec![CONTROLLER_PRINCIPAL.clone()]),
+            ..CanisterSettings::default()
+        }),
+    );
+
     ic.add_cycles(canister_id, INIT_CYCLES);
 
     let wasm_path =
@@ -86,5 +108,17 @@ pub fn query<T: CandidType + for<'de> Deserialize<'de>>(
 pub fn fast_forward(ic: &PocketIc, ticks: u64) {
     for _ in 0..ticks - 1 {
         ic.tick();
+    }
+}
+
+pub fn decode_raw_wasm_result<'a, Tuple>(data: &'a WasmResult) -> candid::Result<Tuple>
+where
+    Tuple: ArgumentDecoder<'a>,
+{
+    match data {
+        WasmResult::Reply(data) => decode_args::<'a, Tuple>(&data),
+        WasmResult::Reject(error_message) => Err(candid::Error::Custom(anyhow::anyhow!(
+            error_message.clone()
+        ))),
     }
 }

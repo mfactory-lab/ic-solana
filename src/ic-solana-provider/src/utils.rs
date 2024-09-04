@@ -1,6 +1,4 @@
-use crate::state::read_state;
-use candid::Principal;
-use ic_solana::rpc_client::RpcClient;
+use {crate::state::read_state, candid::Principal, ic_solana::rpc_client::RpcClient};
 
 pub fn rpc_client() -> RpcClient {
     read_state(|s| RpcClient::new(&s.rpc_url).with_nodes_in_subnet(s.nodes_in_subnet))

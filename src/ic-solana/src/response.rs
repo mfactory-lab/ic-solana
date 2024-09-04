@@ -1,9 +1,11 @@
-use crate::types::{
-    EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot, TransactionConfirmationStatus,
-    TransactionError, UiAccount, UnixTimestamp,
+use {
+    crate::types::{
+        EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot,
+        TransactionConfirmationStatus, TransactionError, UiAccount, UnixTimestamp,
+    },
+    serde::{Deserialize, Serialize},
+    std::fmt,
 };
-use serde::{Deserialize, Serialize};
-use std::fmt;
 
 /// Wrapper for rpc return types of methods that provide responses both with and without context.
 /// The Main purpose of this is to fix methods that lack context information in their return type,

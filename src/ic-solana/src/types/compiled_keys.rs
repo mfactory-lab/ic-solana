@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use crate::types::instruction::Instruction;
-use crate::types::message::MessageHeader;
-use crate::types::pubkey::Pubkey;
-use std::collections::BTreeMap;
+use {
+    crate::types::{instruction::Instruction, message::MessageHeader, pubkey::Pubkey},
+    std::collections::BTreeMap,
+};
 
 /// A helper struct to collect pubkeys compiled for a set of instructions
 #[derive(Default, Debug, Clone, PartialEq, Eq)]

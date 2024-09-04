@@ -1,9 +1,10 @@
-use candid::CandidType;
-use ic_crypto_ed25519::PublicKey;
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use std::{fmt, mem};
-use thiserror::Error;
+use {
+    candid::CandidType,
+    ic_crypto_ed25519::PublicKey,
+    serde::{Deserialize, Serialize},
+    std::{fmt, mem, str::FromStr},
+    thiserror::Error,
+};
 
 /// Number of bytes in a pubkey
 pub const PUBKEY_BYTES: usize = 32;

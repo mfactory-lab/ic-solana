@@ -1,8 +1,11 @@
-use candid::{CandidType, Principal};
-use ic_solana::rpc_client::RpcResult;
-use ic_solana::types::{AccountMeta, BlockHash, Instruction, Pubkey};
-use std::cell::RefCell;
-use std::str::FromStr;
+use {
+    candid::{CandidType, Principal},
+    ic_solana::{
+        rpc_client::RpcResult,
+        types::{AccountMeta, BlockHash, Instruction, Pubkey},
+    },
+    std::{cell::RefCell, str::FromStr},
+};
 
 thread_local! {
     static SOL_PROVIDER_CANISTER: RefCell<Option<Principal>>  = const { RefCell::new(None) };

@@ -1,8 +1,10 @@
 mod option_serializer;
 pub mod short_vec;
 
-use crate::constants::*;
-use ic_cdk::api::management_canister::http_request::CanisterHttpRequestArgument;
+use {
+    crate::constants::*,
+    ic_cdk::api::management_canister::http_request::CanisterHttpRequestArgument,
+};
 
 // pub fn debug_println_caller(method_name: &str) {
 //     ic_cdk::println!(

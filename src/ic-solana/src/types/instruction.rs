@@ -1,12 +1,10 @@
-use crate::types::pubkey::Pubkey;
-use crate::utils::short_vec;
-use bincode::serialize;
-use candid::CandidType;
-use serde::de::Error;
-use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::fmt::Display;
-use std::str::FromStr;
+use {
+    crate::{types::pubkey::Pubkey, utils::short_vec},
+    bincode::serialize,
+    candid::CandidType,
+    serde::{de::Error, Deserialize, Serialize},
+    std::{fmt, fmt::Display, str::FromStr},
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, CandidType)]
 pub struct Instruction {

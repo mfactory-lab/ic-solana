@@ -1,8 +1,9 @@
-use crate::constants::{NODES_IN_FIDUCIARY_SUBNET, SCHNORR_KEY_NAME};
-use candid::{CandidType, Deserialize};
-use ic_solana::types::Cluster;
-use std::cell::RefCell;
-use std::env;
+use {
+    crate::constants::{NODES_IN_FIDUCIARY_SUBNET, SCHNORR_KEY_NAME},
+    candid::{CandidType, Deserialize},
+    ic_solana::types::Cluster,
+    std::{cell::RefCell, env},
+};
 
 thread_local! {
     pub static STATE: RefCell<Option<State>> = RefCell::default();

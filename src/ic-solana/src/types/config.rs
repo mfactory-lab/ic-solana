@@ -1,9 +1,13 @@
-use crate::types::account::UiAccountEncoding;
-use crate::types::commitment::{CommitmentConfig, CommitmentLevel};
-use crate::types::filter::RpcFilterType;
-use crate::types::transaction::{TransactionDetails, UiTransactionEncoding};
-use crate::types::{Epoch, Slot};
-use serde::{Deserialize, Serialize};
+use {
+    crate::types::{
+        account::UiAccountEncoding,
+        commitment::{CommitmentConfig, CommitmentLevel},
+        filter::RpcFilterType,
+        transaction::{TransactionDetails, UiTransactionEncoding},
+        Epoch, Slot,
+    },
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

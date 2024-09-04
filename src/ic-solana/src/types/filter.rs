@@ -1,7 +1,10 @@
 #![allow(deprecated)]
 
-use serde::{Deserialize, Serialize};
-use {std::borrow::Cow, thiserror::Error};
+use {
+    serde::{Deserialize, Serialize},
+    std::borrow::Cow,
+    thiserror::Error,
+};
 
 const MAX_DATA_SIZE: usize = 128;
 const MAX_DATA_BASE58_SIZE: usize = 175;

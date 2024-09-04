@@ -1,11 +1,12 @@
-use crate::state::read_state;
-use candid::Principal;
-
-use ic_management_canister_types::{
-    DerivationPath, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgs, SchnorrPublicKeyResponse,
-    SignWithSchnorrArgs, SignWithSchnorrReply,
+use {
+    crate::state::read_state,
+    candid::Principal,
+    ic_management_canister_types::{
+        DerivationPath, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgs,
+        SchnorrPublicKeyResponse, SignWithSchnorrArgs, SignWithSchnorrReply,
+    },
+    serde_bytes::ByteBuf,
 };
-use serde_bytes::ByteBuf;
 
 /// Fetches the ed25519 public key from the schnorr canister.
 pub async fn eddsa_public_key(key_name: String, derivation_path: Vec<ByteBuf>) -> Vec<u8> {

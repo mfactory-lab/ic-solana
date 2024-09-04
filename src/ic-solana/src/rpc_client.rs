@@ -1,32 +1,33 @@
-use crate::constants::*;
-use crate::logs::{DEBUG, TRACE_HTTP};
-use crate::request::RpcRequest;
-use crate::response::{
-    EncodedConfirmedBlock, OptionalContext, Response, RpcBlockhash,
-    RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcVersionInfo,
+use {
+    crate::{
+        constants::*,
+        logs::{DEBUG, ERROR, TRACE_HTTP},
+        request::RpcRequest,
+        response::{
+            EncodedConfirmedBlock, OptionalContext, Response, RpcBlockhash,
+            RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcVersionInfo,
+        },
+        types::{
+            Account, BlockHash, Cluster, CommitmentConfig,
+            EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
+            RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
+            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSupplyConfig,
+            RpcTransactionConfig, Signature, Slot, Transaction, TransactionStatus, UiAccount,
+            UiTokenAmount, UiTransactionEncoding,
+        },
+        utils::http_request_required_cycles,
+    },
+    anyhow::Result,
+    base64::{prelude::BASE64_STANDARD, Engine},
+    candid::CandidType,
+    ic_canister_log::log,
+    ic_cdk::api::management_canister::http_request::{
+        http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, TransformContext,
+    },
+    serde::Deserialize,
+    serde_json::{json, Value},
+    std::{cell::RefCell, str::FromStr},
 };
-use crate::types::{
-    Account, BlockHash, CommitmentConfig, RpcTransactionConfig, Slot, UiAccount, UiTokenAmount,
-};
-use crate::types::{
-    Cluster, EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
-    RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
-    RpcSignaturesForAddressConfig, RpcSupplyConfig, Signature, Transaction, TransactionStatus,
-    UiTransactionEncoding,
-};
-use crate::utils::http_request_required_cycles;
-use anyhow::Result;
-use base64::prelude::BASE64_STANDARD;
-use base64::Engine;
-use candid::CandidType;
-use ic_canister_log::log;
-use ic_cdk::api::management_canister::http_request::{
-    http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, TransformContext,
-};
-use serde::Deserialize;
-use serde_json::{json, Value};
-use std::cell::RefCell;
-use std::str::FromStr;
 
 thread_local! {
     static NEXT_ID: RefCell<u64> = RefCell::default();
@@ -174,7 +175,14 @@ impl RpcClient {
                     Err(error) => Err(RpcError::ParseError(error.to_string())),
                 }
             }
-            Err((r, m)) => Err(RpcError::RpcRequestError(format!("({r:?}) {m:?}"))),
+            Err((r, m)) => {
+                log!(
+                    ERROR,
+                    "Failed to call url: {url}. Rejection code: {}. Message: {m}",
+                    r as i32,
+                );
+                Err(RpcError::RpcRequestError(format!("({r:?}) {m:?}")))
+            }
         }
     }
 

@@ -1,5 +1,7 @@
-use serde_json::{json, Value};
-use std::fmt;
+use {
+    serde_json::{json, Value},
+    std::fmt,
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum RpcRequest {

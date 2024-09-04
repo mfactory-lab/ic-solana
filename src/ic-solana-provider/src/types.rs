@@ -1,5 +1,7 @@
-use candid::{CandidType, Deserialize};
-use serde::Serialize;
+use {
+    candid::{CandidType, Deserialize},
+    serde::Serialize,
+};
 
 #[derive(CandidType, Deserialize, Serialize, Debug)]
 pub struct SendTransactionRequest {

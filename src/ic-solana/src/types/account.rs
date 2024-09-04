@@ -1,10 +1,10 @@
-use crate::types::pubkey::Pubkey;
-use crate::types::Epoch;
-use base64::prelude::BASE64_STANDARD;
-use base64::Engine;
-use candid::{CandidType, Deserialize};
-use serde::Serialize;
-use std::str::FromStr;
+use {
+    crate::types::{pubkey::Pubkey, Epoch},
+    base64::{prelude::BASE64_STANDARD, Engine},
+    candid::{CandidType, Deserialize},
+    serde::Serialize,
+    std::str::FromStr,
+};
 
 /// An Account with data that is stored on a chain
 #[derive(Deserialize, PartialEq, Eq, Clone, Default, CandidType)]

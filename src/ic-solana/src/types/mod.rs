@@ -15,21 +15,11 @@ pub mod signature;
 pub mod transaction;
 pub mod transaction_error;
 
-pub use account::*;
-pub use blockhash::*;
-pub use cluster::*;
-pub use commitment::*;
-pub use config::*;
-pub use epoch_info::*;
-pub use fee_calculator::*;
-pub use filter::*;
-pub use instruction::*;
-pub use message::*;
-pub use pubkey::*;
-pub use reward::*;
-pub use signature::*;
-pub use transaction::*;
-pub use transaction_error::*;
+pub use {
+    account::*, blockhash::*, cluster::*, commitment::*, config::*, epoch_info::*,
+    fee_calculator::*, filter::*, instruction::*, message::*, pubkey::*, reward::*, signature::*,
+    transaction::*, transaction_error::*,
+};
 
 /// The unit of time a given leader schedule is honored.
 ///

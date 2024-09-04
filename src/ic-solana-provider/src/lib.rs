@@ -1,24 +1,35 @@
-use crate::types::SendTransactionRequest;
-use crate::utils::{rpc_client, validate_caller_not_anonymous};
-use eddsa_api::{eddsa_public_key, sign_with_eddsa};
-use ic_cdk::api::management_canister::http_request::{
-    CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs,
+use {
+    crate::{
+        types::SendTransactionRequest,
+        utils::{rpc_client, validate_caller_not_anonymous},
+    },
+    eddsa_api::{eddsa_public_key, sign_with_eddsa},
+    ic_canister_log::log,
+    ic_cdk::{
+        api::management_canister::http_request::{
+            CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs,
+        },
+        query, update,
+    },
+    ic_solana::{
+        http_request_required_cycles,
+        rpc_client::RpcResult,
+        types::{
+            Account, BlockHash, EncodedConfirmedTransactionWithStatusMeta, Instruction, Message,
+            Pubkey, RpcAccountInfoConfig, RpcContextConfig, RpcSendTransactionConfig,
+            RpcTransactionConfig, Signature, Transaction, UiAccountEncoding, UiTokenAmount,
+        },
+    },
+    logs::DEBUG,
+    serde_bytes::ByteBuf,
+    serde_json::json,
+    state::{mutate_state, read_state, InitArgs, STATE},
+    std::str::FromStr,
 };
-use ic_cdk::{query, update};
-use ic_solana::http_request_required_cycles;
-use ic_solana::rpc_client::RpcResult;
-use ic_solana::types::{
-    Account, BlockHash, EncodedConfirmedTransactionWithStatusMeta, Instruction, Message, Pubkey,
-    RpcAccountInfoConfig, RpcContextConfig, RpcSendTransactionConfig, RpcTransactionConfig,
-    Signature, Transaction, UiAccountEncoding, UiTokenAmount,
-};
-use serde_bytes::ByteBuf;
-use serde_json::json;
-use state::{mutate_state, read_state, InitArgs, STATE};
-use std::str::FromStr;
 
 mod constants;
 pub mod eddsa_api;
+pub mod logs;
 pub mod state;
 pub mod types;
 mod utils;
@@ -80,6 +91,7 @@ pub fn request_cost(payload: String, max_response_bytes: u64) -> u128 {
 #[update(name = "sol_getBalance")]
 pub async fn sol_get_balance(pubkey: String) -> RpcResult<u64> {
     let client = rpc_client();
+
     let balance = client
         .get_balance(
             &Pubkey::from_str(&pubkey).expect("Invalid public key"),

@@ -1,10 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "src/ic-solana",
-    "src/ic-solana-provider",
-    "src/test_canister",
-]
+members = ["src/ic-solana", "src/ic-solana-provider", "src/test_canister"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,7 +8,7 @@ description = "Interact with Solana blockchain from the Internet Computer."
 keywords = ["dfinity", "icp", "web3", "solana", "rpc"]
 authors = [
     "Vladyslav Korniienko <vk.tiamo@gmail.com>",
-    "mFactory Team (https://mfactory.tech)"
+    "mFactory Team (https://mfactory.tech)",
 ]
 homepage = "https://github.com/mfactory-lab/ic-solana"
 repository = "https://github.com/mfactory-lab/ic-solana"
@@ -21,7 +17,7 @@ edition = "2021"
 
 [workspace.dependencies]
 candid = { version = "0.10" }
-ic-cdk = "0.14"
+ic-cdk = "0.16"
 ic-types = "0.7"
 ic-canister-log = "0.2"
 ic-canisters-http-types = { git = "https://github.com/dfinity/ic", package = "ic-canisters-http-types" }
@@ -30,7 +26,7 @@ ic-management-canister-types = { git = "https://github.com/dfinity/ic", package 
 #ic-state-machine-tests = { git = "https://github.com/dfinity/ic", package = "ic-state-machine-tests" }
 ic-solana = { path = "./src/ic-solana" }
 ic-solana-provider = { path = "./src/ic-solana-provider" }
-pocket-ic = "3.1.0"
+pocket-ic = "4.0.0"
 serde = "1"
 serde_json = "^1.0.117"
 serde_bytes = "^0.11.14"
