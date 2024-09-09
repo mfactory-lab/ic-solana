@@ -14,7 +14,6 @@ use crate::types::{
     RpcSignaturesForAddressConfig, RpcSupplyConfig, Signature, Transaction, TransactionStatus,
     UiTransactionEncoding,
 };
-use crate::utils::http_request_required_cycles;
 use anyhow::Result;
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
@@ -81,11 +80,15 @@ impl From<serde_json::Error> for RpcError {
 
 pub type RpcResult<T> = Result<T, RpcError>;
 
+pub type RequestCostCalculator = fn(&CanisterHttpRequestArgument) -> u128;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RpcClient {
     pub cluster: Cluster,
     pub commitment_config: CommitmentConfig,
-    pub nodes_in_subnet: Option<u32>,
+    pub headers: Option<Vec<HttpHeader>>,
+    pub cost_calculator: Option<RequestCostCalculator>,
+    pub transform_context: Option<TransformContext>,
 }
 
 impl RpcClient {
@@ -93,8 +96,15 @@ impl RpcClient {
         Self {
             cluster: Cluster::from_str(cluster).unwrap(),
             commitment_config: CommitmentConfig::confirmed(),
-            nodes_in_subnet: None,
+            cost_calculator: None,
+            headers: None,
+            transform_context: None,
         }
+    }
+
+    pub fn with_headers(mut self, headers: impl Into<Vec<HttpHeader>>) -> Self {
+        self.headers = Some(headers.into());
+        self
     }
 
     pub fn with_commitment(mut self, commitment_config: CommitmentConfig) -> Self {
@@ -102,13 +112,18 @@ impl RpcClient {
         self
     }
 
-    pub fn with_nodes_in_subnet(mut self, nodes_in_subnet: u32) -> Self {
-        self.nodes_in_subnet = Some(nodes_in_subnet);
+    pub fn with_request_cost_calculator(mut self, cost_calculator: RequestCostCalculator) -> Self {
+        self.cost_calculator = Some(cost_calculator);
+        self
+    }
+
+    pub fn with_transform_context(mut self, transform_context: TransformContext) -> Self {
+        self.transform_context = Some(transform_context);
         self
     }
 
     /// Asynchronously sends an HTTP POST request to the specified URL with the given payload and
-    /// maximum response bytes, and returns the response as a string.
+    /// maximum response bytes and returns the response as a string.
     /// This function calculates the required cycles for the HTTP request and logs the request
     /// details and response status. It uses a transformation named "cleanup_response" for the
     /// response body.
@@ -130,28 +145,33 @@ impl RpcClient {
     /// * If the HTTP request fails, an `RpcRequestError` is returned with the error details.
     ///
     pub async fn call(&self, payload: &str, max_response_bytes: u64) -> RpcResult<String> {
-        let request = CanisterHttpRequestArgument {
-            url: self.cluster.url().to_string(),
-            max_response_bytes: Some(max_response_bytes + HEADER_SIZE_LIMIT),
-            method: HttpMethod::POST,
-            headers: vec![HttpHeader {
-                name: "Content-Type".to_string(),
+        let url = self.cluster.url();
+
+        let mut request_headers = self.headers.clone().unwrap_or_default();
+        if !request_headers
+            .iter()
+            .any(|header| header.name.to_lowercase() == "content-type")
+        {
+            request_headers.push(HttpHeader {
+                name: "content-type".to_string(),
                 value: "application/json".to_string(),
-            }],
+            });
+        }
+
+        let request = CanisterHttpRequestArgument {
+            url: url.to_string(),
+            max_response_bytes: Some(max_response_bytes),
+            method: HttpMethod::POST,
+            headers: request_headers,
             body: Some(payload.as_bytes().to_vec()),
-            transform: Some(TransformContext::from_name(
-                "cleanup_response".to_owned(),
-                vec![],
-            )),
+            transform: self.transform_context.clone(),
         };
 
-        let url = self.cluster.url();
-        let nodes_in_standard_subnet = 13;
-
-        let cycles = http_request_required_cycles(
-            &request,
-            self.nodes_in_subnet.unwrap_or(nodes_in_standard_subnet),
-        );
+        let cycles = if let Some(cost_calculator) = self.cost_calculator {
+            cost_calculator(&request)
+        } else {
+            0
+        };
 
         log!(
             DEBUG,
