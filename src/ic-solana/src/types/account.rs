@@ -7,7 +7,7 @@ use {
 };
 
 /// An Account with data that is stored on a chain
-#[derive(Deserialize, PartialEq, Eq, Clone, Default, CandidType)]
+#[derive(Deserialize, PartialEq, Eq, Clone, Default, CandidType, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Account {
     /// lamports in the account
@@ -20,6 +20,7 @@ pub struct Account {
     /// this account's data contains a loaded program (and is now read-only)
     pub executable: bool,
     /// the epoch at which this account will next owe rent
+    #[serde(rename = "rentEpoch")]
     pub rent_epoch: Epoch,
 }
 
@@ -97,6 +98,8 @@ pub struct ParsedAccount {
 pub struct UiTokenAmount {
     pub amount: String,
     pub decimals: u8,
+    #[serde(rename = "uiAmount")]
     pub ui_amount: Option<f64>,
+    #[serde(rename = "uiAmountString")]
     pub ui_amount_string: String,
 }

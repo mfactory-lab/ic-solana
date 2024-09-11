@@ -4,7 +4,6 @@ use {
         utils::{rpc_client, validate_caller_not_anonymous},
     },
     eddsa_api::{eddsa_public_key, sign_with_eddsa},
-    ic_canister_log::log,
     ic_cdk::{
         api::management_canister::http_request::{
             CanisterHttpRequestArgument, HttpHeader, HttpMethod, HttpResponse, TransformArgs,
@@ -20,7 +19,6 @@ use {
             RpcTransactionConfig, Signature, Transaction, UiAccountEncoding, UiTokenAmount,
         },
     },
-    logs::DEBUG,
     serde_bytes::ByteBuf,
     serde_json::json,
     state::{mutate_state, read_state, InitArgs, STATE},
@@ -60,6 +58,7 @@ pub async fn request(method: String, params: String, max_response_bytes: u64) ->
         "method": &method,
         "params": params
     }))?;
+
     client.call(&payload, max_response_bytes).await
 }
 
@@ -120,7 +119,7 @@ pub async fn sol_get_token_balance(pubkey: String) -> RpcResult<UiTokenAmount> {
 ///
 /// Returns the latest blockhash.
 ///
-#[update(name = "sol_latestBlockhash")]
+#[update(name = "sol_getLatestBlockhash")]
 pub async fn sol_get_latest_blockhash() -> RpcResult<String> {
     let client = rpc_client();
     let blockhash = client
@@ -161,7 +160,13 @@ pub async fn sol_get_transaction(
     let client = rpc_client();
     let signature = Signature::from_str(&signature).expect("Invalid signature");
     let response = client
-        .get_transaction(&signature, RpcTransactionConfig::default())
+        .get_transaction(
+            &signature,
+            RpcTransactionConfig {
+                max_supported_transaction_version: Some(0),
+                ..RpcTransactionConfig::default()
+            },
+        )
         .await?;
     Ok(response)
 }

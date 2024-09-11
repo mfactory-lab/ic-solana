@@ -22,7 +22,7 @@ test: ## Run tests
 	@export IC_SOLANA_PROVIDER_PATH=./target/wasm32-unknown-unknown/release/ic_solana_provider.wasm.gz; 
 	@export SCHNORR_CANISTER_PATH=./target/wasm32-unknown-unknown/release/test_canister.wasm.gz; 
 	@$(MAKE) build; 
-	@cargo test --test integration_tests $(if $(TEST_NAME),-- $(TEST_NAME) --nocapture,-- --nocapture); 
+	@cargo test $(TEST) --no-fail-fast $(if $(TEST_NAME),-- $(TEST_NAME) --nocapture,-- --nocapture); 
 
 .PHONY: test-e2e
 test-e2e: build ## Run e2e tests

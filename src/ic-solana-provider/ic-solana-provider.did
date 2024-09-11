@@ -3,7 +3,7 @@ type Account = record {
   owner : blob;
   lamports : nat64;
   data : blob;
-  rent_epoch : nat64;
+  rentEpoch : nat64;
 };
 type CompiledInstruction = record {
   data : blob;
@@ -11,9 +11,9 @@ type CompiledInstruction = record {
   program_id_index : nat8;
 };
 type EncodedConfirmedTransactionWithStatusMeta = record {
-  block_time : opt int64;
   transaction : EncodedTransactionWithStatusMeta;
   slot : nat64;
+  blockTime : opt int64;
 };
 type EncodedTransaction = variant {
   Binary : record { text; TransactionBinaryEncoding };
@@ -188,8 +188,8 @@ type UiRawMessage = record {
 };
 type UiTokenAmount = record {
   decimals : nat8;
-  ui_amount : opt float64;
-  ui_amount_string : text;
+  uiAmount : opt float64;
+  uiAmountString : text;
   amount : text;
 };
 type UiTransaction = record { message : UiMessage; signatures : vec text };
@@ -199,9 +199,9 @@ service : (InitArgs) -> {
   requestCost : (text, nat64) -> (nat) query;
   sol_getAccountInfo : (text) -> (Result_1);
   sol_getBalance : (text) -> (Result_2);
+  sol_getLatestBlockhash : () -> (Result);
   sol_getTokenBalance : (text) -> (Result_3);
   sol_getTransaction : (text) -> (Result_5);
-  sol_latestBlockhash : () -> (Result);
   sol_sendRawTransaction : (text) -> (Result);
   sol_sendTransaction : (SendTransactionRequest) -> (Result);
 }

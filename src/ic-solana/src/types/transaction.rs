@@ -263,6 +263,7 @@ pub struct EncodedConfirmedTransactionWithStatusMeta {
     pub slot: Slot,
     #[serde(flatten)]
     pub transaction: EncodedTransactionWithStatusMeta,
+    #[serde(rename = "blockTime")]
     pub block_time: Option<UnixTimestamp>,
 }
 
@@ -278,6 +279,7 @@ pub struct InnerInstructions {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 pub struct InnerInstruction {
     /// Compiled instruction
+    #[serde(flatten)]
     pub instruction: CompiledInstruction,
     /// Invocation stack height of the instruction,
     pub stack_height: Option<u32>,
