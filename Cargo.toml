@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "src/common",
     "src/ic-solana",
     "src/ic-solana-provider",
     "src/test_canister",
