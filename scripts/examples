@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 
+echo "Fetching solana address..."
 dfx canister call ic-solana-provider get_address '()'
+
+echo "Fetching latest blockhash..."
 dfx canister call ic-solana-provider sol_latestBlockhash '()'
+
+echo "Fetching balance..."
 dfx canister call ic-solana-provider sol_getBalance '("AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY")'
+
+echo "Fetching token balance..."
 dfx canister call ic-solana-provider sol_getTokenBalance '("GeDhDhMT8Cw4hi1vJyRtU9wqWBXURchDoZxttBfFKq9r")'
+
+echo "Fetching account info..."
 dfx canister call ic-solana-provider sol_getAccountInfo '("GeDhDhMT8Cw4hi1vJyRtU9wqWBXURchDoZxttBfFKq9r")'
+
+echo "Fetching transaction..."
 dfx canister call ic-solana-provider sol_getTransaction '("1zhKkhptmaKR83DMbn7FuBRZM2mHGgLSFEuAGoocET5wPywH4gy3FktfT8dL3FV4LJct86pBTsTTANv5NvNTAEN")'
 
-#dfx canister call ic-solana-provider sol_sendTransaction '( record { instructuons: } )'
+echo "Done"

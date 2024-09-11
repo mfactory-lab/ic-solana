@@ -15,16 +15,8 @@ candid-extractor $CANISTER_WASM > ./src/$CANISTER/$CANISTER.did
 gzip --no-name --force $CANISTER_WASM
 cp $CANISTER_WASM.gz ./src/$CANISTER/$CANISTER.wasm.gz
 
-# Deploy schnorr canister
-dfx deploy schnorr_canister
-
-# Get the canister id
-SCHNORR_CANISTER_ID=$(dfx canister id schnorr_canister)
-
-echo "Schnorr canister id: $CANISTER_ID"
-
 # Deploy the solana canister and set the schnorr canister id
-dfx deploy ic-solana-provider --argument "( record { nodesInSubnet = 28; schnorr_canister = opt \"${SCHNORR_CANISTER_ID}\" } )" --mode=reinstall -y
+dfx deploy ic-solana-provider --argument "(record {})" --mode=reinstall -y
 
 # Get the canister id
 CANISTER_ID=$(dfx canister id ic-solana-provider)
