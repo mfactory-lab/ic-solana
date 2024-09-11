@@ -215,6 +215,29 @@ pub async fn send_raw_transaction(raw_signed_transaction: String) -> RpcResult<S
     Ok(signature.to_string())
 }
 
+#[query(name = "getProviders")]
+#[candid_method(query, rename = "getProviders")]
+fn get_providers() -> Vec<String> {
+    read_state(|s| s.rpc_providers.iter().map(|(k, _)| k.0).collect())
+}
+
+#[update(name = "registerProvider", guard = "require_register_provider")]
+#[candid_method(rename = "registerProvider")]
+fn register_provider(args: RegisterProviderArgs) {
+    do_register_provider(ic_cdk::caller(), args)
+}
+
+#[update(name = "unregisterProvider")]
+#[candid_method(rename = "unregisterProvider")]
+fn unregister_provider(provider_id: String) -> bool {
+    do_unregister_provider(ic_cdk::caller(), &provider_id)
+}
+
+#[update(name = "updateProvider")]
+#[candid_method(rename = "updateProvider")]
+fn update_provider(args: UpdateProviderArgs) {
+    do_update_provider(ic_cdk::caller(), args)
+}
 /// Cleans up the HTTP response headers to make them deterministic.
 ///
 /// # Arguments
