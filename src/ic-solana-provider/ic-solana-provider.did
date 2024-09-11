@@ -5,6 +5,7 @@ type Account = record {
   data : blob;
   rent_epoch : nat64;
 };
+type Auth = variant { RegisterProvider; Manage };
 type CompiledInstruction = record {
   data : blob;
   accounts : blob;
@@ -26,11 +27,21 @@ type EncodedTransactionWithStatusMeta = record {
   transaction : EncodedTransaction;
   version : opt TransactionVersion;
 };
+type HttpRequest = record {
+  url : text;
+  method : text;
+  body : blob;
+  headers : vec record { text; text };
+};
+type HttpResponse = record {
+  body : blob;
+  headers : vec record { text; text };
+  status_code : nat16;
+};
 type InitArgs = record {
-  rpc_url : opt text;
-  schnorr_canister : opt text;
-  schnorr_key_name : opt text;
-  nodes_in_subnet : opt nat32;
+  schnorr_key : opt text;
+  managers : opt vec principal;
+  demo : opt bool;
 };
 type InnerInstruction = record {
   stack_height : opt nat32;
@@ -46,12 +57,27 @@ type MessageHeader = record {
   num_required_signatures : nat8;
   num_readonly_signed_accounts : nat8;
 };
+type Metrics = record {
+  cyclesWithdrawn : nat;
+  responses : vec record { record { text; text; text }; nat64 };
+  errNoPermission : nat64;
+  inconsistentResponses : vec record { record { text; text }; nat64 };
+  cyclesCharged : vec record { record { text; text }; nat };
+  requests : vec record { record { text; text }; nat64 };
+  errHttpOutcall : vec record { record { text; text }; nat64 };
+  errHostNotAllowed : vec record { text; nat64 };
+};
 type ParsedAccount = record { space : nat64; parsed : text; program : text };
 type ParsedInstruction = record {
   program_id : text;
   stack_height : opt nat32;
   parsed : blob;
   program : text;
+};
+type RegisterProviderArgs = record {
+  id : text;
+  url : text;
+  auth : opt RpcAuth;
 };
 type Result = variant { Ok : text; Err : RpcError };
 type Result_1 = variant { Ok : opt Account; Err : RpcError };
@@ -70,6 +96,12 @@ type Reward = record {
   post_balance : nat64;
 };
 type RewardType = variant { Fee; Rent; Voting; Staking };
+type RpcAuth = variant {
+  QueryParam : record { value : text; name : text };
+  BearerToken : record { token : text };
+  PathSegment : record { segment : text };
+  HeaderParam : record { value : text; name : text };
+};
 type RpcError = variant {
   Text : text;
   ParseError : text;
@@ -193,15 +225,31 @@ type UiTokenAmount = record {
   amount : text;
 };
 type UiTransaction = record { message : UiMessage; signatures : vec text };
+type UpdateProviderArgs = record {
+  id : text;
+  url : opt text;
+  auth : opt RpcAuth;
+};
 service : (InitArgs) -> {
-  get_address : () -> (text);
-  request : (text, text, nat64) -> (Result);
+  authorize : (principal, Auth) -> (bool);
+  deauthorize : (principal, Auth) -> (bool);
+  getAuthorized : (Auth) -> (vec principal) query;
+  getMetrics : () -> (Metrics) query;
+  getNodesInSubnet : () -> (nat32) query;
+  getProviders : () -> (vec text) query;
+  http_request : (HttpRequest) -> (HttpResponse) query;
+  registerProvider : (RegisterProviderArgs) -> ();
+  request : (text, text, text, nat64) -> (Result);
   requestCost : (text, nat64) -> (nat) query;
-  sol_getAccountInfo : (text) -> (Result_1);
-  sol_getBalance : (text) -> (Result_2);
-  sol_getTokenBalance : (text) -> (Result_3);
-  sol_getTransaction : (text) -> (Result_5);
-  sol_latestBlockhash : () -> (Result);
-  sol_sendRawTransaction : (text) -> (Result);
-  sol_sendTransaction : (SendTransactionRequest) -> (Result);
+  sol_address : () -> (text);
+  sol_getAccountInfo : (text, text) -> (Result_1);
+  sol_getBalance : (text, text) -> (Result_2);
+  sol_getTokenBalance : (text, text) -> (Result_3);
+  sol_getTransaction : (text, text) -> (Result_5);
+  sol_latestBlockhash : (text) -> (Result);
+  sol_requestAirdrop : (text, text, nat64) -> (Result);
+  sol_sendRawTransaction : (text, text) -> (Result);
+  sol_sendTransaction : (text, SendTransactionRequest) -> (Result);
+  unregisterProvider : (text) -> (bool);
+  updateProvider : (UpdateProviderArgs) -> ();
 }
