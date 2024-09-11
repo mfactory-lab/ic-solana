@@ -96,6 +96,7 @@ pub struct RpcClient {
     pub transform_context: Option<TransformContext>,
     pub is_demo_active: bool,
     pub hosts_blocklist: &'static [&'static str],
+    pub extra_response_bytes: u64,
 }
 
 impl RpcClient {
@@ -108,6 +109,7 @@ impl RpcClient {
             transform_context: None,
             is_demo_active: false,
             hosts_blocklist: &[],
+            extra_response_bytes: 2 * 1024, // 2KB
         }
     }
 
@@ -138,6 +140,11 @@ impl RpcClient {
 
     pub fn with_hosts_blocklist(mut self, hosts_blocklist: &'static [&'static str]) -> Self {
         self.hosts_blocklist = hosts_blocklist;
+        self
+    }
+
+    pub fn with_response_extra_size(mut self, size: u64) -> Self {
+        self.extra_response_bytes = size;
         self
     }
 
@@ -179,7 +186,7 @@ impl RpcClient {
 
         let request = CanisterHttpRequestArgument {
             url: url.to_string(),
-            max_response_bytes: Some(max_response_bytes),
+            max_response_bytes: Some(max_response_bytes + self.extra_response_bytes),
             method: HttpMethod::POST,
             headers,
             body: Some(payload.to_string().as_bytes().to_vec()),
@@ -222,13 +229,10 @@ impl RpcClient {
         if !self.is_demo_active {
             let cycles_available = ic_cdk::api::call::msg_cycles_available128();
             if cycles_available < cycles_cost_with_collateral {
-                return Err(RpcError::RpcRequestError(
-                    json!({
-                        "expected": cycles_cost_with_collateral,
-                        "received": cycles_available,
-                    })
-                    .to_string(),
-                ));
+                return Err(RpcError::RpcRequestError(format!(
+                    "Insufficient cycles: available {}, required {} (with collateral).",
+                    cycles_available, cycles_cost_with_collateral
+                )));
             }
             ic_cdk::api::call::msg_cycles_accept128(cycles_cost);
             add_metric_entry!(
