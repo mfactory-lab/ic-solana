@@ -1,31 +1,36 @@
-use crate::constants::*;
-use crate::logs::{DEBUG, TRACE_HTTP};
-use crate::request::RpcRequest;
-use crate::response::{
-    EncodedConfirmedBlock, OptionalContext, Response, RpcBlockhash,
-    RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcVersionInfo,
+use {
+    crate::{
+        constants::*,
+        request::RpcRequest,
+        response::{
+            EncodedConfirmedBlock, OptionalContext, Response, RpcBlockhash,
+            RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcVersionInfo,
+        },
+        types::{
+            Account, BlockHash, Cluster, CommitmentConfig,
+            EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
+            RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
+            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSupplyConfig,
+            RpcTransactionConfig, Signature, Slot, Transaction, TransactionStatus, UiAccount,
+            UiTokenAmount, UiTransactionEncoding,
+        },
+    },
+    anyhow::Result,
+    base64::{prelude::BASE64_STANDARD, Engine},
+    candid::CandidType,
+    ic_canister_log::log,
+    ic_cdk::api::management_canister::http_request::{
+        http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, TransformContext,
+    },
+    ic_solana_common::{
+        add_metric_entry,
+        logs::DEBUG,
+        metrics::{MetricRpcHost, MetricRpcMethod},
+    },
+    serde::Deserialize,
+    serde_json::{json, Value},
+    std::{cell::RefCell, str::FromStr},
 };
-use crate::types::{
-    Account, BlockHash, CommitmentConfig, RpcTransactionConfig, Slot, UiAccount, UiTokenAmount,
-};
-use crate::types::{
-    Cluster, EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
-    RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
-    RpcSignaturesForAddressConfig, RpcSupplyConfig, Signature, Transaction, TransactionStatus,
-    UiTransactionEncoding,
-};
-use anyhow::Result;
-use base64::prelude::BASE64_STANDARD;
-use base64::Engine;
-use candid::CandidType;
-use ic_canister_log::log;
-use ic_cdk::api::management_canister::http_request::{
-    http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, TransformContext,
-};
-use serde::Deserialize;
-use serde_json::{json, Value};
-use std::cell::RefCell;
-use std::str::FromStr;
 
 thread_local! {
     static NEXT_ID: RefCell<u64> = RefCell::default();
@@ -80,15 +85,17 @@ impl From<serde_json::Error> for RpcError {
 
 pub type RpcResult<T> = Result<T, RpcError>;
 
-pub type RequestCostCalculator = fn(&CanisterHttpRequestArgument) -> u128;
+pub type RequestCostCalculator = fn(&CanisterHttpRequestArgument) -> (u128, u128);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct RpcClient {
     pub cluster: Cluster,
     pub commitment_config: CommitmentConfig,
     pub headers: Option<Vec<HttpHeader>>,
     pub cost_calculator: Option<RequestCostCalculator>,
     pub transform_context: Option<TransformContext>,
+    pub is_demo_active: bool,
+    pub hosts_blocklist: &'static [&'static str],
 }
 
 impl RpcClient {
@@ -99,6 +106,8 @@ impl RpcClient {
             cost_calculator: None,
             headers: None,
             transform_context: None,
+            is_demo_active: false,
+            hosts_blocklist: &[],
         }
     }
 
@@ -122,6 +131,16 @@ impl RpcClient {
         self
     }
 
+    pub fn with_demo(mut self, is_demo_active: bool) -> Self {
+        self.is_demo_active = is_demo_active;
+        self
+    }
+
+    pub fn with_hosts_blocklist(mut self, hosts_blocklist: &'static [&'static str]) -> Self {
+        self.hosts_blocklist = hosts_blocklist;
+        self
+    }
+
     /// Asynchronously sends an HTTP POST request to the specified URL with the given payload and
     /// maximum response bytes and returns the response as a string.
     /// This function calculates the required cycles for the HTTP request and logs the request
@@ -130,7 +149,7 @@ impl RpcClient {
     ///
     /// # Arguments
     ///
-    /// * `payload` - A string slice that holds the JSON payload to be sent in the HTTP request.
+    /// * `payload` - JSON payload to be sent in the HTTP request.
     /// * `max_response_bytes` - A u64 value representing the maximum number of bytes for the response.
     ///
     /// # Returns
@@ -144,15 +163,15 @@ impl RpcClient {
     /// * If the response body cannot be parsed as a UTF-8 string, a `ParseError` is returned.
     /// * If the HTTP request fails, an `RpcRequestError` is returned with the error details.
     ///
-    pub async fn call(&self, payload: &str, max_response_bytes: u64) -> RpcResult<String> {
+    pub async fn call(&self, payload: &Value, max_response_bytes: u64) -> RpcResult<String> {
         let url = self.cluster.url();
 
-        let mut request_headers = self.headers.clone().unwrap_or_default();
-        if !request_headers
+        let mut headers = self.headers.clone().unwrap_or_default();
+        if !headers
             .iter()
             .any(|header| header.name.to_lowercase() == "content-type")
         {
-            request_headers.push(HttpHeader {
+            headers.push(HttpHeader {
                 name: "content-type".to_string(),
                 value: "application/json".to_string(),
             });
@@ -162,26 +181,73 @@ impl RpcClient {
             url: url.to_string(),
             max_response_bytes: Some(max_response_bytes),
             method: HttpMethod::POST,
-            headers: request_headers,
-            body: Some(payload.as_bytes().to_vec()),
+            headers,
+            body: Some(payload.to_string().as_bytes().to_vec()),
             transform: self.transform_context.clone(),
         };
 
-        let cycles = if let Some(cost_calculator) = self.cost_calculator {
-            cost_calculator(&request)
-        } else {
-            0
+        let (cycles_cost, cycles_cost_with_collateral) =
+            if let Some(cost_calculator) = self.cost_calculator {
+                cost_calculator(&request)
+            } else {
+                Default::default()
+            };
+
+        let parsed_url = match url::Url::parse(&url) {
+            Ok(url) => url,
+            Err(_) => return Err(RpcError::ParseError(format!("Error parsing URL: {}", url))),
         };
+
+        let host = match parsed_url.host_str() {
+            Some(host) => host,
+            None => {
+                return Err(RpcError::ParseError(format!(
+                    "Error parsing hostname from URL: {}",
+                    url
+                )))
+            }
+        };
+
+        let rpc_host = MetricRpcHost(host.to_string());
+        let rpc_method = MetricRpcMethod(payload["method"].to_string());
+
+        if self.hosts_blocklist.contains(&rpc_host.0.as_str()) {
+            add_metric_entry!(err_host_not_allowed, rpc_host.clone(), 1);
+            return Err(
+                RpcError::Text(format!("Disallowed RPC service host: {}", rpc_host.0)).into(),
+            );
+        }
+
+        if !self.is_demo_active {
+            let cycles_available = ic_cdk::api::call::msg_cycles_available128();
+            if cycles_available < cycles_cost_with_collateral {
+                return Err(RpcError::RpcRequestError(
+                    json!({
+                        "expected": cycles_cost_with_collateral,
+                        "received": cycles_available,
+                    })
+                    .to_string(),
+                ));
+            }
+            ic_cdk::api::call::msg_cycles_accept128(cycles_cost);
+            add_metric_entry!(
+                cycles_charged,
+                (rpc_method.clone(), rpc_host.clone()),
+                cycles_cost
+            );
+        }
 
         log!(
             DEBUG,
-            "Calling url: {url} with payload: {payload}. Cycles: {cycles}"
+            "Calling url: {url} with payload: {payload}. Cycles: {cycles_cost}"
         );
 
-        match http_request(request, cycles).await {
+        add_metric_entry!(requests, (rpc_method.clone(), rpc_host.clone()), 1);
+
+        match http_request(request, cycles_cost).await {
             Ok((response,)) => {
                 log!(
-                    TRACE_HTTP,
+                    DEBUG,
                     "Got response (with {} bytes): {} from url: {} with status: {}",
                     response.body.len(),
                     String::from_utf8_lossy(&response.body),
@@ -189,12 +255,18 @@ impl RpcClient {
                     response.status
                 );
 
+                let status: u32 = response.status.0.clone().try_into().unwrap_or(0);
+                add_metric_entry!(responses, (rpc_method, rpc_host, status.into()), 1);
+
                 match String::from_utf8(response.body) {
                     Ok(body) => Ok(body),
                     Err(error) => Err(RpcError::ParseError(error.to_string())),
                 }
             }
-            Err((r, m)) => Err(RpcError::RpcRequestError(format!("({r:?}) {m:?}"))),
+            Err((r, m)) => {
+                add_metric_entry!(err_http_outcall, (rpc_method, rpc_host), 1);
+                Err(RpcError::RpcRequestError(format!("({r:?}) {m:?}")))
+            }
         }
     }
 
@@ -215,8 +287,7 @@ impl RpcClient {
     ///
     pub async fn get_latest_blockhash(&self, config: RpcContextConfig) -> RpcResult<BlockHash> {
         let payload = RpcRequest::GetLatestBlockhash
-            .build_request_json(self.next_request_id(), json!([config]))
-            .to_string();
+            .build_request_json(self.next_request_id(), json!([config]));
 
         let response = self.call(&payload, 156).await?;
 
@@ -247,8 +318,7 @@ impl RpcClient {
     ///
     pub async fn get_balance(&self, pubkey: &Pubkey, config: RpcContextConfig) -> RpcResult<u64> {
         let payload = RpcRequest::GetBalance
-            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]))
-            .to_string();
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]));
 
         let response = self.call(&payload, 156).await?;
 
@@ -273,12 +343,10 @@ impl RpcClient {
         pubkey: &Pubkey,
         commitment: Option<CommitmentConfig>,
     ) -> RpcResult<UiTokenAmount> {
-        let payload = RpcRequest::GetTokenAccountBalance
-            .build_request_json(
-                self.next_request_id(),
-                json!([pubkey.to_string(), commitment]),
-            )
-            .to_string();
+        let payload = RpcRequest::GetTokenAccountBalance.build_request_json(
+            self.next_request_id(),
+            json!([pubkey.to_string(), commitment]),
+        );
 
         let response = self.call(&payload, 256).await?;
 
@@ -293,7 +361,7 @@ impl RpcClient {
     }
 
     ///
-    /// Returns all information associated with the account of provided Pubkey.
+    /// Returns all information associated with the account of the provided Pubkey.
     ///
     /// Method relies on the `getAccountInfo` RPC call to get the account info:
     ///   https://solana.com/docs/rpc/http/getAccountInfo
@@ -305,8 +373,7 @@ impl RpcClient {
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Option<Account>> {
         let payload = RpcRequest::GetAccountInfo
-            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]))
-            .to_string();
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]));
 
         let response = self
             .call(
@@ -333,9 +400,8 @@ impl RpcClient {
     /// Returns the current Solana version running on the node.
     ///
     pub async fn get_version(&self) -> RpcResult<RpcVersionInfo> {
-        let payload = RpcRequest::GetVersion
-            .build_request_json(self.next_request_id(), Value::Null)
-            .to_string();
+        let payload =
+            RpcRequest::GetVersion.build_request_json(self.next_request_id(), Value::Null);
 
         let response = self.call(&payload, 128).await?;
 
@@ -350,12 +416,10 @@ impl RpcClient {
 
     ///
     /// Returns the current health of the node.
-    /// A healthy node is one that is within HEALTH_CHECK_SLOT_DISTANCE slots of the latest cluster confirmed slot.
+    /// A healthy node is one that is within HEALTH_CHECK_SLOT_DISTANCE slots of the latest cluster-confirmed slot.
     ///
     pub async fn get_health(&self) -> RpcResult<String> {
-        let payload = RpcRequest::GetHealth
-            .build_request_json(self.next_request_id(), Value::Null)
-            .to_string();
+        let payload = RpcRequest::GetHealth.build_request_json(self.next_request_id(), Value::Null);
 
         let response = self.call(&payload, 256).await?;
 
@@ -377,8 +441,7 @@ impl RpcClient {
         encoding: UiTransactionEncoding,
     ) -> RpcResult<EncodedConfirmedBlock> {
         let payload = RpcRequest::GetBlock
-            .build_request_json(self.next_request_id(), json!([slot, encoding]))
-            .to_string();
+            .build_request_json(self.next_request_id(), json!([slot, encoding]));
 
         let response = self
             .call(&payload, GET_BLOCK_RESPONSE_SIZE_ESTIMATE)
@@ -398,9 +461,7 @@ impl RpcClient {
     /// Returns the slot that has reached the given or default commitment level.
     ///
     pub async fn get_slot(&self) -> RpcResult<Slot> {
-        let payload = RpcRequest::GetSlot
-            .build_request_json(self.next_request_id(), Value::Null)
-            .to_string();
+        let payload = RpcRequest::GetSlot.build_request_json(self.next_request_id(), Value::Null);
 
         let response = self.call(&payload, 128).await?;
 
@@ -417,9 +478,8 @@ impl RpcClient {
     /// Returns information about the current supply.
     ///
     pub async fn get_supply(&self, config: RpcSupplyConfig) -> RpcResult<RpcSupply> {
-        let payload = RpcRequest::GetSupply
-            .build_request_json(self.next_request_id(), json!([config]))
-            .to_string();
+        let payload =
+            RpcRequest::GetSupply.build_request_json(self.next_request_id(), json!([config]));
 
         let response = self.call(&payload, GET_SUPPLY_SIZE_ESTIMATE).await?;
 
@@ -439,9 +499,8 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getEpochInfo
     ///
     pub async fn get_epoch_info(&self, config: RpcContextConfig) -> RpcResult<EpochInfo> {
-        let payload = RpcRequest::GetEpochInfo
-            .build_request_json(self.next_request_id(), json!([config]))
-            .to_string();
+        let payload =
+            RpcRequest::GetEpochInfo.build_request_json(self.next_request_id(), json!([config]));
 
         let response = self.call(&payload, GET_EPOCH_INFO_SIZE_ESTIMATE).await?;
 
@@ -466,12 +525,10 @@ impl RpcClient {
         config: RpcProgramAccountsConfig,
         max_response_bytes: u64,
     ) -> RpcResult<Vec<RpcKeyedAccount>> {
-        let payload = RpcRequest::GetProgramAccounts
-            .build_request_json(
-                self.next_request_id(),
-                json!([program_id.to_string(), config]),
-            )
-            .to_string();
+        let payload = RpcRequest::GetProgramAccounts.build_request_json(
+            self.next_request_id(),
+            json!([program_id.to_string(), config]),
+        );
 
         let response = self.call(&payload, max_response_bytes).await?;
 
@@ -492,12 +549,10 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/requestAirdrop
     ///
     pub async fn request_airdrop(&self, pubkey: &Pubkey, lamports: u64) -> RpcResult<String> {
-        let payload = RpcRequest::RequestAirdrop
-            .build_request_json(
-                self.next_request_id(),
-                json!([pubkey.to_string(), lamports]),
-            )
-            .to_string();
+        let payload = RpcRequest::RequestAirdrop.build_request_json(
+            self.next_request_id(),
+            json!([pubkey.to_string(), lamports]),
+        );
 
         let response = self.call(&payload, 156).await?;
 
@@ -523,8 +578,7 @@ impl RpcClient {
         config: RpcSignaturesForAddressConfig,
     ) -> RpcResult<Vec<RpcConfirmedTransactionStatusWithSignature>> {
         let payload = RpcRequest::GetSignaturesForAddress
-            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]))
-            .to_string();
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]));
 
         let max_limit = 1000;
 
@@ -558,8 +612,7 @@ impl RpcClient {
         config: RpcSignatureStatusConfig,
     ) -> RpcResult<Vec<TransactionStatus>> {
         let payload = RpcRequest::GetSignatureStatuses
-            .build_request_json(self.next_request_id(), json!([signatures, config]))
-            .to_string();
+            .build_request_json(self.next_request_id(), json!([signatures, config]));
 
         let response = self.call(&payload, 128).await?;
 
@@ -584,12 +637,10 @@ impl RpcClient {
         signature: &Signature,
         config: RpcTransactionConfig,
     ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
-        let payload = RpcRequest::GetTransaction
-            .build_request_json(
-                self.next_request_id(),
-                json!([signature.to_string(), config]),
-            )
-            .to_string();
+        let payload = RpcRequest::GetTransaction.build_request_json(
+            self.next_request_id(),
+            json!([signature.to_string(), config]),
+        );
 
         let response = self
             .call(&payload, TRANSACTION_RESPONSE_SIZE_ESTIMATE)
@@ -636,8 +687,7 @@ impl RpcClient {
         };
 
         let payload = RpcRequest::SendTransaction
-            .build_request_json(self.next_request_id(), json!([raw_tx, config]))
-            .to_string();
+            .build_request_json(self.next_request_id(), json!([raw_tx, config]));
 
         let response = self.call(&payload, 156).await?;
 
