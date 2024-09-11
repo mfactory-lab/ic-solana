@@ -1061,7 +1061,6 @@ dependencies = [
  "bincode",
  "candid",
  "flate2",
- "hex",
  "ic-canister-log",
  "ic-canisters-http-types",
  "ic-cdk 0.16.0",
@@ -1076,7 +1075,6 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "url",
- "zeroize",
 ]
 
 [[package]]
