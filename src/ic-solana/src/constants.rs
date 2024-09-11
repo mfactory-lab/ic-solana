@@ -15,7 +15,7 @@ pub const MAX_PDA_ACCOUNT_DATA_LENGTH: u64 = 10 * 1024;
 /// In case no memo is set signature object should be around 175 bytes long.
 pub const SIGNATURE_RESPONSE_SIZE_ESTIMATE: u64 = 500;
 
-/// In case no memo is set transaction object should be around 1100 bytes long.
+/// In case no memo is set a transaction object should be around 1100 bytes long.
 pub const TRANSACTION_RESPONSE_SIZE_ESTIMATE: u64 = 2200;
 
 pub const GET_BLOCK_RESPONSE_SIZE_ESTIMATE: u64 = 516_000;

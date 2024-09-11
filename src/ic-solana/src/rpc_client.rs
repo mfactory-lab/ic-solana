@@ -99,9 +99,9 @@ pub struct RpcClient {
 }
 
 impl RpcClient {
-    pub fn new(cluster: &str) -> Self {
+    pub fn new(network: &str) -> Self {
         Self {
-            cluster: Cluster::from_str(cluster).unwrap(),
+            cluster: Cluster::from_str(network).expect("Failed to parse the network"),
             commitment_config: CommitmentConfig::confirmed(),
             cost_calculator: None,
             headers: None,
@@ -193,7 +193,7 @@ impl RpcClient {
                 Default::default()
             };
 
-        let parsed_url = match url::Url::parse(&url) {
+        let parsed_url = match url::Url::parse(url) {
             Ok(url) => url,
             Err(_) => return Err(RpcError::ParseError(format!("Error parsing URL: {}", url))),
         };
@@ -213,9 +213,10 @@ impl RpcClient {
 
         if self.hosts_blocklist.contains(&rpc_host.0.as_str()) {
             add_metric_entry!(err_host_not_allowed, rpc_host.clone(), 1);
-            return Err(
-                RpcError::Text(format!("Disallowed RPC service host: {}", rpc_host.0)).into(),
-            );
+            return Err(RpcError::Text(format!(
+                "Disallowed RPC service host: {}",
+                rpc_host.0
+            )));
         }
 
         if !self.is_demo_active {
@@ -255,7 +256,7 @@ impl RpcClient {
                     response.status
                 );
 
-                let status: u32 = response.status.0.clone().try_into().unwrap_or(0);
+                let status: u32 = response.status.0.try_into().unwrap_or(0);
                 add_metric_entry!(responses, (rpc_method, rpc_host, status.into()), 1);
 
                 match String::from_utf8(response.body) {
