@@ -16,7 +16,7 @@ gzip --no-name --force $CANISTER_WASM
 cp $CANISTER_WASM.gz ./src/$CANISTER/$CANISTER.wasm.gz
 
 # Deploy the solana canister and set the schnorr canister id
-dfx deploy ic-solana-provider --argument "(record {})" --mode=reinstall -y
+dfx deploy ic-solana-provider --argument "(record {demo = opt true})" --mode=reinstall -y
 
 # Get the canister id
 CANISTER_ID=$(dfx canister id ic-solana-provider)
