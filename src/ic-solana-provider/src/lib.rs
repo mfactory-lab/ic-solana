@@ -17,6 +17,7 @@ use serde_json::json;
 use state::{mutate_state, read_state, InitArgs, STATE};
 use std::str::FromStr;
 
+mod auth;
 mod constants;
 pub mod eddsa_api;
 pub mod state;
