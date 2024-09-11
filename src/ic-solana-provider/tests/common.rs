@@ -1,8 +1,10 @@
-use candid::{decode_one, encode_one, CandidType, Principal};
-use ic_solana_provider::state::InitArgs;
-use pocket_ic::{PocketIc, WasmResult};
-use rand::distributions::{Distribution, Standard};
-use serde::Deserialize;
+use {
+    candid::{decode_one, encode_one, CandidType, Principal},
+    ic_solana_provider::state::InitArgs,
+    pocket_ic::{PocketIc, WasmResult},
+    rand::distributions::{Distribution, Standard},
+    serde::Deserialize,
+};
 
 pub const VALID_PUBKEY: &str = "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM";
 
@@ -10,19 +12,17 @@ pub const VALID_PUBKEY: &str = "Awes4Tr6TX8JDzEhCZY2QVNimT6iD1zWHzf1vNyGvpLM";
 const INIT_CYCLES: u128 = 2_000_000_000_000;
 
 pub fn init(ic: &PocketIc) -> Principal {
-    let (schnorr_canister_id, wasm_module) = create_canister(ic, "SCHNORR_CANISTER_PATH");
-
-    ic.install_canister(schnorr_canister_id, wasm_module, vec![], None);
+    // let (schnorr_canister_id, wasm_module) = create_canister(ic, "SCHNORR_CANISTER_PATH");
+    // ic.install_canister(schnorr_canister_id, wasm_module, vec![], None);
     fast_forward(ic, 5);
 
     let (canister_id, wasm_module) = create_canister(ic, "IC_SOLANA_PROVIDER_PATH");
     let sender = None;
 
     let args = InitArgs {
-        rpc_url: None,
-        nodes_in_subnet: None,
-        schnorr_canister: Some(schnorr_canister_id.to_string()),
-        schnorr_key_name: None,
+        demo: None,
+        managers: None,
+        schnorr_key: None,
     };
 
     ic.install_canister(canister_id, wasm_module, encode_one(args).unwrap(), sender);

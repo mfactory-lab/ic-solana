@@ -1,12 +1,13 @@
 mod common;
 
-use crate::common::{init, random_principal};
-use candid::encode_one;
-use pocket_ic::PocketIc;
+use {
+    crate::common::{init, random_principal},
+    candid::encode_one,
+    pocket_ic::PocketIc,
+};
 
 #[test]
 fn test_get_balance() {
-    std::env::set_var("SCHNORR_CANISTER_PATH", "schnorr_canister.wasm.gz");
     std::env::set_var("IC_SOLANA_PROVIDER_PATH", "ic-solana-provider.wasm.gz");
 
     let ic = PocketIc::new();
