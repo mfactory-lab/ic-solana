@@ -16,11 +16,18 @@ start: ## Start the canisters
 build: ## Build the canisters
 	./scripts/build
 
+.PHONY: examples
+examples: ## Run examples
+	./scripts/examples
+
+.PHONY: metrics
+metrics: ## Get metrics
+	dfx canister call ic-solana-provider getMetrics '()'
+
 .PHONY: test
 test: ## Run tests
 	@dfx build test_canister; 
 	@export IC_SOLANA_PROVIDER_PATH=./target/wasm32-unknown-unknown/release/ic_solana_provider.wasm.gz; 
-	@export SCHNORR_CANISTER_PATH=./target/wasm32-unknown-unknown/release/test_canister.wasm.gz; 
 	@$(MAKE) build; 
 	@cargo test $(TEST) --no-fail-fast $(if $(TEST_NAME),-- $(TEST_NAME) --nocapture,-- --nocapture); 
 

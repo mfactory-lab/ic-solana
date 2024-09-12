@@ -1,51 +1,95 @@
 use {
-    crate::constants::{NODES_IN_FIDUCIARY_SUBNET, SCHNORR_KEY_NAME},
-    candid::{CandidType, Deserialize},
+    crate::{
+        auth::{Auth, AuthSet},
+        eddsa_api::SchnorrKey,
+        memory::{init_auth_memory, init_providers_memory, AuthMemory, ProvidersMemory},
+        providers::{ProviderId, RpcProvider},
+        types::PrincipalStorable,
+    },
+    candid::{CandidType, Deserialize, Principal},
     ic_solana::types::Cluster,
-    std::{cell::RefCell, env},
+    std::{cell::RefCell, str::FromStr},
 };
 
 thread_local! {
-    pub static STATE: RefCell<Option<State>> = RefCell::default();
+    pub static STATE: RefCell<Option<State>> = RefCell::new(Some(State {
+        auth: init_auth_memory(),
+        rpc_providers: init_providers_memory(),
+        schnorr_key: SchnorrKey::TestKeyLocal,
+        is_demo_active: false,
+    }));
 }
 
 /// Solana RPC canister initialization data.
 #[derive(Debug, Deserialize, CandidType, Clone)]
 pub struct InitArgs {
-    pub rpc_url: Option<String>,
-    pub nodes_in_subnet: Option<u32>,
-    pub schnorr_canister: Option<String>,
-    pub schnorr_key_name: Option<String>,
+    pub demo: Option<bool>,
+    pub managers: Option<Vec<Principal>>,
+    pub schnorr_key: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
 pub struct State {
-    pub rpc_url: String,
-    pub schnorr_canister: String,
-    pub schnorr_key_name: String,
-    pub nodes_in_subnet: u32,
+    pub auth: AuthMemory,
+    pub rpc_providers: ProvidersMemory,
+    pub schnorr_key: SchnorrKey,
+    pub is_demo_active: bool,
+    // pub hosts_blocklist: Vec<String>,
+}
+
+impl State {
+    fn init_default_providers(providers: &mut ProvidersMemory) {
+        for cluster in [Cluster::Mainnet, Cluster::Testnet, Cluster::Devnet] {
+            providers.insert(
+                ProviderId(cluster.to_string()),
+                RpcProvider {
+                    url: cluster.url().to_string(),
+                    owner: ic_cdk::caller(),
+                    auth: None,
+                },
+            );
+        }
+    }
 }
 
 impl From<InitArgs> for State {
     fn from(value: InitArgs) -> Self {
-        Self {
-            rpc_url: value.rpc_url.unwrap_or(Cluster::Devnet.to_string()),
-            schnorr_canister: env::var("CANISTER_ID_SCHNORR_CANISTER")
-                .unwrap_or(value.schnorr_canister.expect("Missing schnorr_canister")),
-            schnorr_key_name: value
-                .schnorr_key_name
-                .unwrap_or(SCHNORR_KEY_NAME.to_string()),
-            nodes_in_subnet: value.nodes_in_subnet.unwrap_or(NODES_IN_FIDUCIARY_SUBNET),
-        }
+        take_state(|s| {
+            let mut auth = s.auth;
+            if let Some(managers) = value.managers {
+                for manager in managers {
+                    auth.insert(PrincipalStorable(manager), AuthSet::new(vec![Auth::Manage]));
+                }
+            }
+
+            let mut rpc_providers = s.rpc_providers;
+            Self::init_default_providers(&mut rpc_providers);
+
+            Self {
+                auth,
+                rpc_providers,
+                schnorr_key: value
+                    .schnorr_key
+                    .and_then(|s| SchnorrKey::from_str(&s).ok())
+                    .unwrap_or(s.schnorr_key),
+                is_demo_active: value.demo.unwrap_or(false),
+                // hosts_blocklist: value.hosts_blocklist.unwrap_or_default(),
+            }
+        })
     }
 }
 
 impl std::fmt::Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Solana RPC URL: {:?}", self.rpc_url)?;
-        writeln!(f, "Schnorr canister: {:?}", self.schnorr_canister)?;
-        writeln!(f, "Schnorr key name: {:?}", self.schnorr_key_name)?;
-        writeln!(f, "Nodes in subnet: {:?}", self.nodes_in_subnet)?;
+        writeln!(f, "Schnorr key name: {:?}", self.schnorr_key)?;
+        writeln!(f, "Demo active: {:?}", self.is_demo_active)?;
+        writeln!(f, "Auth:")?;
+        for (principal, auth) in self.auth.iter() {
+            writeln!(f, "  - {}: {:?}", principal.0, auth)?;
+        }
+        writeln!(f, "RPC providers:")?;
+        for (provider_id, provider) in self.rpc_providers.iter() {
+            writeln!(f, "  - {}: {:?}", provider_id.0, provider)?;
+        }
         Ok(())
     }
 }

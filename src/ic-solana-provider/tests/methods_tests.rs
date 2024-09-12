@@ -3,7 +3,10 @@ mod common;
 use {
     crate::common::init,
     candid::{encode_args, encode_one, Decode},
-    common::{init_with_rpc_url, BASIC_IDENTITY, SECRET1, SECRET2, SOLANA_DEVNET_CLUSTER_URL},
+    common::{
+        BASIC_IDENTITY, DEVNET_PROVIDER_ID, MAINNET_PROVIDER_ID, SECRET1, SECRET2,
+        SOLANA_DEVNET_CLUSTER_URL,
+    },
     ic_agent::Agent,
     ic_solana::{
         rpc_client::RpcError,
@@ -38,7 +41,7 @@ async fn test_get_balance() {
 
     let res = agent
         .update(&canister_id, "sol_getBalance")
-        .with_arg(encode_one(ACCOUNT).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, ACCOUNT)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -66,7 +69,7 @@ async fn test_get_token_balance() {
 
     let res = agent
         .update(&canister_id, "sol_getTokenBalance")
-        .with_arg(encode_one(TOKEN_ACCOUNT).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, TOKEN_ACCOUNT)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -94,7 +97,7 @@ async fn test_get_latest_blockhash() {
 
     let res = agent
         .update(&canister_id, "sol_getLatestBlockhash")
-        .with_arg(encode_one(()).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID,)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -125,7 +128,7 @@ async fn test_get_account_info() {
 
     let existing_account_res = agent
         .update(&canister_id, "sol_getAccountInfo")
-        .with_arg(encode_one(EXISTING_ACCOUNT).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, EXISTING_ACCOUNT)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -141,7 +144,7 @@ async fn test_get_account_info() {
 
     let non_existing_account_res = agent
         .update(&canister_id, "sol_getAccountInfo")
-        .with_arg(encode_one(NON_EXISTING_ACCOUNT).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, NON_EXISTING_ACCOUNT)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -188,7 +191,7 @@ async fn test_get_transaction() {
 
     let existing_account_res = agent
         .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_one(EXISTING_SIGNATURE).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, EXISTING_SIGNATURE)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -202,7 +205,7 @@ async fn test_get_transaction() {
 
     let non_existing_account_res = agent
         .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_one(NON_EXISTING_SIGNATURE).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, NON_EXISTING_SIGNATURE)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -217,7 +220,8 @@ async fn test_get_transaction() {
     todo!("Check the transaction after sol_getTransaction is fixed");
 }
 
-#[tokio::test]
+// milti_thread is needed for solana_client to work
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_send_raw_transaction() {
     // The amount to send from one account to the other, in lamports.
     const AMOUNT_TO_SEND: u64 = 1;
@@ -234,11 +238,10 @@ async fn test_send_raw_transaction() {
     let agent = Agent::builder().with_url(endpoint).build().unwrap();
     agent.fetch_root_key().await.unwrap();
 
-    let canister_id = init_with_rpc_url(&pic, SOLANA_DEVNET_CLUSTER_URL).await;
+    let canister_id = init(&pic).await;
 
-    let solana_client = solana_client::nonblocking::rpc_client::RpcClient::new(
-        SOLANA_DEVNET_CLUSTER_URL.to_string(),
-    );
+    let solana_client =
+        solana_client::rpc_client::RpcClient::new(SOLANA_DEVNET_CLUSTER_URL.to_string());
 
     let mut keypair1 = solana_sdk::signer::keypair::Keypair::from_bytes(&SECRET1).unwrap();
     let mut keypair2 = solana_sdk::signer::keypair::Keypair::from_bytes(&SECRET2).unwrap();
@@ -250,18 +253,14 @@ async fn test_send_raw_transaction() {
     // If the airdrop fails, it means rate limit exceeded, but the test should still pass,
     // as the accounts should already have some funds.
     // NOTICE: If this test fails, it could potentially be due to lack of funds in the accounts.
-    let _ = solana_client
-        .request_airdrop(&pubkey1, sol_to_lamports(1.0))
-        .await;
+    let _ = solana_client.request_airdrop(&pubkey1, sol_to_lamports(1.0));
 
-    let _ = solana_client
-        .request_airdrop(&pubkey2, sol_to_lamports(1.0))
-        .await;
+    let _ = solana_client.request_airdrop(&pubkey2, sol_to_lamports(1.0));
 
     // Getting the pre balances of pubkey1 and pubkey2
     let call_result = agent
         .update(&canister_id, "sol_getBalance")
-        .with_arg(encode_one(pubkey1.to_string()).unwrap())
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, pubkey1.to_string())).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -272,7 +271,7 @@ async fn test_send_raw_transaction() {
 
     let call_result = agent
         .update(&canister_id, "sol_getBalance")
-        .with_arg(encode_one(pubkey2.to_string()).unwrap())
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, pubkey2.to_string())).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -289,7 +288,7 @@ async fn test_send_raw_transaction() {
     }
 
     // Getting latest blockhash
-    let latest_blockhash = solana_client.get_latest_blockhash().await.unwrap();
+    let latest_blockhash = solana_client.get_latest_blockhash().unwrap();
 
     // Creating a transaction to send 2 SOL from keypair1 to keypair2
     let tx = solana_sdk::system_transaction::transfer(
@@ -303,7 +302,7 @@ async fn test_send_raw_transaction() {
 
     let signature = agent
         .update(&canister_id, "sol_sendRawTransaction")
-        .with_arg(encode_one(raw_tx).unwrap())
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, raw_tx)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -312,15 +311,12 @@ async fn test_send_raw_transaction() {
         .unwrap()
         .unwrap();
 
-    println!("TX: {:#?}", signature_str);
-
     let signature = Signature::from_str(&signature_str).unwrap();
     // Waiting for the transaction to be confirmed
     loop {
-        if solana_client.confirm_transaction(&signature).await.unwrap() {
+        if solana_client.confirm_transaction(&signature).unwrap() {
             break;
         }
-
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
 
@@ -328,7 +324,7 @@ async fn test_send_raw_transaction() {
 
     let call_result = agent
         .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_one(signature_str).unwrap())
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, signature_str)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -342,7 +338,9 @@ async fn test_send_raw_transaction() {
     todo!("Check the transaction after sol_getTransaction is fixed");
 }
 
-#[tokio::test]
+// milti_thread is needed for solana_client to work
+#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+#[ignore = "This test is not working, as the Schnorr signature is not currently supported in pocket-ic"]
 async fn test_send_transaction() {
     // The amount to send from one account to the other, in lamports.
     const AMOUNT_TO_SEND: u64 = 1;
@@ -364,15 +362,14 @@ async fn test_send_transaction() {
 
     agent.fetch_root_key().await.unwrap();
 
-    let canister_id = init_with_rpc_url(&pic, SOLANA_DEVNET_CLUSTER_URL).await;
+    let canister_id = init(&pic).await;
 
-    let solana_client = solana_client::nonblocking::rpc_client::RpcClient::new(
-        SOLANA_DEVNET_CLUSTER_URL.to_string(),
-    );
+    let solana_client =
+        solana_client::rpc_client::RpcClient::new(SOLANA_DEVNET_CLUSTER_URL.to_string());
 
     let call_result = agent
-        .update(&canister_id, "get_address")
-        .with_arg(encode_one(()).unwrap())
+        .update(&canister_id, "sol_address")
+        .with_arg(encode_one(DEVNET_PROVIDER_ID).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -388,9 +385,7 @@ async fn test_send_transaction() {
     // If the airdrop fails, it means rate limit exceeded, but the test should still pass,
     // as the account should already have some funds.
     // NOTICE: If this test fails, it could potentially be due to lack of funds in the accounts.
-    let _ = solana_client
-        .request_airdrop(&canister_pubkey, sol_to_lamports(1.0))
-        .await;
+    let _ = solana_client.request_airdrop(&canister_pubkey, sol_to_lamports(1.0));
 
     let instruction = system_instruction::transfer(&canister_pubkey, &pubkey1, AMOUNT_TO_SEND);
 
@@ -404,7 +399,7 @@ async fn test_send_transaction() {
     // Getting the pre balances of pubkey1 and pubkey2
     let call_result = agent
         .update(&canister_id, "sol_sendTransaction")
-        .with_arg(encode_one(args).unwrap())
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, args)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -417,7 +412,7 @@ async fn test_send_transaction() {
 
     // Waiting for the transaction to be confirmed
     loop {
-        if solana_client.confirm_transaction(&signature).await.unwrap() {
+        if solana_client.confirm_transaction(&signature).unwrap() {
             break;
         }
 
@@ -426,7 +421,7 @@ async fn test_send_transaction() {
 
     let call_result = agent
         .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_one(signature_str).unwrap())
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, signature_str)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -468,7 +463,7 @@ async fn test_request() {
 
     let call_result = agent
         .update(&canister_id, "request")
-        .with_arg(encode_args((METHOD, PARAMS, MAX_RESPONSE_BYTES)).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, METHOD, PARAMS, MAX_RESPONSE_BYTES)).unwrap())
         .call_and_wait()
         .await
         .unwrap();

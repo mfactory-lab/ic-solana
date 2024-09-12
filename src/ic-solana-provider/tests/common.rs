@@ -30,7 +30,6 @@ lazy_static! {
 
 #[ctor::ctor]
 fn init_vars() {
-    std::env::set_var("SCHNORR_CANISTER_PATH", "schnorr_canister.wasm.gz");
     std::env::set_var("IC_SOLANA_PROVIDER_PATH", "ic-solana-provider.wasm.gz");
 }
 
@@ -54,44 +53,33 @@ pub const SECRET2: [u8; 64] = [
 pub const PUBKEY1: &str = "9ri4mUToddwCc6jg1GTL5sobkkFxjUzjZ6CZ6L91LzAR";
 pub const PUBKEY2: &str = "EabqyjABpFwUGhw2t2HVPGavjD1uqGm6ciMPhBRrdTxh";
 
+pub const MAINNET_PROVIDER_ID: &str = "mainnet";
+pub const DEVNET_PROVIDER_ID: &str = "devnet";
+pub const TESTNET_PROVIDER_ID: &str = "testnet";
+
 pub const SOLANA_MAINNET_CLUSTER_URL: &str = "https://api.mainnet-beta.solana.com";
 pub const SOLANA_DEVNET_CLUSTER_URL: &str = "https://api.devnet.solana.com";
 pub const SOLANA_TESTNET_CLUSTER_URL: &str = "https://api.testnet.solana.com";
 
-pub async fn init(ic: &PocketIc) -> Principal {
-    init_with_rpc_url(ic, SOLANA_MAINNET_CLUSTER_URL).await
-}
-
-pub async fn init_with_rpc_url(ic: &PocketIc, rpc_url: &str) -> Principal {
-    let (schnorr_canister_id, wasm_module) = create_canister(ic, "SCHNORR_CANISTER_PATH").await;
-
-    ic.install_canister(
-        schnorr_canister_id,
-        wasm_module,
-        vec![],
-        Some(CONTROLLER_PRINCIPAL.clone()),
-    )
-    .await;
-    fast_forward(ic, 5).await;
-
+pub async fn init(pic: &PocketIc) -> Principal {
     let (canister_id, wasm_module) =
-        create_canister_with_id(ic, "IC_SOLANA_PROVIDER_PATH", CANISTER_ID.clone()).await;
+        create_canister_with_id(pic, "IC_SOLANA_PROVIDER_PATH", CANISTER_ID.clone()).await;
 
     let args = InitArgs {
-        rpc_url: Some(rpc_url.to_string()),
-        nodes_in_subnet: None,
-        schnorr_canister: Some(schnorr_canister_id.to_string()),
-        schnorr_key_name: None,
+        demo: Some(true),
+        managers: Some(vec![CONTROLLER_PRINCIPAL.clone()]),
+        schnorr_key: None,
     };
 
-    ic.install_canister(
+    pic.install_canister(
         canister_id,
         wasm_module,
         encode_one(args).unwrap(),
         Some(CONTROLLER_PRINCIPAL.clone()),
     )
     .await;
-    fast_forward(ic, 5).await;
+
+    fast_forward(pic, 5).await;
 
     canister_id
 }

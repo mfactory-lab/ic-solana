@@ -2,8 +2,8 @@ mod common;
 
 use {
     crate::common::init,
-    candid::encode_one,
-    common::{decode_raw_wasm_result, fast_forward, SECRET1, USER_PRINCIPAL},
+    candid::{encode_args, encode_one},
+    common::{decode_raw_wasm_result, fast_forward, MAINNET_PROVIDER_ID, SECRET1, USER_PRINCIPAL},
     ic_solana::types::{Account, EncodedConfirmedTransactionWithStatusMeta, UiTokenAmount},
     ic_solana_provider::types::SendTransactionRequest,
     pocket_ic::{
@@ -34,12 +34,12 @@ async fn test_get_balance_mock() {
             canister_id,
             USER_PRINCIPAL.clone(),
             "sol_getBalance",
-            encode_one(ACCOUNT).unwrap(),
+            encode_args((MAINNET_PROVIDER_ID, ACCOUNT)).unwrap(),
         )
         .await
         .unwrap();
 
-    fast_forward(&pic, 4).await;
+    fast_forward(&pic, 5).await;
 
     let reqs = pic.get_canister_http().await;
     let req = reqs.get(0).unwrap();
@@ -86,7 +86,7 @@ async fn test_get_token_balance_mock() {
             canister_id,
             USER_PRINCIPAL.clone(),
             "sol_getTokenBalance",
-            encode_one(ACCOUNT).unwrap(),
+            encode_args((MAINNET_PROVIDER_ID, ACCOUNT)).unwrap(),
         )
         .await
         .unwrap();
@@ -135,7 +135,7 @@ async fn test_get_latest_blockhash_mock() {
             canister_id,
             USER_PRINCIPAL.clone(),
             "sol_getLatestBlockhash",
-            encode_one(()).unwrap(),
+            encode_one(MAINNET_PROVIDER_ID).unwrap(),
         )
         .await
         .unwrap();
@@ -200,7 +200,7 @@ async fn test_get_account_info_mock() {
             canister_id,
             USER_PRINCIPAL.clone(),
             "sol_getAccountInfo",
-            encode_one(ACCOUNT).unwrap(),
+            encode_args((MAINNET_PROVIDER_ID, ACCOUNT)).unwrap(),
         )
         .await
         .unwrap();
@@ -718,7 +718,7 @@ async fn test_get_transaction_mock() {
             canister_id,
             USER_PRINCIPAL.clone(),
             "sol_getTransaction",
-            encode_one(SIGNATURE).unwrap(),
+            encode_args((MAINNET_PROVIDER_ID, SIGNATURE)).unwrap(),
         )
         .await
         .unwrap();
@@ -768,7 +768,7 @@ async fn test_send_raw_transaction_mock() {
             canister_id,
             USER_PRINCIPAL.clone(),
             "sol_sendRawTransaction",
-            encode_one(SEND_RAW_TRANSACTION_REQUEST).unwrap(),
+            encode_args((MAINNET_PROVIDER_ID, SEND_RAW_TRANSACTION_REQUEST)).unwrap(),
         )
         .await
         .unwrap();
@@ -807,6 +807,7 @@ async fn test_send_transaction_mock() {
 
     let pic = PocketIcBuilder::new()
         .with_application_subnet()
+        .with_ii_subnet()
         .with_nns_subnet()
         .build_async()
         .await;
@@ -817,7 +818,7 @@ async fn test_send_transaction_mock() {
         .update_call(
             canister_id,
             USER_PRINCIPAL.clone(),
-            "get_address",
+            "sol_address",
             encode_one(()).unwrap(),
         )
         .await
@@ -843,7 +844,7 @@ async fn test_send_transaction_mock() {
             canister_id,
             USER_PRINCIPAL.clone(),
             "sol_sendTransaction",
-            encode_one(args).unwrap(),
+            encode_args((MAINNET_PROVIDER_ID, args)).unwrap(),
         )
         .await
         .unwrap();

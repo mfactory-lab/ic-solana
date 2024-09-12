@@ -1,5 +1,5 @@
 {
-  "dfx": "0.22.0",
+  "dfx": "0.23.0",
   "canisters": {
     "ic-solana-provider": {
       "type": "rust",
@@ -12,17 +12,6 @@
       "package": "test_canister",
       "candid": "src/test_canister/test_canister.did",
       "gzip": true
-    },
-    "schnorr_canister": {
-      "type": "custom",
-      "candid": "https://github.com/domwoe/schnorr_canister/releases/latest/download/schnorr_canister.did",
-      "wasm": "https://github.com/domwoe/schnorr_canister/releases/latest/download/schnorr_canister.wasm.gz",
-      "remote": {
-        "id": {
-          "ic": "6fwhw-fyaaa-aaaap-qb7ua-cai",
-          "playground": "6fwhw-fyaaa-aaaap-qb7ua-cai"
-        }
-      }
     }
   },
   "networks": {

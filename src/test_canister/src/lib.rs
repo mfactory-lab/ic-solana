@@ -27,19 +27,33 @@ async fn test() {
     let sol_canister = sol_canister_id();
 
     // Get the solana address associated with the caller
-    let response: Result<(String,), _> = ic_cdk::call(sol_canister, "get_address", ()).await;
-    let solana_address = Pubkey::from_str(&response.unwrap().0).unwrap();
+    let response: Result<(String,), _> = ic_cdk::call(sol_canister, "sol_address", ()).await;
+
+    // d|devnet|m|mainnet|t|testnet or custom rpc
+    let cluster = "devnet";
+
+    let solana_address = Pubkey::from_str(&response.unwrap().0).expect("Invalid public key");
     ic_cdk::println!("solana_address: {}", solana_address);
 
     // Get the balance
     let response: Result<(RpcResult<u64>,), _> = ic_cdk::call(
         sol_canister,
         "sol_getBalance",
-        (solana_address.to_string(),),
+        (cluster, solana_address.to_string()),
     )
     .await;
+
     let lamports = response.unwrap().0.unwrap();
     ic_cdk::println!("Balance: {} lamports", lamports);
+
+    // Airdrop 1 SOL
+    let response: Result<(RpcResult<String>,), _> = ic_cdk::call(
+        sol_canister,
+        "sol_requestAirdrop",
+        (cluster, solana_address.to_string(), 1_000_000_000u64),
+    )
+    .await;
+    ic_cdk::println!("Airdrop response: {:?}", response);
 
     let fee = 10_000;
     let amount = 1_000_000u64;
@@ -50,7 +64,8 @@ async fn test() {
 
     // Get the latest blockhash
     let response: Result<(RpcResult<String>,), _> =
-        ic_cdk::call(sol_canister, "sol_latestBlockhash", ()).await;
+        ic_cdk::call(sol_canister, "sol_latestBlockhash", (cluster,)).await;
+
     let blockhash = BlockHash::from_str(&response.unwrap().0.unwrap()).unwrap();
     ic_cdk::println!("Latest Blockhash: {:?}", blockhash);
 
@@ -72,10 +87,13 @@ async fn test() {
     let response: Result<(RpcResult<String>,), _> = ic_cdk::call(
         sol_canister,
         "sol_sendTransaction",
-        (SendTransactionRequest {
-            instructions: vec![transfer_ix.to_string()],
-            recent_blockhash: Some(blockhash.to_string()),
-        },),
+        (
+            cluster,
+            SendTransactionRequest {
+                instructions: vec![transfer_ix.to_string()],
+                recent_blockhash: Some(blockhash.to_string()),
+            },
+        ),
     )
     .await;
 

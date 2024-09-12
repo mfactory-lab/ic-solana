@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["src/ic-solana", "src/ic-solana-provider", "src/test_canister"]
+members = [
+    "src/common",
+    "src/ic-solana",
+    "src/ic-solana-provider",
+    "src/test_canister",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -23,9 +28,12 @@ ic-canister-log = "0.2"
 ic-canisters-http-types = { git = "https://github.com/dfinity/ic", package = "ic-canisters-http-types" }
 ic-crypto-ed25519 = { git = "https://github.com/dfinity/ic", package = "ic-crypto-ed25519" }
 ic-management-canister-types = { git = "https://github.com/dfinity/ic", package = "ic-management-canister-types" }
+ic-metrics-encoder = "1.1"
 #ic-state-machine-tests = { git = "https://github.com/dfinity/ic", package = "ic-state-machine-tests" }
 ic-solana = { path = "./src/ic-solana" }
+ic-solana-common = { path = "./src/common" }
 ic-solana-provider = { path = "./src/ic-solana-provider" }
+ic-stable-structures = "0.6.5"
 pocket-ic = "4.0.0"
 serde = "1"
 serde_json = "^1.0.117"
@@ -40,9 +48,3 @@ opt-level = 's'
 # Required by `ic-test-utilities-load-wasm`
 [profile.canister-release]
 inherits = "release"
-
-# This patch is needed due to version conflicts around the zeroize crate
-# More info: https://github.com/solana-labs/solana/blob/master/Cargo.toml#L514
-[patch.crates-io.curve25519-dalek]
-git = "https://github.com/solana-labs/curve25519-dalek.git"
-rev = "b500cdc2a920cd5bff9e2dd974d7b97349d61464"

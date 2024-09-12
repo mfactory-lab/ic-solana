@@ -1,0 +1,8 @@
+{
+  "ic-solana-provider": {
+    "local": "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+  },
+  "test_canister": {
+    "local": "be2us-64aaa-aaaaa-qaabq-cai"
+  }
+}
