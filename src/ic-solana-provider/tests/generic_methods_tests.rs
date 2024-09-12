@@ -1,10 +1,11 @@
 mod common;
 
 use {
-    candid::{encode_args, encode_one, Decode},
+    candid::{encode_args, encode_one, Decode, Principal},
     common::{
         decode_raw_wasm_result, init, BASIC_IDENTITY, CONTROLLER_PRINCIPAL, SECRET1, SECRET2,
         SOLANA_DEVNET_CLUSTER_URL, SOLANA_MAINNET_CLUSTER_URL, SOLANA_TESTNET_CLUSTER_URL,
+        USER_PRINCIPAL,
     },
     ic_agent::Agent,
     ic_solana_provider::{auth::Auth, types::RegisterProviderArgs},
@@ -102,8 +103,7 @@ async fn test_request_cost() {
     assert_eq!(cost, EXPECTED_COST);
 }
 
-// milti_thread is needed for solana_client to work
-#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_providers() {
     let mut pic = PocketIcBuilder::new()
         .with_nns_subnet()
@@ -274,4 +274,113 @@ async fn test_providers() {
     assert!(providers.contains(&"mainnet".to_string()));
     assert!(providers.contains(&"devnet".to_string()));
     assert!(providers.contains(&"testnet".to_string()));
+}
+
+#[tokio::test]
+async fn test_auth() {
+    let mut pic = PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await;
+
+    let _ = pic.make_live(None).await;
+
+    let canister_id = init(&pic).await;
+
+    // Authorize the controller to register one provider
+    pic.update_call(
+        canister_id,
+        CONTROLLER_PRINCIPAL.clone(),
+        "authorize",
+        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::RegisterProvider)).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let result = pic
+        .query_call(
+            canister_id,
+            CONTROLLER_PRINCIPAL.clone(),
+            "getAuthorized",
+            encode_one(Auth::RegisterProvider).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let (auth,): (Vec<Principal>,) = decode_raw_wasm_result(&result).unwrap();
+
+    assert_eq!(auth, vec![CONTROLLER_PRINCIPAL.clone()]);
+
+    // Deauthorize the controller to register one provider
+    pic.update_call(
+        canister_id,
+        CONTROLLER_PRINCIPAL.clone(),
+        "deauthorize",
+        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::RegisterProvider)).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let result = pic
+        .query_call(
+            canister_id,
+            CONTROLLER_PRINCIPAL.clone(),
+            "getAuthorized",
+            encode_one(Auth::RegisterProvider).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let (auth,): (Vec<Principal>,) = decode_raw_wasm_result(&result).unwrap();
+
+    assert!(auth.is_empty());
+
+    // Trying to authorize from a non authorized controller
+    pic.update_call(
+        canister_id,
+        USER_PRINCIPAL.clone(),
+        "authorize",
+        encode_args((USER_PRINCIPAL.clone(), Auth::Manage)).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let result = pic
+        .query_call(
+            canister_id,
+            USER_PRINCIPAL.clone(),
+            "getAuthorized",
+            encode_one(Auth::Manage).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let (auth,): (Vec<Principal>,) = decode_raw_wasm_result(&result).unwrap();
+
+    assert_eq!(auth, vec![CONTROLLER_PRINCIPAL.clone()]);
+
+    // Trying to authorize two manage auth
+    pic.update_call(
+        canister_id,
+        CONTROLLER_PRINCIPAL.clone(),
+        "authorize",
+        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::Manage)).unwrap(),
+    )
+    .await
+    .unwrap();
+
+    let result = pic
+        .query_call(
+            canister_id,
+            USER_PRINCIPAL.clone(),
+            "getAuthorized",
+            encode_one(Auth::Manage).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let (auth,): (Vec<Principal>,) = decode_raw_wasm_result(&result).unwrap();
+
+    assert_eq!(auth, vec![CONTROLLER_PRINCIPAL.clone()]);
 }

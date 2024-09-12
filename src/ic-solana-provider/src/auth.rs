@@ -4,6 +4,8 @@ use {
         types::PrincipalStorable,
     },
     candid::{CandidType, Deserialize, Principal},
+    ic_canister_log::log,
+    ic_solana_common::logs::INFO,
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
     std::borrow::Cow,
@@ -106,6 +108,13 @@ pub fn do_authorize(principal: Principal, auth: Auth) -> bool {
     if principal == Principal::anonymous() {
         return false;
     }
+    log!(
+        INFO,
+        "[{}] Authorizing `{:?}` for principal: {}",
+        ic_cdk::caller(),
+        auth,
+        principal
+    );
     mutate_state(|s| {
         let principal = PrincipalStorable(principal);
         let mut auth_set = s.auth.get(&principal).unwrap_or_default();
@@ -119,6 +128,13 @@ pub fn do_authorize(principal: Principal, auth: Auth) -> bool {
 }
 
 pub fn do_deauthorize(principal: Principal, auth: Auth) -> bool {
+    log!(
+        INFO,
+        "[{}] Deauthorizing `{:?}` for principal: {}",
+        ic_cdk::caller(),
+        auth,
+        principal
+    );
     mutate_state(|s| {
         let principal = PrincipalStorable(principal);
         if let Some(mut auth_set) = s.auth.get(&principal) {
@@ -133,32 +149,4 @@ pub fn do_deauthorize(principal: Principal, auth: Auth) -> bool {
             false
         }
     })
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_authorization() {
-        let principal1 =
-            Principal::from_text("k5dlc-ijshq-lsyre-qvvpq-2bnxr-pb26c-ag3sc-t6zo5-rdavy-recje-zqe")
-                .unwrap();
-        let principal2 =
-            Principal::from_text("yxhtl-jlpgx-wqnzc-ysego-h6yqe-3zwfo-o3grn-gvuhm-nz3kv-ainub-6ae")
-                .unwrap();
-
-        do_authorize(principal1, Auth::RegisterProvider);
-        assert!(is_authorized(&principal1, Auth::RegisterProvider));
-        assert!(!is_authorized(&principal2, Auth::RegisterProvider));
-
-        do_deauthorize(principal1, Auth::RegisterProvider);
-        assert!(!is_authorized(&principal1, Auth::RegisterProvider));
-
-        do_authorize(principal2, Auth::Manage);
-        assert!(!is_authorized(&principal1, Auth::Manage));
-        assert!(is_authorized(&principal2, Auth::Manage));
-
-        assert!(!is_authorized(&principal2, Auth::RegisterProvider));
-    }
 }

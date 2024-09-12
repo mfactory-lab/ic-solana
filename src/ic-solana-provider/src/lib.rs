@@ -13,7 +13,6 @@ use {
     },
     candid::{candid_method, Principal},
     eddsa_api::{eddsa_public_key, sign_with_eddsa},
-    ic_canister_log::log,
     ic_canisters_http_types::{
         HttpRequest as AssetHttpRequest, HttpResponse as AssetHttpResponse, HttpResponseBuilder,
     },
@@ -29,10 +28,7 @@ use {
             RpcTransactionConfig, Signature, Transaction, UiAccountEncoding, UiTokenAmount,
         },
     },
-    ic_solana_common::{
-        logs::INFO,
-        metrics::{encode_metrics, read_metrics, Metrics},
-    },
+    ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
     serde_bytes::ByteBuf,
     serde_json::json,
     state::{read_state, InitArgs},
@@ -307,13 +303,6 @@ fn update_provider(args: UpdateProviderArgs) {
 #[update(guard = "require_manage_or_controller")]
 #[candid_method]
 fn authorize(principal: Principal, auth: Auth) -> bool {
-    log!(
-        INFO,
-        "[{}] Authorizing `{:?}` for principal: {}",
-        ic_cdk::caller(),
-        auth,
-        principal
-    );
     do_authorize(principal, auth)
 }
 
@@ -334,13 +323,6 @@ fn get_authorized(auth: Auth) -> Vec<Principal> {
 #[update(guard = "require_manage_or_controller")]
 #[candid_method]
 fn deauthorize(principal: Principal, auth: Auth) -> bool {
-    log!(
-        INFO,
-        "[{}] Deauthorizing `{:?}` for principal: {}",
-        ic_cdk::caller(),
-        auth,
-        principal
-    );
     do_deauthorize(principal, auth)
 }
 
