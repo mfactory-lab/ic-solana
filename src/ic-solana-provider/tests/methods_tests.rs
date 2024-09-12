@@ -4,7 +4,7 @@ use {
     crate::common::init,
     candid::{encode_args, encode_one, Decode},
     common::{
-        BASIC_IDENTITY, DEVNET_PROVIDER_ID, MAINNET_PROVIDER_ID, SECRET1, SECRET2,
+        BASIC_IDENTITY, DEVNET_PROVIDER_ID, MAINNET_PROVIDER_ID, PUBKEY1, SECRET1, SECRET2,
         SOLANA_DEVNET_CLUSTER_URL,
     },
     ic_agent::Agent,
@@ -15,7 +15,7 @@ use {
     ic_solana_provider::types::SendTransactionRequest,
     pocket_ic::PocketIcBuilder,
     solana_sdk::{
-        bs58, native_token::sol_to_lamports, pubkey::Pubkey, signature::Signature, signer::Signer,
+        bs58, native_token::sol_to_lamports, signature::Signature, signer::Signer,
         system_instruction,
     },
     std::str::FromStr,
@@ -253,9 +253,33 @@ async fn test_send_raw_transaction() {
     // If the airdrop fails, it means rate limit exceeded, but the test should still pass,
     // as the accounts should already have some funds.
     // NOTICE: If this test fails, it could potentially be due to lack of funds in the accounts.
-    let _ = solana_client.request_airdrop(&pubkey1, sol_to_lamports(1.0));
+    let _ = agent
+        .update(&canister_id, "sol_requestAirdrop")
+        .with_arg(
+            encode_args((
+                DEVNET_PROVIDER_ID,
+                pubkey1.to_string(),
+                sol_to_lamports(1.0),
+            ))
+            .unwrap(),
+        )
+        .call_and_wait()
+        .await
+        .unwrap();
 
-    let _ = solana_client.request_airdrop(&pubkey2, sol_to_lamports(1.0));
+    let _ = agent
+        .update(&canister_id, "sol_requestAirdrop")
+        .with_arg(
+            encode_args((
+                DEVNET_PROVIDER_ID,
+                pubkey2.to_string(),
+                sol_to_lamports(1.0),
+            ))
+            .unwrap(),
+        )
+        .call_and_wait()
+        .await
+        .unwrap();
 
     // Getting the pre balances of pubkey1 and pubkey2
     let call_result = agent
@@ -378,14 +402,31 @@ async fn test_send_transaction() {
 
     let keypair1 = solana_sdk::signer::keypair::Keypair::from_bytes(&SECRET1).unwrap();
     let pubkey1 = keypair1.pubkey();
-    let canister_pubkey = Pubkey::from_str(&canister_address).unwrap();
+    let canister_pubkey = solana_sdk::pubkey::Pubkey::from_str(&canister_address).unwrap();
 
     // Requesting airdrop for canister's address
     // so that it have some funds to send tx.
     // If the airdrop fails, it means rate limit exceeded, but the test should still pass,
     // as the account should already have some funds.
     // NOTICE: If this test fails, it could potentially be due to lack of funds in the accounts.
-    let _ = solana_client.request_airdrop(&canister_pubkey, sol_to_lamports(1.0));
+    // Requesting airdrop for keypair1 and keypair2,
+    // so that they have some funds to send to each other.
+    // If the airdrop fails, it means rate limit exceeded, but the test should still pass,
+    // as the accounts should already have some funds.
+    // NOTICE: If this test fails, it could potentially be due to lack of funds in the accounts.
+    let _ = agent
+        .update(&canister_id, "sol_requestAirdrop")
+        .with_arg(
+            encode_args((
+                DEVNET_PROVIDER_ID,
+                canister_address.to_string(),
+                sol_to_lamports(1.0),
+            ))
+            .unwrap(),
+        )
+        .call_and_wait()
+        .await
+        .unwrap();
 
     let instruction = system_instruction::transfer(&canister_pubkey, &pubkey1, AMOUNT_TO_SEND);
 
@@ -473,4 +514,78 @@ async fn test_request() {
         .unwrap();
 
     todo!("Check the response after request is fixed");
+}
+
+#[tokio::test]
+async fn test_request_airdrop() {
+    const AIRDROP_AMOUNT_LAMPROTS: u64 = 100000000;
+    let pubkey = solana_sdk::pubkey::Pubkey::new_unique().to_string();
+
+    let mut pic = PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await;
+
+    let endpoint = pic.make_live(None).await;
+
+    // Create an agent for the PocketIC instance.
+    let agent = Agent::builder()
+        .with_url(endpoint)
+        .with_identity(BASIC_IDENTITY.clone())
+        .build()
+        .unwrap();
+
+    agent.fetch_root_key().await.unwrap();
+
+    let canister_id = init(&pic).await;
+
+    let call_result = agent
+        .update(&canister_id, "sol_getBalance")
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, pubkey.clone())).unwrap())
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let balance_before = Decode!(&call_result, ic_solana::rpc_client::RpcResult<u64>)
+        .unwrap()
+        .unwrap();
+
+    let call_result = agent
+        .update(&canister_id, "sol_requestAirdrop")
+        .with_arg(
+            encode_args((
+                DEVNET_PROVIDER_ID,
+                PUBKEY1.to_string(),
+                AIRDROP_AMOUNT_LAMPROTS,
+            ))
+            .unwrap(),
+        )
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let response = Decode!(&call_result, ic_solana::rpc_client::RpcResult<String>).unwrap();
+
+    if let Err(err) = response {
+        if err.to_string().contains("airdrop limit") {
+            // If the airdrop limit is reached, the test should still pass
+            return;
+        }
+        panic!("Airdrop error: {}", err);
+    }
+
+    // If the air drop was successful, the balance should be increased by AIRDROP_AMOUNT_LAMPROTS
+    let call_result = agent
+        .update(&canister_id, "sol_getBalance")
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, pubkey)).unwrap())
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let balance_after = Decode!(&call_result, ic_solana::rpc_client::RpcResult<u64>)
+        .unwrap()
+        .unwrap();
+
+    assert!(balance_after - balance_before == AIRDROP_AMOUNT_LAMPROTS);
 }
