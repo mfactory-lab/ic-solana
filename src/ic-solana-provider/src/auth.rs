@@ -5,7 +5,7 @@ use {
     },
     candid::{CandidType, Deserialize, Principal},
     ic_canister_log::log,
-    ic_solana_common::logs::INFO,
+    ic_solana_common::{add_metric_entry, logs::INFO, metrics::MetricAuth, sub_metric_entry},
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
     std::borrow::Cow,
@@ -17,6 +17,18 @@ pub enum Auth {
     RegisterProvider,
     // PriorityRpc,
     // FreeRpc,
+}
+
+impl ToString for Auth {
+    fn to_string(&self) -> String {
+        match self {
+            Auth::Manage => "manage",
+            Auth::RegisterProvider => "register_provider",
+            // Auth::PriorityRpc => "PriorityRpc",
+            // Auth::FreeRpc => "FreeRpc",
+        }
+        .to_string()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, CandidType, Serialize, Deserialize, Default)]
@@ -92,6 +104,8 @@ pub fn require_manage_or_controller() -> Result<(), String> {
     if is_authorized(&caller, Auth::Manage) || ic_cdk::api::is_controller(&caller) {
         Ok(())
     } else {
+        let auth = MetricAuth(Auth::Manage.to_string());
+        add_metric_entry!(err_unauthorized, auth, 1);
         Err("You are not authorized".to_string())
     }
 }
@@ -100,6 +114,8 @@ pub fn require_register_provider() -> Result<(), String> {
     if is_authorized(&ic_cdk::caller(), Auth::RegisterProvider) {
         Ok(())
     } else {
+        let auth = MetricAuth(Auth::RegisterProvider.to_string());
+        add_metric_entry!(err_unauthorized, auth, 1);
         Err("You are not authorized".to_string())
     }
 }
@@ -120,6 +136,7 @@ pub fn do_authorize(principal: Principal, auth: Auth) -> bool {
         let mut auth_set = s.auth.get(&principal).unwrap_or_default();
         if auth_set.authorize(auth) {
             s.auth.insert(principal, auth_set);
+            add_metric_entry!(auths, MetricAuth(auth.to_string()), 1);
             true
         } else {
             false
@@ -139,6 +156,7 @@ pub fn do_deauthorize(principal: Principal, auth: Auth) -> bool {
         let principal = PrincipalStorable(principal);
         if let Some(mut auth_set) = s.auth.get(&principal) {
             let changed = auth_set.deauthorize(auth);
+            sub_metric_entry!(auths, MetricAuth(auth.to_string()), 1);
             if auth_set.is_empty() {
                 s.auth.remove(&principal);
             } else {

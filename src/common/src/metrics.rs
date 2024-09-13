@@ -17,8 +17,12 @@ pub struct Metrics {
     pub cycles_charged: HashMap<(MetricRpcMethod, MetricRpcHost), u128>,
     #[serde(rename = "cyclesWithdrawn")]
     pub cycles_withdrawn: u128,
+    #[serde(rename = "auths")]
+    pub auths: HashMap<MetricAuth, u128>,
     #[serde(rename = "errNoPermission")]
     pub err_no_permission: u64,
+    #[serde(rename = "errUnauthorized")]
+    pub err_unauthorized: HashMap<MetricAuth, u128>,
     #[serde(rename = "errHttpOutcall")]
     pub err_http_outcall: HashMap<(MetricRpcMethod, MetricRpcHost), u64>,
     #[serde(rename = "errHostNotAllowed")]
@@ -54,6 +58,11 @@ pub fn encode_metrics(w: &mut ic_metrics_encoder::MetricsEncoder<Vec<u8>>) -> st
             m.cycles_withdrawn.metric_value(),
             "Number of accumulated cycles withdrawn by RPC providers",
         )?;
+        w.gauge_entries(
+            "sol_auths",
+            &m.auths,
+            "Number of active authorizations for canister methods",
+        );
         w.counter_entries("sol_requests", &m.requests, "Number of JSON-RPC requests");
         w.counter_entries(
             "sol_responses",
@@ -69,6 +78,11 @@ pub fn encode_metrics(w: &mut ic_metrics_encoder::MetricsEncoder<Vec<u8>>) -> st
             "sol_err_http_outcall",
             &m.err_http_outcall,
             "Number of unsuccessful HTTP outcalls",
+        );
+        w.counter_entries(
+            "sol_err_unauthorized",
+            &m.err_unauthorized,
+            "Number of unauthorized errors for canister methods",
         );
         w.counter_entries(
             "sol_err_host_not_allowed",
@@ -133,6 +147,24 @@ impl<A: MetricLabels, B: MetricLabels, C: MetricLabels> MetricLabels for (A, B, 
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, CandidType, Deserialize)]
+pub struct MetricMethod(pub String);
+
+impl MetricLabels for MetricMethod {
+    fn metric_labels(&self) -> Vec<(&str, &str)> {
+        vec![("method", &self.0)]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, CandidType, Deserialize)]
+pub struct MetricAuth(pub String);
+
+impl MetricLabels for MetricAuth {
+    fn metric_labels(&self) -> Vec<(&str, &str)> {
+        vec![("auth", &self.0)]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, CandidType, Deserialize)]
 pub struct MetricRpcMethod(pub String);
 
 impl MetricLabels for MetricRpcMethod {
@@ -178,6 +210,13 @@ trait EncoderExtensions {
         map: &HashMap<K, V>,
         help: &str,
     );
+
+    fn gauge_entries<K: MetricLabels, V: MetricValue>(
+        &mut self,
+        name: &str,
+        map: &HashMap<K, V>,
+        help: &str,
+    );
 }
 
 impl EncoderExtensions for ic_metrics_encoder::MetricsEncoder<Vec<u8>> {
@@ -189,6 +228,22 @@ impl EncoderExtensions for ic_metrics_encoder::MetricsEncoder<Vec<u8>> {
     ) {
         map.iter().for_each(|(k, v)| {
             self.counter_vec(name, help)
+                .and_then(|m| {
+                    m.value(&k.metric_labels(), v.metric_value())?;
+                    Ok(())
+                })
+                .unwrap_or(());
+        })
+    }
+
+    fn gauge_entries<K: MetricLabels, V: MetricValue>(
+        &mut self,
+        name: &str,
+        map: &HashMap<K, V>,
+        help: &str,
+    ) {
+        map.iter().for_each(|(k, v)| {
+            self.gauge_vec(name, help)
                 .and_then(|m| {
                     m.value(&k.metric_labels(), v.metric_value())?;
                     Ok(())
@@ -215,6 +270,21 @@ macro_rules! add_metric_entry {
                     .entry($key)
                     .and_modify(|counter| *counter += amount)
                     .or_insert(amount);
+            }
+        });
+    }};
+}
+
+#[macro_export]
+macro_rules! sub_metric_entry {
+    ($metric:ident, $key:expr, $amount:expr) => {{
+        $crate::metrics::METRICS.with_borrow_mut(|m| {
+            let amount = $amount;
+            if amount != 0 {
+                m.$metric
+                    .entry($key)
+                    .and_modify(|counter| *counter = counter.saturating_sub(amount))
+                    .or_insert(0);
             }
         });
     }};
