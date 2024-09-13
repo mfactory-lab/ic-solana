@@ -59,6 +59,8 @@ type MessageHeader = record {
 };
 type Metrics = record {
   cyclesWithdrawn : nat;
+  errUnauthorized : vec record { text; nat };
+  auths : vec record { text; nat };
   responses : vec record { record { text; text; text }; nat64 };
   errNoPermission : nat64;
   inconsistentResponses : vec record { record { text; text }; nat64 };

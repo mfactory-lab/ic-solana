@@ -25,11 +25,17 @@ metrics: ## Get metrics
 	dfx canister call ic-solana-provider getMetrics '()'
 
 .PHONY: test
-test: ## Run tests
-	@dfx build test_canister; 
+test: fetch-pocket-ic ## Run tests
+	$(eval POCKET_IC_BIN?=$(shell pwd)/pocket-ic)
+
+	## @dfx build test_canister; 
 	@export IC_SOLANA_PROVIDER_PATH=./target/wasm32-unknown-unknown/release/ic_solana_provider.wasm.gz; 
 	@$(MAKE) build; 
-	@cargo test $(TEST) --no-fail-fast $(if $(TEST_NAME),-- $(TEST_NAME) --nocapture,-- --nocapture); 
+	@ POCKET_IC_BIN=${POCKET_IC_BIN} cargo test $(TEST) --no-fail-fast $(if $(TEST_NAME),-- $(TEST_NAME) --nocapture,-- --nocapture); 
+
+.PHONY: fetch-pocket-ic
+fetch-pocket-ic: ## Fetches working pocket-ic binary for tests
+	./scripts/fetch-pocket-ic
 
 .PHONY: test-e2e
 test-e2e: build ## Run e2e tests

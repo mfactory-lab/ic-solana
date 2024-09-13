@@ -14,9 +14,8 @@ use {
 };
 
 #[tokio::test]
-#[ignore = "This test is not working, as the Schnorr signature is not currently supported in pocket-ic"]
 async fn test_sol_address() {
-    const EXPECTED_ADDRESS: &str = "6uCnfVzwsAGJAhRj3H3iWcyitTbYt8a7yDvGga2LHqJf";
+    const EXPECTED_ADDRESS: &str = "5yNwm5B46JQZNeKPRnYPtjYT7yxbfgi5hCph981SnzB8";
 
     let mut pic = PocketIcBuilder::new()
         .with_nns_subnet()

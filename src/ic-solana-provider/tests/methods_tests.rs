@@ -364,7 +364,6 @@ async fn test_send_raw_transaction() {
 
 // milti_thread is needed for solana_client to work
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
-#[ignore = "This test is not working, as the Schnorr signature is not currently supported in pocket-ic"]
 async fn test_send_transaction() {
     // The amount to send from one account to the other, in lamports.
     const AMOUNT_TO_SEND: u64 = 1;

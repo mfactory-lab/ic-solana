@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+
+if [  -f pocket-ic ]; then
+    exit 0
+fi
+wget https://github.com/dfinity/ic/releases/download/release-2024-09-12_01-30-canister-snapshots/pocket-ic-x86_64-linux.gz
+gzip -d pocket-ic-x86_64-linux.gz
+chmod +x pocket-ic-x86_64-linux
+mv pocket-ic-x86_64-linux pocket-ic
+
+

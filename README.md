@@ -59,11 +59,14 @@ Once the job is completed, your application will be available at `http://localho
 We use [PocketIC](https://github.com/dfinity/pocketic) for integration testing. Please make sure to have it installed
 and the `POCKET_IC_BIN` environment variable set to the path of the `pocket-ic` binary.
 
-You can run the tests with the following command:
+You can run the tests with the following commands:
 
 ```sh
-make test
+make test # run all tests
+make test TEST="specified_test_here" # Run one test named "specified_test_here"
 ```
+
+#### Notice: Right now, PocketIC v5.0 doesn't support Schnorr signatures, so we use PocketIC from [this release](https://github.com/dfinity/ic/releases/tag/release-2024-09-12_01-30-canister-snapshots). This version of pocket ic could be fetched with `fetch-pocket-ic` Makefile method.
 
 ## Deployment on the Internet Computer
 

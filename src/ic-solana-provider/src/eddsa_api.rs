@@ -23,7 +23,7 @@ impl Display for SchnorrKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr
         let key_str = match self {
-            SchnorrKey::TestKeyLocal => "dfx_test_key",
+            SchnorrKey::TestKeyLocal => "dfx_test_key1",
             SchnorrKey::TestKey1 => "test_key_1",
             SchnorrKey::ProductionKey1 => "key_1",
             SchnorrKey::Custom(key) => key,
@@ -36,7 +36,7 @@ impl FromStr for SchnorrKey {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "dfx_test_key" => Ok(SchnorrKey::TestKeyLocal),
+            "dfx_test_key1" => Ok(SchnorrKey::TestKeyLocal),
             "test_key_1" => Ok(SchnorrKey::TestKey1),
             "key_1" => Ok(SchnorrKey::ProductionKey1),
             _ => Ok(SchnorrKey::Custom(s.to_string())),

@@ -52,6 +52,7 @@ async fn test_get_balance_mock() {
             headers: vec![],
             body: RESPONSE.to_vec(),
         }),
+        additional_responses: None,
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -104,6 +105,7 @@ async fn test_get_token_balance_mock() {
             headers: vec![],
             body: RESPONSE.to_vec(),
         }),
+        additional_responses: None,
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -153,6 +155,7 @@ async fn test_get_latest_blockhash_mock() {
             headers: vec![],
             body: RESPONSE.to_vec(),
         }),
+        additional_responses: None,
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -218,6 +221,7 @@ async fn test_get_account_info_mock() {
             headers: vec![],
             body: RESPONSE.to_vec(),
         }),
+        additional_responses: None,
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -736,6 +740,7 @@ async fn test_get_transaction_mock() {
             headers: vec![],
             body: response.to_vec(),
         }),
+        additional_responses: None,
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -786,6 +791,7 @@ async fn test_send_raw_transaction_mock() {
             headers: vec![],
             body: SEND_RAW_TRANSACTION_RESPONSE.to_vec(),
         }),
+        additional_responses: None,
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -862,6 +868,7 @@ async fn test_send_transaction_mock() {
             headers: vec![],
             body: SEND_RAW_TRANSACTION_RESPONSE.to_vec(),
         }),
+        additional_responses: None,
     };
 
     pic.mock_canister_http_response(mock).await;
