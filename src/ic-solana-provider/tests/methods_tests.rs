@@ -362,7 +362,7 @@ async fn test_send_raw_transaction() {
     todo!("Check the transaction after sol_getTransaction is fixed");
 }
 
-// milti_thread is needed for solana_client to work
+// `multi_thread` is required for a solana client to work
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_send_transaction() {
     // The amount to send from one account to the other, in lamports.
@@ -517,7 +517,7 @@ async fn test_request() {
 
 #[tokio::test]
 async fn test_request_airdrop() {
-    const AIRDROP_AMOUNT_LAMPROTS: u64 = 100000000;
+    const AIRDROP_AMOUNT_LAMPORTS: u64 = 100000000;
     let pubkey = solana_sdk::pubkey::Pubkey::new_unique().to_string();
 
     let mut pic = PocketIcBuilder::new()
@@ -556,7 +556,7 @@ async fn test_request_airdrop() {
             encode_args((
                 DEVNET_PROVIDER_ID,
                 PUBKEY1.to_string(),
-                AIRDROP_AMOUNT_LAMPROTS,
+                AIRDROP_AMOUNT_LAMPORTS,
             ))
             .unwrap(),
         )
@@ -586,5 +586,5 @@ async fn test_request_airdrop() {
         .unwrap()
         .unwrap();
 
-    assert!(balance_after - balance_before == AIRDROP_AMOUNT_LAMPROTS);
+    assert_eq!(balance_after - balance_before, AIRDROP_AMOUNT_LAMPORTS);
 }

@@ -63,11 +63,11 @@ pub const SOLANA_TESTNET_CLUSTER_URL: &str = "https://api.testnet.solana.com";
 
 pub async fn init(pic: &PocketIc) -> Principal {
     let (canister_id, wasm_module) =
-        create_canister_with_id(pic, "IC_SOLANA_PROVIDER_PATH", CANISTER_ID.clone()).await;
+        create_canister_with_id(pic, "IC_SOLANA_PROVIDER_PATH", *CANISTER_ID).await;
 
     let args = InitArgs {
         demo: Some(true),
-        managers: Some(vec![CONTROLLER_PRINCIPAL.clone()]),
+        managers: Some(vec![*CONTROLLER_PRINCIPAL]),
         schnorr_key: None,
     };
 
@@ -75,7 +75,7 @@ pub async fn init(pic: &PocketIc) -> Principal {
         canister_id,
         wasm_module,
         encode_one(args).unwrap(),
-        Some(CONTROLLER_PRINCIPAL.clone()),
+        Some(*CONTROLLER_PRINCIPAL),
     )
     .await;
 
@@ -87,9 +87,9 @@ pub async fn init(pic: &PocketIc) -> Principal {
 pub async fn create_canister(ic: &PocketIc, env_key: &str) -> (Principal, Vec<u8>) {
     let canister_id = ic
         .create_canister_with_settings(
-            Some(CONTROLLER_PRINCIPAL.clone()),
+            Some(*CONTROLLER_PRINCIPAL),
             Some(CanisterSettings {
-                controllers: Some(vec![CONTROLLER_PRINCIPAL.clone()]),
+                controllers: Some(vec![*CONTROLLER_PRINCIPAL]),
                 ..CanisterSettings::default()
             }),
         )
@@ -110,9 +110,9 @@ pub async fn create_canister_with_id(
     canister_id: Principal,
 ) -> (Principal, Vec<u8>) {
     ic.create_canister_with_id(
-        Some(CONTROLLER_PRINCIPAL.clone()),
+        Some(*CONTROLLER_PRINCIPAL),
         Some(CanisterSettings {
-            controllers: Some(vec![CONTROLLER_PRINCIPAL.clone()]),
+            controllers: Some(vec![*CONTROLLER_PRINCIPAL]),
             ..CanisterSettings::default()
         }),
         canister_id,
@@ -153,7 +153,7 @@ where
     Tuple: ArgumentDecoder<'a>,
 {
     match data {
-        WasmResult::Reply(data) => decode_args::<'a, Tuple>(&data),
+        WasmResult::Reply(data) => decode_args::<'a, Tuple>(data),
         WasmResult::Reject(error_message) => Err(candid::Error::Custom(anyhow::anyhow!(
             error_message.clone()
         ))),

@@ -32,7 +32,7 @@ async fn test_get_balance_mock() {
     let call = pic
         .submit_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "sol_getBalance",
             encode_args((MAINNET_PROVIDER_ID, ACCOUNT)).unwrap(),
         )
@@ -42,7 +42,7 @@ async fn test_get_balance_mock() {
     fast_forward(&pic, 5).await;
 
     let reqs = pic.get_canister_http().await;
-    let req = reqs.get(0).unwrap();
+    let req = reqs.first().unwrap();
 
     let mock = MockCanisterHttpResponse {
         subnet_id: req.subnet_id,
@@ -85,7 +85,7 @@ async fn test_get_token_balance_mock() {
     let call = pic
         .submit_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "sol_getTokenBalance",
             encode_args((MAINNET_PROVIDER_ID, ACCOUNT)).unwrap(),
         )
@@ -95,7 +95,7 @@ async fn test_get_token_balance_mock() {
     fast_forward(&pic, 4).await;
 
     let reqs = pic.get_canister_http().await;
-    let req = reqs.get(0).unwrap();
+    let req = reqs.first().unwrap();
 
     let mock = MockCanisterHttpResponse {
         subnet_id: req.subnet_id,
@@ -135,7 +135,7 @@ async fn test_get_latest_blockhash_mock() {
     let call = pic
         .submit_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "sol_getLatestBlockhash",
             encode_one(MAINNET_PROVIDER_ID).unwrap(),
         )
@@ -145,7 +145,7 @@ async fn test_get_latest_blockhash_mock() {
     fast_forward(&pic, 4).await;
 
     let reqs = pic.get_canister_http().await;
-    let req = reqs.get(0).unwrap();
+    let req = reqs.first().unwrap();
 
     let mock = MockCanisterHttpResponse {
         subnet_id: req.subnet_id,
@@ -201,7 +201,7 @@ async fn test_get_account_info_mock() {
     let call = pic
         .submit_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "sol_getAccountInfo",
             encode_args((MAINNET_PROVIDER_ID, ACCOUNT)).unwrap(),
         )
@@ -211,7 +211,7 @@ async fn test_get_account_info_mock() {
     fast_forward(&pic, 4).await;
 
     let reqs = pic.get_canister_http().await;
-    let req = reqs.get(0).unwrap();
+    let req = reqs.first().unwrap();
 
     let mock = MockCanisterHttpResponse {
         subnet_id: req.subnet_id,
@@ -720,7 +720,7 @@ async fn test_get_transaction_mock() {
     let call = pic
         .submit_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "sol_getTransaction",
             encode_args((MAINNET_PROVIDER_ID, SIGNATURE)).unwrap(),
         )
@@ -730,7 +730,7 @@ async fn test_get_transaction_mock() {
     fast_forward(&pic, 4).await;
 
     let reqs = pic.get_canister_http().await;
-    let req = reqs.get(0).unwrap();
+    let req = reqs.first().unwrap();
 
     let mock = MockCanisterHttpResponse {
         subnet_id: req.subnet_id,
@@ -771,7 +771,7 @@ async fn test_send_raw_transaction_mock() {
     let call = pic
         .submit_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "sol_sendRawTransaction",
             encode_args((MAINNET_PROVIDER_ID, SEND_RAW_TRANSACTION_REQUEST)).unwrap(),
         )
@@ -781,7 +781,7 @@ async fn test_send_raw_transaction_mock() {
     fast_forward(&pic, 4).await;
 
     let reqs = pic.get_canister_http().await;
-    let req = reqs.get(0).unwrap();
+    let req = reqs.first().unwrap();
 
     let mock = MockCanisterHttpResponse {
         subnet_id: req.subnet_id,
@@ -823,7 +823,7 @@ async fn test_send_transaction_mock() {
     let call_result = pic
         .update_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "sol_address",
             encode_one(()).unwrap(),
         )
@@ -848,7 +848,7 @@ async fn test_send_transaction_mock() {
     let call = pic
         .submit_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "sol_sendTransaction",
             encode_args((MAINNET_PROVIDER_ID, args)).unwrap(),
         )
@@ -858,7 +858,7 @@ async fn test_send_transaction_mock() {
     fast_forward(&pic, 4).await;
 
     let reqs = pic.get_canister_http().await;
-    let req = reqs.get(0).unwrap();
+    let req = reqs.first().unwrap();
 
     let mock = MockCanisterHttpResponse {
         subnet_id: req.subnet_id,

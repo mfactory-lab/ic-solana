@@ -48,7 +48,7 @@ async fn test_sol_address() {
     assert_eq!(address.unwrap(), EXPECTED_ADDRESS);
 }
 
-// milti_thread is needed for solana_client to work
+// `multi_thread` is required for a solana client to work
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_request_cost() {
     // The amount to send from one account to the other, in lamports.
@@ -77,7 +77,7 @@ async fn test_request_cost() {
     let keypair2 = solana_sdk::signer::keypair::Keypair::from_bytes(&SECRET2).unwrap();
     let pubkey2 = keypair2.pubkey();
 
-    // Getting latest blockhash
+    // Getting the latest blockhash
     let latest_blockhash = solana_client.get_latest_blockhash().unwrap();
 
     // Creating a transaction to send 2 SOL from keypair1 to keypair2
@@ -117,9 +117,9 @@ async fn test_providers() {
     // Authorize the controller to register one provider
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "authorize",
-        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::RegisterProvider)).unwrap(),
+        encode_args((*CONTROLLER_PRINCIPAL, Auth::RegisterProvider)).unwrap(),
     )
     .await
     .unwrap();
@@ -144,7 +144,7 @@ async fn test_providers() {
 
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "registerProvider",
         encode_one(register_mainnet_provider_args.clone()).unwrap(),
     )
@@ -153,7 +153,7 @@ async fn test_providers() {
 
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "registerProvider",
         encode_one(register_devnet_provider_args.clone()).unwrap(),
     )
@@ -162,7 +162,7 @@ async fn test_providers() {
 
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "registerProvider",
         encode_one(register_testnet_provider_args.clone()).unwrap(),
     )
@@ -172,7 +172,7 @@ async fn test_providers() {
     let result = pic
         .query_call(
             canister_id,
-            CONTROLLER_PRINCIPAL.clone(),
+            *CONTROLLER_PRINCIPAL,
             "getProviders",
             encode_one(()).unwrap(),
         )
@@ -190,7 +190,7 @@ async fn test_providers() {
 
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "unregisterProvider",
         encode_one("test_mainnet".to_string()).unwrap(),
     )
@@ -200,7 +200,7 @@ async fn test_providers() {
     let result = pic
         .query_call(
             canister_id,
-            CONTROLLER_PRINCIPAL.clone(),
+            *CONTROLLER_PRINCIPAL,
             "getProviders",
             encode_one(()).unwrap(),
         )
@@ -219,9 +219,9 @@ async fn test_providers() {
     // Authorize the controller to register one provider
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "authorize",
-        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::RegisterProvider)).unwrap(),
+        encode_args((*CONTROLLER_PRINCIPAL, Auth::RegisterProvider)).unwrap(),
     )
     .await
     .unwrap();
@@ -229,16 +229,16 @@ async fn test_providers() {
     // Authorize the controller to register another one provider
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "authorize",
-        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::RegisterProvider)).unwrap(),
+        encode_args((*CONTROLLER_PRINCIPAL, Auth::RegisterProvider)).unwrap(),
     )
     .await
     .unwrap();
 
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "registerProvider",
         encode_one(register_devnet_provider_args.clone()).unwrap(),
     )
@@ -247,7 +247,7 @@ async fn test_providers() {
 
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "registerProvider",
         encode_one(register_testnet_provider_args.clone()).unwrap(),
     )
@@ -257,7 +257,7 @@ async fn test_providers() {
     let result = pic
         .query_call(
             canister_id,
-            CONTROLLER_PRINCIPAL.clone(),
+            *CONTROLLER_PRINCIPAL,
             "getProviders",
             encode_one(()).unwrap(),
         )
@@ -290,9 +290,9 @@ async fn test_auth() {
     // Authorize the controller to register one provider
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "authorize",
-        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::RegisterProvider)).unwrap(),
+        encode_args((*CONTROLLER_PRINCIPAL, Auth::RegisterProvider)).unwrap(),
     )
     .await
     .unwrap();
@@ -300,7 +300,7 @@ async fn test_auth() {
     let result = pic
         .query_call(
             canister_id,
-            CONTROLLER_PRINCIPAL.clone(),
+            *CONTROLLER_PRINCIPAL,
             "getAuthorized",
             encode_one(Auth::RegisterProvider).unwrap(),
         )
@@ -309,14 +309,14 @@ async fn test_auth() {
 
     let (auth,): (Vec<Principal>,) = decode_raw_wasm_result(&result).unwrap();
 
-    assert_eq!(auth, vec![CONTROLLER_PRINCIPAL.clone()]);
+    assert_eq!(auth, vec![*CONTROLLER_PRINCIPAL]);
 
     // Deauthorize the controller to register one provider
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "deauthorize",
-        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::RegisterProvider)).unwrap(),
+        encode_args((*CONTROLLER_PRINCIPAL, Auth::RegisterProvider)).unwrap(),
     )
     .await
     .unwrap();
@@ -324,7 +324,7 @@ async fn test_auth() {
     let result = pic
         .query_call(
             canister_id,
-            CONTROLLER_PRINCIPAL.clone(),
+            *CONTROLLER_PRINCIPAL,
             "getAuthorized",
             encode_one(Auth::RegisterProvider).unwrap(),
         )
@@ -335,12 +335,12 @@ async fn test_auth() {
 
     assert!(auth.is_empty());
 
-    // Trying to authorize from a non authorized controller
+    // Trying to authorize from a non-authorized controller
     pic.update_call(
         canister_id,
-        USER_PRINCIPAL.clone(),
+        *USER_PRINCIPAL,
         "authorize",
-        encode_args((USER_PRINCIPAL.clone(), Auth::Manage)).unwrap(),
+        encode_args((*USER_PRINCIPAL, Auth::Manage)).unwrap(),
     )
     .await
     .unwrap();
@@ -348,7 +348,7 @@ async fn test_auth() {
     let result = pic
         .query_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "getAuthorized",
             encode_one(Auth::Manage).unwrap(),
         )
@@ -357,14 +357,14 @@ async fn test_auth() {
 
     let (auth,): (Vec<Principal>,) = decode_raw_wasm_result(&result).unwrap();
 
-    assert_eq!(auth, vec![CONTROLLER_PRINCIPAL.clone()]);
+    assert_eq!(auth, vec![*CONTROLLER_PRINCIPAL]);
 
     // Trying to authorize two manage auth
     pic.update_call(
         canister_id,
-        CONTROLLER_PRINCIPAL.clone(),
+        *CONTROLLER_PRINCIPAL,
         "authorize",
-        encode_args((CONTROLLER_PRINCIPAL.clone(), Auth::Manage)).unwrap(),
+        encode_args((*CONTROLLER_PRINCIPAL, Auth::Manage)).unwrap(),
     )
     .await
     .unwrap();
@@ -372,7 +372,7 @@ async fn test_auth() {
     let result = pic
         .query_call(
             canister_id,
-            USER_PRINCIPAL.clone(),
+            *USER_PRINCIPAL,
             "getAuthorized",
             encode_one(Auth::Manage).unwrap(),
         )
@@ -381,5 +381,5 @@ async fn test_auth() {
 
     let (auth,): (Vec<Principal>,) = decode_raw_wasm_result(&result).unwrap();
 
-    assert_eq!(auth, vec![CONTROLLER_PRINCIPAL.clone()]);
+    assert_eq!(auth, vec![*CONTROLLER_PRINCIPAL]);
 }
