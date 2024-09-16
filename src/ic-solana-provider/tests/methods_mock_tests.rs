@@ -55,7 +55,7 @@ async fn test_get_balance_mock() {
             headers: vec![],
             body: RESPONSE.to_vec(),
         }),
-        additional_responses: None,
+        additional_responses: vec![],
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -64,6 +64,8 @@ async fn test_get_balance_mock() {
         decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
 
     assert_eq!(result.unwrap(), EXPECTED);
+
+    pic.drop().await;
 }
 
 #[tokio::test]
@@ -108,7 +110,7 @@ async fn test_get_token_balance_mock() {
             headers: vec![],
             body: RESPONSE.to_vec(),
         }),
-        additional_responses: None,
+        additional_responses: vec![],
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -158,7 +160,7 @@ async fn test_get_latest_blockhash_mock() {
             headers: vec![],
             body: RESPONSE.to_vec(),
         }),
-        additional_responses: None,
+        additional_responses: vec![],
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -224,7 +226,7 @@ async fn test_get_account_info_mock() {
             headers: vec![],
             body: RESPONSE.to_vec(),
         }),
-        additional_responses: None,
+        additional_responses: vec![],
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -744,7 +746,7 @@ async fn test_get_transaction_mock() {
             headers: vec![],
             body: response.to_vec(),
         }),
-        additional_responses: None,
+        additional_responses: vec![],
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -796,7 +798,7 @@ async fn test_send_raw_transaction_mock() {
             headers: vec![],
             body: SEND_RAW_TRANSACTION_RESPONSE.to_vec(),
         }),
-        additional_responses: None,
+        additional_responses: vec![],
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -874,7 +876,7 @@ async fn test_send_transaction_mock() {
             headers: vec![],
             body: LATEST_BLOCKHASH_RESPONSE.to_vec(),
         }),
-        additional_responses: None,
+        additional_responses: vec![],
     };
 
     pic.mock_canister_http_response(mock).await;
@@ -882,7 +884,7 @@ async fn test_send_transaction_mock() {
     fast_forward(&pic, 10).await;
 
     let reqs = pic.get_canister_http().await;
-    let req = reqs.get(0).unwrap();
+    let req = reqs.first().unwrap();
 
     let mock = MockCanisterHttpResponse {
         subnet_id: req.subnet_id,
@@ -892,7 +894,7 @@ async fn test_send_transaction_mock() {
             headers: vec![],
             body: SEND_TRANSACTION_RESPONSE.to_vec(),
         }),
-        additional_responses: None,
+        additional_responses: vec![],
     };
 
     pic.mock_canister_http_response(mock).await;

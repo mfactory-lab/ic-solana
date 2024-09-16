@@ -12,8 +12,9 @@ use {
     ic_solana::{
         rpc_client::RpcError,
         types::{
-            Account, CandidValue, TaggedEncodedConfirmedTransactionWithStatusMeta,
-            TaggedEncodedTransaction, TaggedUiMessage, UiTokenAmount,
+            Account, CandidValue, CommitmentConfig,
+            TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedEncodedTransaction,
+            TaggedUiMessage, TransactionStatus, UiTokenAmount,
         },
     },
     ic_solana_provider::types::SendTransactionRequest,
@@ -214,7 +215,7 @@ async fn test_get_transaction() {
     .unwrap();
 }
 
-// milti_thread is needed for solana_client to work
+// `multi_thread` is required for a solana client to work
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn test_send_raw_transaction() {
     // The amount to send from one account to the other, in lamports.
@@ -306,7 +307,7 @@ async fn test_send_raw_transaction() {
         std::mem::swap(&mut pre_balance1, &mut pre_balance2);
     }
 
-    // Getting latest blockhash
+    // Getting the latest blockhash
     let latest_blockhash = solana_client.get_latest_blockhash().unwrap();
 
     // Creating a transaction to send 2 SOL from keypair1 to keypair2
@@ -355,9 +356,21 @@ async fn test_send_raw_transaction() {
     .unwrap()
     .unwrap();
 
-    let pre_balances = tx.transaction.meta.as_ref().unwrap().pre_balances.clone();
+    let pre_balances = tx
+        .transaction
+        .meta
+        .as_ref()
+        .unwrap()
+        .pre_balances
+        .as_slice();
 
-    let post_balances = tx.transaction.meta.as_ref().unwrap().post_balances.clone();
+    let post_balances = tx
+        .transaction
+        .meta
+        .as_ref()
+        .unwrap()
+        .post_balances
+        .as_slice();
 
     let account_keys = if let TaggedEncodedTransaction::Json(ref json) = tx.transaction.transaction
     {
@@ -384,12 +397,10 @@ async fn test_send_raw_transaction() {
     assert_eq!(post_balances[2], pre_balances[2]);
 }
 
-// `multi_thread` is required for a solana client to work
-#[tokio::test(flavor = "multi_thread", worker_threads = 1)]
+#[tokio::test]
 async fn test_send_transaction() {
     // The amount to send from one account to the other, in lamports.
     const AMOUNT_TO_SEND: u64 = 1;
-
     const FEE: u64 = 5000;
 
     let mut pic = PocketIcBuilder::new()
@@ -411,9 +422,6 @@ async fn test_send_transaction() {
     agent.fetch_root_key().await.unwrap();
 
     let canister_id = init(&pic).await;
-
-    let solana_client =
-        solana_client::rpc_client::RpcClient::new(SOLANA_DEVNET_CLUSTER_URL.to_string());
 
     let call_result = agent
         .update(&canister_id, "sol_address")
@@ -473,20 +481,46 @@ async fn test_send_transaction() {
         .unwrap()
         .unwrap();
 
-    let signature = Signature::from_str(&signature_str).unwrap();
+    // let solana_client =
+    //     solana_client::rpc_client::RpcClient::new(SOLANA_DEVNET_CLUSTER_URL.to_string());
+    // let signature = Signature::from_str(&signature_str).unwrap();
 
     // Waiting for the transaction to be confirmed
     loop {
-        if solana_client.confirm_transaction(&signature).unwrap() {
-            break;
+        let call_result = agent
+            .update(&canister_id, "sol_getSignatureStatuses")
+            .with_arg(encode_args((DEVNET_PROVIDER_ID, vec![&signature_str])).unwrap())
+            .call_and_wait()
+            .await
+            .unwrap();
+
+        let res = Decode!(
+            &call_result,
+            ic_solana::rpc_client::RpcResult<Vec<Option<TransactionStatus>>>
+        )
+        .unwrap()
+        .unwrap();
+
+        let tx_status = res.first().unwrap();
+
+        if let Some(tx_status) = tx_status {
+            if tx_status.status.is_ok()
+                && tx_status.satisfies_commitment(CommitmentConfig::finalized())
+            {
+                break;
+            }
         }
+
+        // if solana_client.confirm_transaction(&signature).unwrap() {
+        //     break;
+        // }
 
         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     }
 
     let call_result = agent
         .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_args((DEVNET_PROVIDER_ID, signature_str.clone())).unwrap())
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, &signature_str)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -498,9 +532,21 @@ async fn test_send_transaction() {
     .unwrap()
     .unwrap();
 
-    let pre_balances = tx.transaction.meta.as_ref().unwrap().pre_balances.clone();
+    let pre_balances = tx
+        .transaction
+        .meta
+        .as_ref()
+        .unwrap()
+        .pre_balances
+        .as_slice();
 
-    let post_balances = tx.transaction.meta.as_ref().unwrap().post_balances.clone();
+    let post_balances = tx
+        .transaction
+        .meta
+        .as_ref()
+        .unwrap()
+        .post_balances
+        .as_slice();
 
     let account_keys = if let TaggedEncodedTransaction::Json(ref json) = tx.transaction.transaction
     {
@@ -531,6 +577,7 @@ async fn test_send_transaction() {
 async fn test_request() {
     const METHOD: &str = "getBalance";
     const MAX_RESPONSE_BYTES: u64 = 200;
+
     let params = serde_json::json!(
         ["AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY",{"minContextSlot":null}]
     );
@@ -595,7 +642,7 @@ async fn test_request_airdrop() {
 
     let call_result = agent
         .update(&canister_id, "sol_getBalance")
-        .with_arg(encode_args((MAINNET_PROVIDER_ID, pubkey.clone())).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, &pubkey)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
