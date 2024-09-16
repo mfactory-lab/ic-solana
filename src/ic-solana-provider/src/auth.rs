@@ -8,7 +8,7 @@ use {
     ic_solana_common::{add_metric_entry, logs::INFO, metrics::MetricAuth, sub_metric_entry},
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
-    std::borrow::Cow,
+    std::{borrow::Cow, fmt::Display},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, CandidType, Serialize, Deserialize)]
@@ -19,15 +19,18 @@ pub enum Auth {
     // FreeRpc,
 }
 
-impl ToString for Auth {
-    fn to_string(&self) -> String {
-        match self {
-            Auth::Manage => "manage",
-            Auth::RegisterProvider => "register_provider",
-            // Auth::PriorityRpc => "PriorityRpc",
-            // Auth::FreeRpc => "FreeRpc",
-        }
-        .to_string()
+impl Display for Auth {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Auth::Manage => "manage",
+                Auth::RegisterProvider => "register_provider",
+                // Auth::PriorityRpc => "PriorityRpc",
+                // Auth::FreeRpc => "FreeRpc",
+            }
+        )
     }
 }
 
