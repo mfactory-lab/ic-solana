@@ -12,13 +12,14 @@ pub mod message;
 pub mod pubkey;
 pub mod reward;
 pub mod signature;
+pub mod tagged;
 pub mod transaction;
 pub mod transaction_error;
 
 pub use {
     account::*, blockhash::*, cluster::*, commitment::*, config::*, epoch_info::*,
     fee_calculator::*, filter::*, instruction::*, message::*, pubkey::*, reward::*, signature::*,
-    transaction::*, transaction_error::*,
+    tagged::*, transaction::*, transaction_error::*,
 };
 
 /// The unit of time a given leader schedule is honored.

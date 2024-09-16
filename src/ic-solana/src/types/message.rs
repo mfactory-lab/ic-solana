@@ -25,9 +25,11 @@ pub struct Message {
 
     /// All the account keys used by this transaction.
     #[serde(with = "short_vec")]
+    #[serde(rename = "accountKeys")]
     pub account_keys: Vec<Pubkey>,
 
     /// The id of a recent ledger entry.
+    #[serde(rename = "recentBlockhash")]
     pub recent_blockhash: BlockHash,
 
     /// Programs that will be executed in sequence and committed in one atomic transaction if all
@@ -118,14 +120,17 @@ pub struct MessageHeader {
     /// The number of signatures required for this message to be considered
     /// valid. The signers of those signatures must match the first
     /// `num_required_signatures` of [`Message::account_keys`].
+    #[serde(rename = "numRequiredSignatures")]
     pub num_required_signatures: u8,
 
     /// The last `num_readonly_signed_accounts` of the signed keys are read-only
     /// accounts.
+    #[serde(rename = "numReadonlySignedAccounts")]
     pub num_readonly_signed_accounts: u8,
 
     /// The last `num_readonly_unsigned_accounts` of the unsigned keys are
     /// read-only accounts.
+    #[serde(rename = "numReadonlyUnsignedAccounts")]
     pub num_readonly_unsigned_accounts: u8,
 }
 
@@ -140,10 +145,16 @@ pub enum UiMessage {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiParsedMessage {
+    #[serde(rename = "accountKeys")]
     pub account_keys: Vec<ParsedAccount>,
+    #[serde(rename = "recentBlockhash")]
     pub recent_blockhash: String,
     pub instructions: Vec<UiInstruction>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "addressTableLookups"
+    )]
     pub address_table_lookups: Option<Vec<UiAddressTableLookup>>,
 }
 
@@ -152,10 +163,16 @@ pub struct UiParsedMessage {
 #[serde(rename_all = "camelCase")]
 pub struct UiRawMessage {
     pub header: MessageHeader,
+    #[serde(rename = "accountKeys")]
     pub account_keys: Vec<String>,
+    #[serde(rename = "recentBlockhash")]
     pub recent_blockhash: String,
     pub instructions: Vec<UiCompiledInstruction>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "addressTableLookups"
+    )]
     pub address_table_lookups: Option<Vec<UiAddressTableLookup>>,
 }
 
@@ -163,8 +180,11 @@ pub struct UiRawMessage {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiAddressTableLookup {
+    #[serde(rename = "accountKey")]
     pub account_key: String,
+    #[serde(rename = "writableIndexes")]
     pub writable_indexes: Vec<u8>,
+    #[serde(rename = "readonlyIndexes")]
     pub readonly_indexes: Vec<u8>,
 }
 
