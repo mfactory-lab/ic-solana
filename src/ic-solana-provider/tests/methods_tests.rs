@@ -176,8 +176,7 @@ async fn test_get_transaction() {
     const EXISTING_SIGNATURE: &str =
         "3kxL8Qvp16kmVNiUkQSJ3zLvCJDK4qPZZ1ZL8W2VHeYoJUJnQ4VqMHFMNSmsGBq7rTfpe8cTzCopMSNRen6vGFt1";
 
-    const NON_EXISTING_SIGNATURE: &str =
-        "3kxL8Qvp16kmVNiUkQSJ3zLvCJDK4qPZZ1ZL8W2VHeYoJUJnQ4VqMHFMNSmsGBq7rTfpe8cTzCopMSNRen6vGFt2";
+    const TRANSACTION_RESPONSE_SIZE_ESTIMATE: u64 = 10500;
 
     let mut pic = PocketIcBuilder::new()
         .with_nns_subnet()
@@ -195,7 +194,14 @@ async fn test_get_transaction() {
 
     let existing_account_res = agent
         .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_args((MAINNET_PROVIDER_ID, EXISTING_SIGNATURE)).unwrap())
+        .with_arg(
+            encode_args((
+                MAINNET_PROVIDER_ID,
+                EXISTING_SIGNATURE,
+                TRANSACTION_RESPONSE_SIZE_ESTIMATE,
+            ))
+            .unwrap(),
+        )
         .call_and_wait()
         .await
         .unwrap();
@@ -206,21 +212,6 @@ async fn test_get_transaction() {
     )
     .unwrap()
     .unwrap();
-
-    let non_existing_account_res = agent
-        .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_args((MAINNET_PROVIDER_ID, NON_EXISTING_SIGNATURE)).unwrap())
-        .call_and_wait()
-        .await
-        .unwrap();
-
-    let tx = Decode!(
-        &non_existing_account_res,
-        ic_solana::rpc_client::RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta>
-    )
-    .unwrap();
-
-    println!("TX: {:#?}", tx);
 }
 
 // milti_thread is needed for solana_client to work

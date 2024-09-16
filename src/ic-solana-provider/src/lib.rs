@@ -158,6 +158,7 @@ pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult
 pub async fn sol_get_transaction(
     provider: String,
     signature: String,
+    max_response_bytes: Option<u64>,
 ) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
     let client = rpc_client(&provider);
     let signature = Signature::from_str(&signature).expect("Invalid signature");
@@ -168,6 +169,7 @@ pub async fn sol_get_transaction(
                 max_supported_transaction_version: Some(0),
                 ..RpcTransactionConfig::default()
             },
+            max_response_bytes,
         )
         .await?;
     Ok(response.into())

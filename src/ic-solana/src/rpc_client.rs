@@ -641,6 +641,7 @@ impl RpcClient {
         &self,
         signature: &Signature,
         config: RpcTransactionConfig,
+        max_response_bytes: Option<u64>,
     ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
         let payload = RpcRequest::GetTransaction.build_request_json(
             self.next_request_id(),
@@ -648,7 +649,10 @@ impl RpcClient {
         );
 
         let response = self
-            .call(&payload, TRANSACTION_RESPONSE_SIZE_ESTIMATE)
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(TRANSACTION_RESPONSE_SIZE_ESTIMATE),
+            )
             .await?;
 
         let json_response = serde_json::from_str::<
