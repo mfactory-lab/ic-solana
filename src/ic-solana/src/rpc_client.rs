@@ -615,19 +615,26 @@ impl RpcClient {
         &self,
         signatures: &[Signature],
         config: RpcSignatureStatusConfig,
-    ) -> RpcResult<Vec<TransactionStatus>> {
+    ) -> RpcResult<Vec<Option<TransactionStatus>>> {
+        let signatures = signatures.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
         let payload = RpcRequest::GetSignatureStatuses
             .build_request_json(self.next_request_id(), json!([signatures, config]));
 
-        let response = self.call(&payload, 128).await?;
+        // Estimate 256 bytes per transaction status to account for errors and metadata
+        let max_response_bytes =
+            signatures.len() as u64 * TRANSACTION_STATUS_RESPONSE_SIZE_ESTIMATE;
 
-        let json_response =
-            serde_json::from_str::<JsonRpcResponse<Vec<TransactionStatus>>>(&response)?;
+        let response = self.call(&payload, max_response_bytes).await?;
+
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<Vec<Option<TransactionStatus>>>>,
+        >(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
         } else {
-            Ok(json_response.result.unwrap())
+            Ok(json_response.result.unwrap().parse_value())
         }
     }
 

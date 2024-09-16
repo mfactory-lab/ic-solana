@@ -8,7 +8,7 @@ use {
             reward::Rewards,
             signature::Signature,
             transaction_error::TransactionError,
-            BlockHash, Slot, UnixTimestamp,
+            BlockHash, CommitmentConfig, Slot, UnixTimestamp,
         },
         utils::short_vec,
     },
@@ -199,7 +199,7 @@ pub enum EncodedTransaction {
     Accounts(UiAccountsList),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionConfirmationStatus {
     Processed,
@@ -207,7 +207,7 @@ pub enum TransactionConfirmationStatus {
     Finalized,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionStatus {
     pub slot: Slot,
@@ -217,7 +217,42 @@ pub struct TransactionStatus {
     pub confirmation_status: Option<TransactionConfirmationStatus>,
 }
 
-/// A duplicate representation of TransactionStatusMeta with `err` field
+impl TransactionStatus {
+    pub fn satisfies_commitment(&self, commitment_config: CommitmentConfig) -> bool {
+        if commitment_config.is_finalized() {
+            self.confirmations.is_none()
+        } else if commitment_config.is_confirmed() {
+            if let Some(status) = &self.confirmation_status {
+                *status != TransactionConfirmationStatus::Processed
+            } else {
+                // These fallback cases handle TransactionStatus RPC responses from older software
+                self.confirmations.is_some() && self.confirmations.unwrap() > 1
+                    || self.confirmations.is_none()
+            }
+        } else {
+            true
+        }
+    }
+
+    // Returns `confirmation_status`, or if is_none, determine the status from confirmations.
+    // Facilitates querying nodes on older software
+    pub fn confirmation_status(&self) -> TransactionConfirmationStatus {
+        match &self.confirmation_status {
+            Some(status) => status.clone(),
+            None => {
+                if self.confirmations.is_none() {
+                    TransactionConfirmationStatus::Finalized
+                } else if self.confirmations.unwrap() > 0 {
+                    TransactionConfirmationStatus::Confirmed
+                } else {
+                    TransactionConfirmationStatus::Processed
+                }
+            }
+        }
+    }
+}
+
+/// A duplicate representation of TransactionStatusMeta with the `err` field
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTransactionStatusMeta {

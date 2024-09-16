@@ -21,12 +21,12 @@ use {
         query, update,
     },
     ic_solana::{
-        rpc_client::RpcResult,
+        rpc_client::{RpcError, RpcResult},
         types::{
             Account, BlockHash, CandidValue, Instruction, Message, Pubkey, RpcAccountInfoConfig,
-            RpcContextConfig, RpcSendTransactionConfig, RpcTransactionConfig, Signature,
-            TaggedEncodedConfirmedTransactionWithStatusMeta, Transaction, UiAccountEncoding,
-            UiTokenAmount,
+            RpcContextConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
+            RpcTransactionConfig, Signature, TaggedEncodedConfirmedTransactionWithStatusMeta,
+            Transaction, TransactionStatus, UiAccountEncoding, UiTokenAmount,
         },
     },
     ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
@@ -148,6 +148,36 @@ pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult
         )
         .await?;
     Ok(account_info)
+}
+
+///
+/// Returns the statuses of a list of signatures.
+/// Each signature must be a txid, the first signature of a transaction.
+///
+#[update(name = "sol_getSignatureStatuses")]
+#[candid_method(rename = "sol_getSignatureStatuses")]
+pub async fn sol_get_signature_statuses(
+    provider: String,
+    signatures: Vec<String>,
+) -> RpcResult<Vec<Option<TransactionStatus>>> {
+    let client = rpc_client(&provider);
+
+    let signatures: Vec<Signature> = signatures
+        .into_iter()
+        .map(|s| Signature::from_str(&s))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| RpcError::ParseError(e.to_string()))?;
+
+    let response = client
+        .get_signature_statuses(
+            &signatures,
+            RpcSignatureStatusConfig {
+                search_transaction_history: false,
+            },
+        )
+        .await?;
+
+    Ok(response)
 }
 
 ///
