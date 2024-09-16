@@ -23,9 +23,10 @@ use {
     ic_solana::{
         rpc_client::RpcResult,
         types::{
-            Account, BlockHash, EncodedConfirmedTransactionWithStatusMeta, Instruction, Message,
-            Pubkey, RpcAccountInfoConfig, RpcContextConfig, RpcSendTransactionConfig,
-            RpcTransactionConfig, Signature, Transaction, UiAccountEncoding, UiTokenAmount,
+            Account, BlockHash, Instruction, Message, Pubkey, RpcAccountInfoConfig,
+            RpcContextConfig, RpcSendTransactionConfig, RpcTransactionConfig, Signature,
+            TaggedEncodedConfirmedTransactionWithStatusMeta, Transaction, UiAccountEncoding,
+            UiTokenAmount,
         },
     },
     ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
@@ -157,7 +158,7 @@ pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult
 pub async fn sol_get_transaction(
     provider: String,
     signature: String,
-) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
+) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
     let client = rpc_client(&provider);
     let signature = Signature::from_str(&signature).expect("Invalid signature");
     let response = client
@@ -169,7 +170,7 @@ pub async fn sol_get_transaction(
             },
         )
         .await?;
-    Ok(response)
+    Ok(response.into())
 }
 
 ///

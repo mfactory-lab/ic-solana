@@ -4,7 +4,10 @@ use {
     crate::common::init,
     candid::{encode_args, encode_one},
     common::{decode_raw_wasm_result, fast_forward, MAINNET_PROVIDER_ID, SECRET1, USER_PRINCIPAL},
-    ic_solana::types::{Account, EncodedConfirmedTransactionWithStatusMeta, UiTokenAmount},
+    ic_solana::types::{
+        Account, EncodedConfirmedTransactionWithStatusMeta,
+        TaggedEncodedConfirmedTransactionWithStatusMeta, UiTokenAmount,
+    },
     ic_solana_provider::types::SendTransactionRequest,
     pocket_ic::{
         common::rest::{CanisterHttpReply, CanisterHttpResponse, MockCanisterHttpResponse},
@@ -708,6 +711,7 @@ async fn test_get_transaction_mock() {
 
     let expected: EncodedConfirmedTransactionWithStatusMeta =
         serde_json::from_value(value).expect("Failed to parse response");
+    let expected = expected.into();
 
     let pic = PocketIcBuilder::new()
         .with_application_subnet()
@@ -745,8 +749,9 @@ async fn test_get_transaction_mock() {
 
     pic.mock_canister_http_response(mock).await;
 
-    let (result,): (ic_solana::rpc_client::RpcResult<EncodedConfirmedTransactionWithStatusMeta>,) =
-        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+    let (result,): (
+        ic_solana::rpc_client::RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta>,
+    ) = decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
 
     let tx = result.expect("RPC error occurred");
 
@@ -807,7 +812,8 @@ async fn test_send_raw_transaction_mock() {
 #[tokio::test]
 async fn test_send_transaction_mock() {
     const AMOUNT_TO_SEND: u64 = 1;
-    const SEND_RAW_TRANSACTION_RESPONSE: &[u8] = br###"{"jsonrpc":"2.0","result":"2EanSSkn5cjv9DVKik5gtBkN1wwbV1TAXQQ5yu2RTPGwgrhEywVAQR2veu895uCDzvYwWZe6vD1Bcn8s7r22W17w","id":0}"###;
+    const SEND_TRANSACTION_RESPONSE: &[u8] = br###"{"jsonrpc":"2.0","result":"2EanSSkn5cjv9DVKik5gtBkN1wwbV1TAXQQ5yu2RTPGwgrhEywVAQR2veu895uCDzvYwWZe6vD1Bcn8s7r22W17w","id":0}"###;
+    const LATEST_BLOCKHASH_RESPONSE: &[u8] = br###"{ "jsonrpc": "2.0", "result": { "context": { "slot": 2792 }, "value": { "blockhash": "EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N", "lastValidBlockHeight": 3090 } }, "id": 1 }"###;
     const EXPECTED: &str =
         "2EanSSkn5cjv9DVKik5gtBkN1wwbV1TAXQQ5yu2RTPGwgrhEywVAQR2veu895uCDzvYwWZe6vD1Bcn8s7r22W17w";
 
@@ -866,17 +872,36 @@ async fn test_send_transaction_mock() {
         response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
             status: 200,
             headers: vec![],
-            body: SEND_RAW_TRANSACTION_RESPONSE.to_vec(),
+            body: LATEST_BLOCKHASH_RESPONSE.to_vec(),
         }),
         additional_responses: None,
     };
 
     pic.mock_canister_http_response(mock).await;
 
+    fast_forward(&pic, 10).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.get(0).unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: SEND_TRANSACTION_RESPONSE.to_vec(),
+        }),
+        additional_responses: None,
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    fast_forward(&pic, 4).await;
+
     let (result,): (ic_solana::rpc_client::RpcResult<String>,) =
         decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
 
-    todo!("Check the transaction after sol_getTransaction is fixed");
     let signature = result.expect("RPC error occurred");
 
     assert_eq!(signature, EXPECTED.to_string());

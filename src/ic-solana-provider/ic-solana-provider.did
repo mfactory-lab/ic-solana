@@ -6,22 +6,6 @@ type Account = record {
   rentEpoch : nat64;
 };
 type Auth = variant { RegisterProvider; Manage };
-type EncodedConfirmedTransactionWithStatusMeta = record {
-  transaction : EncodedTransactionWithStatusMeta;
-  slot : nat64;
-  blockTime : opt int64;
-};
-type EncodedTransaction = variant {
-  Binary : record { text; TransactionBinaryEncoding };
-  Json : UiTransaction;
-  Accounts : UiAccountsList;
-  LegacyBinary : text;
-};
-type EncodedTransactionWithStatusMeta = record {
-  meta : opt UiTransactionStatusMeta;
-  transaction : EncodedTransaction;
-  version : opt TransactionVersion;
-};
 type HttpRequest = record {
   url : text;
   method : text;
@@ -74,7 +58,7 @@ type Result_2 = variant { Ok : nat64; Err : RpcError };
 type Result_3 = variant { Ok : UiTokenAmount; Err : RpcError };
 type Result_4 = variant { Ok; Err : TransactionError };
 type Result_5 = variant {
-  Ok : EncodedConfirmedTransactionWithStatusMeta;
+  Ok : TaggedEncodedConfirmedTransactionWithStatusMeta;
   Err : RpcError;
 };
 type Reward = record {
@@ -115,8 +99,9 @@ type TaggedEncodedTransaction = variant {
 type TaggedEncodedTransactionWithStatusMeta = record {
   meta : opt TaggedUiTransactionStatusMeta;
   transaction : TaggedEncodedTransaction;
-  version : opt TransactionVersion;
+  version : opt TaggedTransactionVersion;
 };
+type TaggedTransactionVersion = variant { legacy : Legacy; number : nat8 };
 type TaggedUiInnerInstructions = record {
   instructions : vec TaggedUiInstruction;
   index : nat8;
@@ -189,7 +174,6 @@ type TransactionError = variant {
   UnbalancedTransaction;
   BlockhashNotFound;
 };
-type TransactionVersion = variant { legacy : Legacy; number : nat8 };
 type UiAccountsList = record {
   signatures : vec text;
   account_keys : vec ParsedAccount;
@@ -205,25 +189,20 @@ type UiCompiledInstruction = record {
   programIdIndex : nat8;
   stackHeight : opt nat32;
 };
-type UiInnerInstructions = record {
-  instructions : vec UiInstruction;
-  index : nat8;
-};
 type UiInstruction = variant {
   Parsed : UiParsedInstruction;
   Compiled : UiCompiledInstruction;
 };
 type UiLoadedAddresses = record { writable : vec text; readonly : vec text };
-type UiMessage = variant { Raw : UiRawMessage; Parsed : UiParsedMessage };
 type UiParsedInstruction = variant {
   Parsed : ParsedInstruction;
   PartiallyDecoded : UiPartiallyDecodedInstruction;
 };
 type UiParsedMessage = record {
+  addressTableLookups : opt vec UiAddressTableLookup;
   instructions : vec UiInstruction;
-  recent_blockhash : text;
-  address_table_lookups : opt vec UiAddressTableLookup;
-  account_keys : vec ParsedAccount;
+  accountKeys : vec ParsedAccount;
+  recentBlockhash : text;
 };
 type UiPartiallyDecodedInstruction = record {
   data : text;
@@ -245,25 +224,9 @@ type UiTokenAmount = record {
   uiAmountString : text;
   amount : text;
 };
-type UiTransaction = record { message : UiMessage; signatures : vec text };
 type UiTransactionReturnData = record {
   data : record { text; UiReturnDataEncoding };
   programId : text;
-};
-type UiTransactionStatusMeta = record {
-  err : opt TransactionError;
-  fee : nat64;
-  status : Result_4;
-  preBalances : vec nat64;
-  postTokenBalances : opt vec UiTransactionTokenBalance;
-  innerInstructions : opt vec UiInnerInstructions;
-  postBalances : vec nat64;
-  loadedAddresses : opt UiLoadedAddresses;
-  rewards : opt vec Reward;
-  logMessages : opt vec text;
-  returnData : opt UiTransactionReturnData;
-  preTokenBalances : opt vec UiTransactionTokenBalance;
-  computeUnitsConsumed : opt nat64;
 };
 type UiTransactionTokenBalance = record {
   uiTokenAmount : UiTokenAmount;
@@ -297,7 +260,6 @@ service : (InitArgs) -> {
   sol_requestAirdrop : (text, text, nat64) -> (Result);
   sol_sendRawTransaction : (text, text) -> (Result);
   sol_sendTransaction : (text, SendTransactionRequest) -> (Result);
-  super_test : () -> (TaggedEncodedConfirmedTransactionWithStatusMeta);
   unregisterProvider : (text) -> (bool);
   updateProvider : (UpdateProviderArgs) -> ();
 }
