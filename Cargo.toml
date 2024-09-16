@@ -53,6 +53,7 @@ opt-level = 's'
 [profile.canister-release]
 inherits = "release"
 
-
 [patch.crates-io]
-pocket-ic = { git = "https://github.com/dfinity/ic.git", rev = "afe1a18" }
+curve25519-dalek = { git = "https://github.com/solana-labs/curve25519-dalek.git", rev = "b500cdc2a920cd5bff9e2dd974d7b97349d61464" }
+
+#pocket-ic = { git = "https://github.com/dfinity/ic.git", rev = "afe1a18" }
