@@ -585,12 +585,12 @@ impl RpcClient {
         let payload = RpcRequest::GetSignaturesForAddress
             .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]));
 
-        let max_limit = 1000;
+        let default_limit = 1000;
 
         let response = self
             .call(
                 &payload,
-                SIGNATURE_RESPONSE_SIZE_ESTIMATE * config.limit.unwrap_or(max_limit) as u64,
+                SIGNATURE_RESPONSE_SIZE_ESTIMATE * config.limit.unwrap_or(default_limit) as u64,
             )
             .await?;
 
