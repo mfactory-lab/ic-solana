@@ -134,9 +134,10 @@ pub async fn sol_get_latest_blockhash(provider: String) -> RpcResult<String> {
 #[candid_method(rename = "sol_getAccountInfo")]
 pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult<Option<Account>> {
     let client = rpc_client(&provider);
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
     let account_info = client
         .get_account_info(
-            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
+            &pubkey,
             RpcAccountInfoConfig {
                 // Encoded binary (base58) data should be less than 128 bytes, so use base64 encoding.
                 encoding: Some(UiAccountEncoding::Base64),
@@ -191,7 +192,8 @@ pub async fn sol_get_transaction(
     max_response_bytes: Option<u64>,
 ) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
     let client = rpc_client(&provider);
-    let signature = Signature::from_str(&signature).expect("Invalid signature");
+    let signature =
+        Signature::from_str(&signature).map_err(|e| RpcError::ParseError(e.to_string()))?;
     let response = client
         .get_transaction(
             &signature,
