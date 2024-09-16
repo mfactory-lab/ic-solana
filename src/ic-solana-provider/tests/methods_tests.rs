@@ -12,8 +12,8 @@ use {
     ic_solana::{
         rpc_client::RpcError,
         types::{
-            Account, TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedEncodedTransaction,
-            TaggedUiMessage, UiTokenAmount,
+            Account, CandidValue, TaggedEncodedConfirmedTransactionWithStatusMeta,
+            TaggedEncodedTransaction, TaggedUiMessage, UiTokenAmount,
         },
     },
     ic_solana_provider::types::SendTransactionRequest,
@@ -531,8 +531,10 @@ async fn test_send_transaction() {
 async fn test_request() {
     const METHOD: &str = "getBalance";
     const MAX_RESPONSE_BYTES: u64 = 200;
-    const PARAMS: &str =
-        r#"["AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY",{"minContextSlot":null}]"#;
+    let params = serde_json::json!(
+        ["AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY",{"minContextSlot":null}]
+    );
+    let params = CandidValue(params);
 
     let mut pic = PocketIcBuilder::new()
         .with_nns_subnet()
@@ -555,7 +557,7 @@ async fn test_request() {
 
     let call_result = agent
         .update(&canister_id, "request")
-        .with_arg(encode_args((MAINNET_PROVIDER_ID, METHOD, PARAMS, MAX_RESPONSE_BYTES)).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, METHOD, params, MAX_RESPONSE_BYTES)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -564,7 +566,7 @@ async fn test_request() {
         .unwrap()
         .unwrap();
 
-    todo!("Check the response after request is fixed");
+    println!("{}", response);
 }
 
 #[tokio::test]

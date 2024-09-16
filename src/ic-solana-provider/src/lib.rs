@@ -23,7 +23,7 @@ use {
     ic_solana::{
         rpc_client::RpcResult,
         types::{
-            Account, BlockHash, Instruction, Message, Pubkey, RpcAccountInfoConfig,
+            Account, BlockHash, CandidValue, Instruction, Message, Pubkey, RpcAccountInfoConfig,
             RpcContextConfig, RpcSendTransactionConfig, RpcTransactionConfig, Signature,
             TaggedEncodedConfirmedTransactionWithStatusMeta, Transaction, UiAccountEncoding,
             UiTokenAmount,
@@ -251,7 +251,7 @@ pub async fn send_raw_transaction(
 pub async fn request(
     provider: String,
     method: String,
-    params: String, // Todo: params should be an array of JSON values, not String
+    params: CandidValue,
     max_response_bytes: u64,
 ) -> RpcResult<String> {
     let client = rpc_client(&provider);
@@ -261,6 +261,7 @@ pub async fn request(
         "method": &method,
         "params": params
     });
+
     client.call(&payload, max_response_bytes).await
 }
 
