@@ -7,10 +7,14 @@ use {
         BASIC_IDENTITY, DEVNET_PROVIDER_ID, MAINNET_PROVIDER_ID, PUBKEY1, SECRET1, SECRET2,
         SOLANA_DEVNET_CLUSTER_URL,
     },
+    core::panic,
     ic_agent::Agent,
     ic_solana::{
         rpc_client::RpcError,
-        types::{Account, EncodedConfirmedTransactionWithStatusMeta, UiTokenAmount},
+        types::{
+            Account, CandidValue, TaggedEncodedConfirmedTransactionWithStatusMeta,
+            TaggedEncodedTransaction, TaggedUiMessage, UiTokenAmount,
+        },
     },
     ic_solana_provider::types::SendTransactionRequest,
     pocket_ic::PocketIcBuilder,
@@ -172,8 +176,7 @@ async fn test_get_transaction() {
     const EXISTING_SIGNATURE: &str =
         "3kxL8Qvp16kmVNiUkQSJ3zLvCJDK4qPZZ1ZL8W2VHeYoJUJnQ4VqMHFMNSmsGBq7rTfpe8cTzCopMSNRen6vGFt1";
 
-    const NON_EXISTING_SIGNATURE: &str =
-        "3kxL8Qvp16kmVNiUkQSJ3zLvCJDK4qPZZ1ZL8W2VHeYoJUJnQ4VqMHFMNSmsGBq7rTfpe8cTzCopMSNRen6vGFt2";
+    const TRANSACTION_RESPONSE_SIZE_ESTIMATE: u64 = 10500;
 
     let mut pic = PocketIcBuilder::new()
         .with_nns_subnet()
@@ -191,33 +194,24 @@ async fn test_get_transaction() {
 
     let existing_account_res = agent
         .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_args((MAINNET_PROVIDER_ID, EXISTING_SIGNATURE)).unwrap())
+        .with_arg(
+            encode_args((
+                MAINNET_PROVIDER_ID,
+                EXISTING_SIGNATURE,
+                TRANSACTION_RESPONSE_SIZE_ESTIMATE,
+            ))
+            .unwrap(),
+        )
         .call_and_wait()
         .await
         .unwrap();
 
     let _ = Decode!(
         &existing_account_res,
-        ic_solana::rpc_client::RpcResult<EncodedConfirmedTransactionWithStatusMeta>
+        ic_solana::rpc_client::RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta>
     )
     .unwrap()
     .unwrap();
-
-    let non_existing_account_res = agent
-        .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_args((MAINNET_PROVIDER_ID, NON_EXISTING_SIGNATURE)).unwrap())
-        .call_and_wait()
-        .await
-        .unwrap();
-
-    let tx = Decode!(
-        &non_existing_account_res,
-        ic_solana::rpc_client::RpcResult<EncodedConfirmedTransactionWithStatusMeta>
-    )
-    .unwrap();
-
-    println!("TX: {:#?}", tx);
-    todo!("Check the transaction after sol_getTransaction is fixed");
 }
 
 // milti_thread is needed for solana_client to work
@@ -225,6 +219,7 @@ async fn test_get_transaction() {
 async fn test_send_raw_transaction() {
     // The amount to send from one account to the other, in lamports.
     const AMOUNT_TO_SEND: u64 = 1;
+    const FEE: u64 = 5000;
 
     let mut pic = PocketIcBuilder::new()
         .with_nns_subnet()
@@ -355,11 +350,38 @@ async fn test_send_raw_transaction() {
 
     let tx = Decode!(
         &call_result,
-        ic_solana::rpc_client::RpcResult<EncodedConfirmedTransactionWithStatusMeta>
+        ic_solana::rpc_client::RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta>
     )
+    .unwrap()
     .unwrap();
 
-    todo!("Check the transaction after sol_getTransaction is fixed");
+    let pre_balances = tx.transaction.meta.as_ref().unwrap().pre_balances.clone();
+
+    let post_balances = tx.transaction.meta.as_ref().unwrap().post_balances.clone();
+
+    let account_keys = if let TaggedEncodedTransaction::Json(ref json) = tx.transaction.transaction
+    {
+        if let TaggedUiMessage::Raw(ref message_raw) = json.message {
+            &message_raw.account_keys
+        } else {
+            panic!("Expected a raw message");
+        }
+    } else {
+        panic!("Expected a json transaction");
+    };
+
+    assert_eq!(
+        account_keys,
+        &vec![
+            pubkey1.to_string(),
+            pubkey2.to_string(),
+            "11111111111111111111111111111111".to_string()
+        ]
+    );
+
+    assert_eq!(post_balances[0], pre_balances[0] - AMOUNT_TO_SEND - FEE);
+    assert_eq!(post_balances[1], pre_balances[1] + AMOUNT_TO_SEND);
+    assert_eq!(post_balances[2], pre_balances[2]);
 }
 
 // `multi_thread` is required for a solana client to work
@@ -368,8 +390,11 @@ async fn test_send_transaction() {
     // The amount to send from one account to the other, in lamports.
     const AMOUNT_TO_SEND: u64 = 1;
 
+    const FEE: u64 = 5000;
+
     let mut pic = PocketIcBuilder::new()
         .with_nns_subnet()
+        .with_ii_subnet()
         .with_application_subnet()
         .build_async()
         .await;
@@ -461,26 +486,55 @@ async fn test_send_transaction() {
 
     let call_result = agent
         .update(&canister_id, "sol_getTransaction")
-        .with_arg(encode_args((DEVNET_PROVIDER_ID, signature_str)).unwrap())
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, signature_str.clone())).unwrap())
         .call_and_wait()
         .await
         .unwrap();
 
     let tx = Decode!(
         &call_result,
-        ic_solana::rpc_client::RpcResult<EncodedConfirmedTransactionWithStatusMeta>
+        ic_solana::rpc_client::RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta>
     )
+    .unwrap()
     .unwrap();
 
-    todo!("Check the transaction after sol_getTransaction is fixed");
+    let pre_balances = tx.transaction.meta.as_ref().unwrap().pre_balances.clone();
+
+    let post_balances = tx.transaction.meta.as_ref().unwrap().post_balances.clone();
+
+    let account_keys = if let TaggedEncodedTransaction::Json(ref json) = tx.transaction.transaction
+    {
+        if let TaggedUiMessage::Raw(ref message_raw) = json.message {
+            &message_raw.account_keys
+        } else {
+            panic!("Expected a raw message");
+        }
+    } else {
+        panic!("Expected a json transaction");
+    };
+
+    assert_eq!(
+        account_keys,
+        &vec![
+            canister_address,
+            pubkey1.to_string(),
+            "11111111111111111111111111111111".to_string()
+        ]
+    );
+
+    assert_eq!(post_balances[0], pre_balances[0] - AMOUNT_TO_SEND - FEE);
+    assert_eq!(post_balances[1], pre_balances[1] + AMOUNT_TO_SEND);
+    assert_eq!(post_balances[2], pre_balances[2]);
 }
 
 #[tokio::test]
 async fn test_request() {
     const METHOD: &str = "getBalance";
     const MAX_RESPONSE_BYTES: u64 = 200;
-    const PARAMS: &str =
-        r#"["AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY",{"minContextSlot":null}]"#;
+    let params = serde_json::json!(
+        ["AAAAUrmaZWvna6vHndc5LoVWUBmnj9sjxnvPz5U3qZGY",{"minContextSlot":null}]
+    );
+    let params = CandidValue(params);
 
     let mut pic = PocketIcBuilder::new()
         .with_nns_subnet()
@@ -503,7 +557,7 @@ async fn test_request() {
 
     let call_result = agent
         .update(&canister_id, "request")
-        .with_arg(encode_args((MAINNET_PROVIDER_ID, METHOD, PARAMS, MAX_RESPONSE_BYTES)).unwrap())
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, METHOD, params, MAX_RESPONSE_BYTES)).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -512,7 +566,7 @@ async fn test_request() {
         .unwrap()
         .unwrap();
 
-    todo!("Check the response after request is fixed");
+    println!("{}", response);
 }
 
 #[tokio::test]

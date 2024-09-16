@@ -131,22 +131,32 @@ impl CompiledInstruction {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct UiInnerInstructions {
+    /// Transaction instruction index
+    pub index: u8,
+    /// List of inner instructions
+    pub instructions: Vec<UiInstruction>,
+}
+
 /// A duplicate representation of an Instruction for pretty JSON serialization
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum UiInstruction {
     Compiled(UiCompiledInstruction),
     Parsed(UiParsedInstruction),
-    // Parsed(Vec<u8>),
 }
 
 /// A duplicate representation of a CompiledInstruction for pretty JSON serialization
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiCompiledInstruction {
+    #[serde(rename = "programIdIndex")]
     pub program_id_index: u8,
     pub accounts: Vec<u8>,
     pub data: String,
+    #[serde(rename = "stackHeight")]
     pub stack_height: Option<u32>,
 }
 
@@ -154,10 +164,12 @@ pub struct UiCompiledInstruction {
 #[serde(rename_all = "camelCase")]
 pub struct ParsedInstruction {
     pub program: String,
+    #[serde(rename = "programId")]
     pub program_id: String,
     // pub parsed: Value,
     #[serde(with = "serde_bytes")]
     pub parsed: Vec<u8>,
+    #[serde(rename = "stackHeight")]
     pub stack_height: Option<u32>,
 }
 
@@ -165,9 +177,11 @@ pub struct ParsedInstruction {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiPartiallyDecodedInstruction {
+    #[serde(rename = "programId")]
     pub program_id: String,
     pub accounts: Vec<String>,
     pub data: String,
+    #[serde(rename = "stackHeight")]
     pub stack_height: Option<u32>,
 }
 

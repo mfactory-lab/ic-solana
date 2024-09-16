@@ -23,9 +23,10 @@ use {
     ic_solana::{
         rpc_client::RpcResult,
         types::{
-            Account, BlockHash, EncodedConfirmedTransactionWithStatusMeta, Instruction, Message,
-            Pubkey, RpcAccountInfoConfig, RpcContextConfig, RpcSendTransactionConfig,
-            RpcTransactionConfig, Signature, Transaction, UiAccountEncoding, UiTokenAmount,
+            Account, BlockHash, CandidValue, Instruction, Message, Pubkey, RpcAccountInfoConfig,
+            RpcContextConfig, RpcSendTransactionConfig, RpcTransactionConfig, Signature,
+            TaggedEncodedConfirmedTransactionWithStatusMeta, Transaction, UiAccountEncoding,
+            UiTokenAmount,
         },
     },
     ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
@@ -157,7 +158,8 @@ pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult
 pub async fn sol_get_transaction(
     provider: String,
     signature: String,
-) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
+    max_response_bytes: Option<u64>,
+) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
     let client = rpc_client(&provider);
     let signature = Signature::from_str(&signature).expect("Invalid signature");
     let response = client
@@ -167,9 +169,10 @@ pub async fn sol_get_transaction(
                 max_supported_transaction_version: Some(0),
                 ..RpcTransactionConfig::default()
             },
+            max_response_bytes,
         )
         .await?;
-    Ok(response)
+    Ok(response.into())
 }
 
 ///
@@ -248,7 +251,7 @@ pub async fn send_raw_transaction(
 pub async fn request(
     provider: String,
     method: String,
-    params: String, // Todo: params should be an array of JSON values, not String
+    params: CandidValue,
     max_response_bytes: u64,
 ) -> RpcResult<String> {
     let client = rpc_client(&provider);
@@ -258,6 +261,7 @@ pub async fn request(
         "method": &method,
         "params": params
     });
+
     client.call(&payload, max_response_bytes).await
 }
 

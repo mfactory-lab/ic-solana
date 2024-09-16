@@ -1,4 +1,5 @@
 use {
+    crate::{constants::EDDSA_SIGN_COST, state::read_state},
     candid::Principal,
     ic_management_canister_types::{
         DerivationPath, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgs,
@@ -71,21 +72,23 @@ pub async fn sign_with_eddsa(
     derivation_path: Vec<ByteBuf>,
     message: Vec<u8>,
 ) -> Vec<u8> {
-    let res: Result<(SignWithSchnorrReply,), _> = ic_cdk::call(
+    let is_demo_active = read_state(|s| s.is_demo_active);
+    if !is_demo_active {
+        ic_cdk::api::call::msg_cycles_accept128(EDDSA_SIGN_COST);
+    }
+
+    let res: Result<(SignWithSchnorrReply,), _> = ic_cdk::api::call::call_with_payment(
         Principal::management_canister(),
         "sign_with_schnorr",
-        (
-            SignWithSchnorrArgs {
-                message,
-                derivation_path: DerivationPath::new(derivation_path),
-                key_id: SchnorrKeyId {
-                    algorithm: SchnorrAlgorithm::Ed25519,
-                    name: key.to_string(),
-                },
+        (SignWithSchnorrArgs {
+            message,
+            derivation_path: DerivationPath::new(derivation_path),
+            key_id: SchnorrKeyId {
+                algorithm: SchnorrAlgorithm::Ed25519,
+                name: key.to_string(),
             },
-            // https://internetcomputer.org/docs/current/references/t-sigs-how-it-works/#fees-for-the-t-schnorr-production-key
-            // 26_153_846_153,
-        ),
+        },),
+        EDDSA_SIGN_COST as u64,
     )
     .await;
 
