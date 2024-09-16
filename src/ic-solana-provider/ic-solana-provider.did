@@ -55,9 +55,10 @@ type RegisterProviderArgs = record {
 type Result = variant { Ok : text; Err : RpcError };
 type Result_1 = variant { Ok : opt Account; Err : RpcError };
 type Result_2 = variant { Ok : nat64; Err : RpcError };
-type Result_3 = variant { Ok : UiTokenAmount; Err : RpcError };
-type Result_4 = variant { Ok; Err : TransactionError };
-type Result_5 = variant {
+type Result_3 = variant { Ok; Err : TransactionError };
+type Result_4 = variant { Ok : vec opt TransactionStatus; Err : RpcError };
+type Result_5 = variant { Ok : UiTokenAmount; Err : RpcError };
+type Result_6 = variant {
   Ok : TaggedEncodedConfirmedTransactionWithStatusMeta;
   Err : RpcError;
 };
@@ -122,7 +123,7 @@ type TaggedUiTransaction = record {
 type TaggedUiTransactionStatusMeta = record {
   err : opt TransactionError;
   fee : nat64;
-  status : Result_4;
+  status : Result_3;
   preBalances : vec nat64;
   postTokenBalances : opt vec UiTransactionTokenBalance;
   innerInstructions : opt vec TaggedUiInnerInstructions;
@@ -135,6 +136,11 @@ type TaggedUiTransactionStatusMeta = record {
   computeUnitsConsumed : opt nat64;
 };
 type TransactionBinaryEncoding = variant { Base58; Base64 };
+type TransactionConfirmationStatus = variant {
+  Finalized;
+  Confirmed;
+  Processed;
+};
 type TransactionError = variant {
   InvalidAccountForFee;
   AddressLookupTableNotFound;
@@ -173,6 +179,13 @@ type TransactionError = variant {
   CallChainTooDeep;
   UnbalancedTransaction;
   BlockhashNotFound;
+};
+type TransactionStatus = record {
+  err : opt TransactionError;
+  confirmations : opt nat64;
+  status : Result_3;
+  slot : nat64;
+  confirmation_status : opt TransactionConfirmationStatus;
 };
 type UiAccountsList = record {
   signatures : vec text;
@@ -255,8 +268,9 @@ service : (InitArgs) -> {
   sol_getAccountInfo : (text, text) -> (Result_1);
   sol_getBalance : (text, text) -> (Result_2);
   sol_getLatestBlockhash : (text) -> (Result);
-  sol_getTokenBalance : (text, text) -> (Result_3);
-  sol_getTransaction : (text, text, opt nat64) -> (Result_5);
+  sol_getSignatureStatuses : (text, vec text) -> (Result_4);
+  sol_getTokenBalance : (text, text) -> (Result_5);
+  sol_getTransaction : (text, text, opt nat64) -> (Result_6);
   sol_requestAirdrop : (text, text, nat64) -> (Result);
   sol_sendRawTransaction : (text, text) -> (Result);
   sol_sendTransaction : (text, SendTransactionRequest) -> (Result);
