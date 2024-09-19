@@ -25,10 +25,10 @@ available canisters above):
 ```json
 {
   "canisters": {
-    "ic-solana-provider": {
+    "ic-solana": {
       "type": "custom",
-      "candid": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/ic-solana-provider.did",
-      "wasm": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/ic-solana-provider.wasm.gz",
+      "candid": "https://github.com/mfactory-lab/ic-solana/raw/main/src/ic-solana-provider/ic-solana-provider.did",
+      "wasm": "https://github.com/mfactory-lab/ic-solana/raw/main/src/ic-solana-provider/ic-solana-provider.wasm.gz",
       "remote": {
         "id": {
           "ic": "bkyz2-fmaaa-aaaaa-qaaaq-cai",
@@ -59,10 +59,11 @@ Once the job is completed, your application will be available at `http://localho
 We use [PocketIC](https://github.com/dfinity/pocketic) for integration testing. Please make sure to have it installed
 and the `POCKET_IC_BIN` environment variable set to the path of the `pocket-ic` binary.
 
-You can run the tests with the following command:
+You can run the tests with the following commands:
 
 ```sh
-make test
+make test # run all tests
+make test TEST="specified_test_here" # Run one test named "specified_test_here"
 ```
 
 ## Deployment on the Internet Computer
@@ -76,11 +77,9 @@ You can check the Candid UI at [
 
 You can interact with the canister using the [Blast Playground](#).
 
-## To do
+## Roadmap
 
 - [ ] Versioned transactions.
-- [ ] Native support of threshold EdDSA.
-- [ ] https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr.
 
 ## Reproducible builds
 

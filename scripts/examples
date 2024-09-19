@@ -18,6 +18,9 @@ dfx canister call ic-solana-provider sol_getAccountInfo '("devnet","GeDhDhMT8Cw4
 echo "Fetching transaction..."
 dfx canister call ic-solana-provider sol_getTransaction '("devnet","1zhKkhptmaKR83DMbn7FuBRZM2mHGgLSFEuAGoocET5wPywH4gy3FktfT8dL3FV4LJct86pBTsTTANv5NvNTAEN")'
 
+echo "Fetching signature status..."
+dfx canister call ic-solana-provider sol_getSignatureStatuses '("devnet", ["1zhKkhptmaKR83DMbn7FuBRZM2mHGgLSFEuAGoocET5wPywH4gy3FktfT8dL3FV4LJct86pBTsTTANv5NvNTAEN"])'
+
 echo "Fetching rpc providers..."
 dfx canister call ic-solana-provider getProviders '()'
 

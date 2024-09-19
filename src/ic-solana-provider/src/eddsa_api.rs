@@ -1,4 +1,5 @@
 use {
+    crate::{constants::EDDSA_SIGN_COST, state::read_state},
     candid::Principal,
     ic_management_canister_types::{
         DerivationPath, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgs,
@@ -23,7 +24,7 @@ impl Display for SchnorrKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr
         let key_str = match self {
-            SchnorrKey::TestKeyLocal => "dfx_test_key",
+            SchnorrKey::TestKeyLocal => "dfx_test_key1",
             SchnorrKey::TestKey1 => "test_key_1",
             SchnorrKey::ProductionKey1 => "key_1",
             SchnorrKey::Custom(key) => key,
@@ -36,7 +37,7 @@ impl FromStr for SchnorrKey {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "dfx_test_key" => Ok(SchnorrKey::TestKeyLocal),
+            "dfx_test_key1" => Ok(SchnorrKey::TestKeyLocal),
             "test_key_1" => Ok(SchnorrKey::TestKey1),
             "key_1" => Ok(SchnorrKey::ProductionKey1),
             _ => Ok(SchnorrKey::Custom(s.to_string())),
@@ -71,21 +72,23 @@ pub async fn sign_with_eddsa(
     derivation_path: Vec<ByteBuf>,
     message: Vec<u8>,
 ) -> Vec<u8> {
-    let res: Result<(SignWithSchnorrReply,), _> = ic_cdk::call(
+    let is_demo_active = read_state(|s| s.is_demo_active);
+    if !is_demo_active {
+        ic_cdk::api::call::msg_cycles_accept128(EDDSA_SIGN_COST);
+    }
+
+    let res: Result<(SignWithSchnorrReply,), _> = ic_cdk::api::call::call_with_payment(
         Principal::management_canister(),
         "sign_with_schnorr",
-        (
-            SignWithSchnorrArgs {
-                message,
-                derivation_path: DerivationPath::new(derivation_path),
-                key_id: SchnorrKeyId {
-                    algorithm: SchnorrAlgorithm::Ed25519,
-                    name: key.to_string(),
-                },
+        (SignWithSchnorrArgs {
+            message,
+            derivation_path: DerivationPath::new(derivation_path),
+            key_id: SchnorrKeyId {
+                algorithm: SchnorrAlgorithm::Ed25519,
+                name: key.to_string(),
             },
-            // https://internetcomputer.org/docs/current/references/t-sigs-how-it-works/#fees-for-the-t-schnorr-production-key
-            // 26_153_846_153,
-        ),
+        },),
+        EDDSA_SIGN_COST as u64,
     )
     .await;
 

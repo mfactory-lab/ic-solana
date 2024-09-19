@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use std::{fmt, mem};
+use {
+    serde::{Deserialize, Serialize},
+    std::{fmt, mem, str::FromStr},
+};
 
 /// Size of a hash in bytes.
 pub const HASH_BYTES: usize = 32;

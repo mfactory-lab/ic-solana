@@ -44,7 +44,7 @@ pub enum RpcAuth {
     QueryParam { name: String, value: String },
 }
 
-#[derive(Clone, CandidType, Deserialize)]
+#[derive(Clone, CandidType, Deserialize, Debug)]
 pub struct RegisterProviderArgs {
     /// Unique identifier for the provider
     pub id: String,

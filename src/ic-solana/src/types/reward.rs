@@ -1,5 +1,7 @@
-use candid::{CandidType, Deserialize};
-use serde::Serialize;
+use {
+    candid::{CandidType, Deserialize},
+    serde::Serialize,
+};
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone, Copy, CandidType)]
 pub enum RewardType {

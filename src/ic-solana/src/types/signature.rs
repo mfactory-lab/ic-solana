@@ -1,7 +1,8 @@
-use serde::{Deserialize, Serialize};
-use serde_big_array::BigArray;
-use std::fmt;
-use std::str::FromStr;
+use {
+    serde::{Deserialize, Serialize},
+    serde_big_array::BigArray,
+    std::{fmt, str::FromStr},
+};
 
 /// Number of bytes in a signature
 pub const SIGNATURE_BYTES: usize = 64;

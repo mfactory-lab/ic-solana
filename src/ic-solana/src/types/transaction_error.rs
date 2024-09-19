@@ -1,5 +1,7 @@
-use candid::{CandidType, Deserialize};
-use serde::Serialize;
+use {
+    candid::{CandidType, Deserialize},
+    serde::Serialize,
+};
 
 /// Reasons a transaction might be rejected.
 #[derive(thiserror::Error, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, CandidType)]

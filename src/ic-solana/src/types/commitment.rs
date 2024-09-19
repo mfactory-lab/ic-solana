@@ -1,6 +1,9 @@
-use candid::CandidType;
-use serde::{Deserialize, Serialize};
-use {std::str::FromStr, thiserror::Error};
+use {
+    candid::CandidType,
+    serde::{Deserialize, Serialize},
+    std::str::FromStr,
+    thiserror::Error,
+};
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]

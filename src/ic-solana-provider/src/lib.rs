@@ -13,7 +13,6 @@ use {
     },
     candid::{candid_method, Principal},
     eddsa_api::{eddsa_public_key, sign_with_eddsa},
-    ic_canister_log::log,
     ic_canisters_http_types::{
         HttpRequest as AssetHttpRequest, HttpResponse as AssetHttpResponse, HttpResponseBuilder,
     },
@@ -22,24 +21,22 @@ use {
         query, update,
     },
     ic_solana::{
-        rpc_client::RpcResult,
+        rpc_client::{RpcError, RpcResult},
         types::{
-            Account, BlockHash, EncodedConfirmedTransactionWithStatusMeta, Instruction, Message,
-            Pubkey, RpcAccountInfoConfig, RpcContextConfig, RpcSendTransactionConfig,
-            RpcTransactionConfig, Signature, Transaction, UiAccountEncoding, UiTokenAmount,
+            Account, BlockHash, CandidValue, Instruction, Message, Pubkey, RpcAccountInfoConfig,
+            RpcContextConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
+            RpcTransactionConfig, Signature, TaggedEncodedConfirmedTransactionWithStatusMeta,
+            Transaction, TransactionStatus, UiAccountEncoding, UiTokenAmount,
         },
     },
-    ic_solana_common::{
-        logs::INFO,
-        metrics::{encode_metrics, read_metrics, Metrics},
-    },
+    ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
     serde_bytes::ByteBuf,
     serde_json::json,
     state::{read_state, InitArgs},
     std::str::FromStr,
 };
 
-mod auth;
+pub mod auth;
 mod constants;
 pub mod eddsa_api;
 mod http;
@@ -120,8 +117,8 @@ pub async fn sol_get_token_balance(provider: String, pubkey: String) -> RpcResul
 ///
 /// Returns the latest blockhash.
 ///
-#[update(name = "sol_latestBlockhash")]
-#[candid_method(rename = "sol_latestBlockhash")]
+#[update(name = "sol_getLatestBlockhash")]
+#[candid_method(rename = "sol_getLatestBlockhash")]
 pub async fn sol_get_latest_blockhash(provider: String) -> RpcResult<String> {
     let client = rpc_client(&provider);
     let blockhash = client
@@ -137,9 +134,10 @@ pub async fn sol_get_latest_blockhash(provider: String) -> RpcResult<String> {
 #[candid_method(rename = "sol_getAccountInfo")]
 pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult<Option<Account>> {
     let client = rpc_client(&provider);
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
     let account_info = client
         .get_account_info(
-            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
+            &pubkey,
             RpcAccountInfoConfig {
                 // Encoded binary (base58) data should be less than 128 bytes, so use base64 encoding.
                 encoding: Some(UiAccountEncoding::Base64),
@@ -154,6 +152,36 @@ pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult
 }
 
 ///
+/// Returns the statuses of a list of signatures.
+/// Each signature must be a txid, the first signature of a transaction.
+///
+#[update(name = "sol_getSignatureStatuses")]
+#[candid_method(rename = "sol_getSignatureStatuses")]
+pub async fn sol_get_signature_statuses(
+    provider: String,
+    signatures: Vec<String>,
+) -> RpcResult<Vec<Option<TransactionStatus>>> {
+    let client = rpc_client(&provider);
+
+    let signatures: Vec<Signature> = signatures
+        .into_iter()
+        .map(|s| Signature::from_str(&s))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| RpcError::ParseError(e.to_string()))?;
+
+    let response = client
+        .get_signature_statuses(
+            &signatures,
+            RpcSignatureStatusConfig {
+                search_transaction_history: false,
+            },
+        )
+        .await?;
+
+    Ok(response)
+}
+
+///
 /// Returns transaction details for a confirmed transaction.
 ///
 #[update(name = "sol_getTransaction")]
@@ -161,13 +189,22 @@ pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult
 pub async fn sol_get_transaction(
     provider: String,
     signature: String,
-) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
+    max_response_bytes: Option<u64>,
+) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
     let client = rpc_client(&provider);
-    let signature = Signature::from_str(&signature).expect("Invalid signature");
+    let signature =
+        Signature::from_str(&signature).map_err(|e| RpcError::ParseError(e.to_string()))?;
     let response = client
-        .get_transaction(&signature, RpcTransactionConfig::default())
+        .get_transaction(
+            &signature,
+            RpcTransactionConfig {
+                max_supported_transaction_version: Some(0),
+                ..RpcTransactionConfig::default()
+            },
+            max_response_bytes,
+        )
         .await?;
-    Ok(response)
+    Ok(response.into())
 }
 
 ///
@@ -246,7 +283,7 @@ pub async fn send_raw_transaction(
 pub async fn request(
     provider: String,
     method: String,
-    params: String,
+    params: CandidValue,
     max_response_bytes: u64,
 ) -> RpcResult<String> {
     let client = rpc_client(&provider);
@@ -256,6 +293,7 @@ pub async fn request(
         "method": &method,
         "params": params
     });
+
     client.call(&payload, max_response_bytes).await
 }
 
@@ -301,13 +339,6 @@ fn update_provider(args: UpdateProviderArgs) {
 #[update(guard = "require_manage_or_controller")]
 #[candid_method]
 fn authorize(principal: Principal, auth: Auth) -> bool {
-    log!(
-        INFO,
-        "[{}] Authorizing `{:?}` for principal: {}",
-        ic_cdk::caller(),
-        auth,
-        principal
-    );
     do_authorize(principal, auth)
 }
 
@@ -328,13 +359,6 @@ fn get_authorized(auth: Auth) -> Vec<Principal> {
 #[update(guard = "require_manage_or_controller")]
 #[candid_method]
 fn deauthorize(principal: Principal, auth: Auth) -> bool {
-    log!(
-        INFO,
-        "[{}] Deauthorizing `{:?}` for principal: {}",
-        ic_cdk::caller(),
-        auth,
-        principal
-    );
     do_deauthorize(principal, auth)
 }
 

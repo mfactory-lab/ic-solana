@@ -1,7 +1,9 @@
-use anyhow::{anyhow, Result};
-use serde::{Deserialize, Serialize};
-use std::str::FromStr;
-use url::Url;
+use {
+    anyhow::{anyhow, Result},
+    serde::{Deserialize, Serialize},
+    std::str::FromStr,
+    url::Url,
+};
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Cluster {
