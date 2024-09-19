@@ -25,10 +25,10 @@ available canisters above):
 ```json
 {
   "canisters": {
-    "ic-solana-provider": {
+    "ic-solana": {
       "type": "custom",
-      "candid": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/ic-solana-provider.did",
-      "wasm": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/ic-solana-provider.wasm.gz",
+      "candid": "https://github.com/mfactory-lab/ic-solana/raw/main/src/ic-solana-provider/ic-solana-provider.did",
+      "wasm": "https://github.com/mfactory-lab/ic-solana/raw/main/src/ic-solana-provider/ic-solana-provider.wasm.gz",
       "remote": {
         "id": {
           "ic": "bkyz2-fmaaa-aaaaa-qaaaq-cai",
@@ -66,8 +66,6 @@ make test # run all tests
 make test TEST="specified_test_here" # Run one test named "specified_test_here"
 ```
 
-#### Notice: Right now, PocketIC v5.0 doesn't support Schnorr signatures, so we use PocketIC from [this release](https://github.com/dfinity/ic/releases/tag/release-2024-09-12_01-30-canister-snapshots). This version of pocket ic could be fetched with `fetch-pocket-ic` Makefile method.
-
 ## Deployment on the Internet Computer
 
 The canister is deployed to `bkyz2-fmaaa-aaaaa-qaaaq-cai`.
@@ -79,11 +77,9 @@ You can check the Candid UI at [
 
 You can interact with the canister using the [Blast Playground](#).
 
-## To do
+## Roadmap
 
 - [ ] Versioned transactions.
-- [ ] Native support of threshold EdDSA.
-- [ ] https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr.
 
 ## Reproducible builds
 
