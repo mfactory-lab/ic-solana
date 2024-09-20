@@ -12,9 +12,72 @@ use {
         UiPartiallyDecodedInstruction, UiRawMessage, UiTransaction, UiTransactionReturnData,
         UiTransactionStatusMeta, UiTransactionTokenBalance, UnixTimestamp,
     },
+    crate::response::EncodedConfirmedBlock,
     candid::CandidType,
     serde::{Deserialize, Serialize},
 };
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct TaggedEncodedConfirmedBlock {
+    #[serde(rename = "previousBlockhash")]
+    pub previous_blockhash: String,
+    pub blockhash: String,
+    #[serde(rename = "parentSlot")]
+    pub parent_slot: Slot,
+    pub transactions: Vec<TaggedEncodedTransactionWithStatusMeta>,
+    pub rewards: Rewards,
+    #[serde(rename = "blockTime")]
+    pub block_time: Option<UnixTimestamp>,
+    #[serde(rename = "blockHeight")]
+    pub block_height: Option<u64>,
+}
+
+impl From<EncodedConfirmedBlock> for TaggedEncodedConfirmedBlock {
+    fn from(encoded_confirmed_block: EncodedConfirmedBlock) -> Self {
+        let EncodedConfirmedBlock {
+            previous_blockhash,
+            blockhash,
+            parent_slot,
+            transactions,
+            rewards,
+            block_time,
+            block_height,
+        } = encoded_confirmed_block;
+        TaggedEncodedConfirmedBlock {
+            previous_blockhash,
+            blockhash,
+            parent_slot,
+            transactions: transactions.into_iter().map(Into::into).collect(),
+            rewards,
+            block_time,
+            block_height,
+        }
+    }
+}
+
+impl From<TaggedEncodedConfirmedBlock> for EncodedConfirmedBlock {
+    fn from(tagged_encoded_confirmed_block: TaggedEncodedConfirmedBlock) -> Self {
+        let TaggedEncodedConfirmedBlock {
+            previous_blockhash,
+            blockhash,
+            parent_slot,
+            transactions,
+            rewards,
+            block_time,
+            block_height,
+        } = tagged_encoded_confirmed_block;
+        EncodedConfirmedBlock {
+            previous_blockhash,
+            blockhash,
+            parent_slot,
+            transactions: transactions.into_iter().map(Into::into).collect(),
+            rewards,
+            block_time,
+            block_height,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]

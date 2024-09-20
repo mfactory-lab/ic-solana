@@ -21,12 +21,14 @@ use {
         query, update,
     },
     ic_solana::{
+        response::{RpcBlockProduction, RpcBlockProductionRange},
         rpc_client::{RpcError, RpcResult},
         types::{
             Account, BlockHash, CandidValue, Instruction, Message, Pubkey, RpcAccountInfoConfig,
             RpcContextConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
-            RpcTransactionConfig, Signature, TaggedEncodedConfirmedTransactionWithStatusMeta,
-            Transaction, TransactionStatus, UiAccountEncoding, UiTokenAmount,
+            RpcTransactionConfig, Signature, TaggedEncodedConfirmedBlock,
+            TaggedEncodedConfirmedTransactionWithStatusMeta, Transaction, TransactionStatus,
+            UiAccountEncoding, UiTokenAmount, UiTransactionEncoding,
         },
     },
     ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
@@ -95,6 +97,72 @@ pub async fn sol_get_balance(provider: String, pubkey: String) -> RpcResult<u64>
         )
         .await?;
     Ok(balance)
+}
+
+///
+/// Returns identity and transaction information about a confirmed block in the ledger
+///
+#[update(name = "sol_getBlock")]
+#[candid_method(rename = "sol_getBlock")]
+pub async fn sol_get_block(
+    provider: String,
+    slot: u64,
+    max_response_bytes: Option<u64>,
+) -> RpcResult<TaggedEncodedConfirmedBlock> {
+    let client = rpc_client(&provider);
+    let block = client
+        .get_block(slot, UiTransactionEncoding::Json, max_response_bytes)
+        .await?;
+    Ok(block.into())
+}
+
+///
+/// Returns a list of confirmed blocks between two slots
+///
+#[update(name = "sol_getBlocks")]
+#[candid_method(rename = "sol_getBlocks")]
+pub async fn sol_get_blocks(
+    provider: String,
+    start_slot: u64,
+    last_slot: Option<u64>,
+) -> RpcResult<Vec<u64>> {
+    let client = rpc_client(&provider);
+    let block = client.get_blocks(start_slot, last_slot).await?;
+
+    Ok(block.into())
+}
+
+///
+/// Returns the current block height of the node
+///
+#[update(name = "sol_getBlockHeight")]
+#[candid_method(rename = "sol_getBlockHeight")]
+pub async fn sol_get_block_height(provider: String) -> RpcResult<u64> {
+    let client = rpc_client(&provider);
+    let commitment = None;
+
+    let height = client.get_block_height(commitment).await?;
+    Ok(height)
+}
+
+///
+/// Returns recent block production information from the current or previous epoch.
+///
+#[update(name = "sol_getBlockProduction")]
+#[candid_method(rename = "sol_getBlockProduction")]
+pub async fn sol_get_block_production(
+    provider: String,
+    identity: Option<String>,
+    range: Option<RpcBlockProductionRange>,
+) -> RpcResult<RpcBlockProduction> {
+    let client = rpc_client(&provider);
+    let commitment = None;
+
+    let block_production = client
+        .get_block_production(commitment, identity, range)
+        .await?;
+
+    Ok(block_production)
 }
 
 ///

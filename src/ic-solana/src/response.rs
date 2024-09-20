@@ -3,8 +3,9 @@ use {
         EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot,
         TransactionConfirmationStatus, TransactionError, UiAccount, UnixTimestamp,
     },
+    candid::CandidType,
     serde::{Deserialize, Serialize},
-    std::fmt,
+    std::{collections::HashMap, fmt},
 };
 
 /// Wrapper for rpc return types of methods that provide responses both with and without context.
@@ -256,20 +257,23 @@ pub struct RpcKeyedAccount {
 // /// Map of leader base58 identity pubkeys to the slot indices relative to the first epoch slot
 // pub type RpcLeaderSchedule = HashMap<String, Vec<usize>>;
 //
-// #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcBlockProductionRange {
-//     pub first_slot: Slot,
-//     pub last_slot: Slot,
-// }
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcBlockProductionRange {
+    #[serde(rename = "firstSlot")]
+    pub first_slot: Slot,
+    #[serde(rename = "lastSlot", skip_serializing_if = "Option::is_none")]
+    pub last_slot: Option<Slot>,
+}
 //
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcBlockProduction {
-//     /// Map of leader base58 identity pubkeys to a tuple of `(number of leader slots, number of blocks produced)`
-//     pub by_identity: HashMap<String, (usize, usize)>,
-//     pub range: RpcBlockProductionRange,
-// }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcBlockProduction {
+    #[serde(rename = "byIdentity")]
+    /// Map of leader base58 identity pubkeys to a tuple of `(number of leader slots, number of blocks produced)`
+    pub by_identity: HashMap<String, (usize, usize)>,
+    pub range: RpcBlockProductionRange,
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]

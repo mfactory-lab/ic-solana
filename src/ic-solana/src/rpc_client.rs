@@ -3,8 +3,9 @@ use {
         constants::*,
         request::RpcRequest,
         response::{
-            EncodedConfirmedBlock, OptionalContext, Response, RpcBlockhash,
-            RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcVersionInfo,
+            EncodedConfirmedBlock, OptionalContext, Response, RpcBlockProduction,
+            RpcBlockProductionRange, RpcBlockhash, RpcConfirmedTransactionStatusWithSignature,
+            RpcKeyedAccount, RpcSupply, RpcVersionInfo,
         },
         types::{
             Account, BlockHash, Cluster, CommitmentConfig,
@@ -444,16 +445,98 @@ impl RpcClient {
         &self,
         slot: Slot,
         encoding: UiTransactionEncoding,
+        max_response_bytes: Option<u64>,
     ) -> RpcResult<EncodedConfirmedBlock> {
-        let payload = RpcRequest::GetBlock
-            .build_request_json(self.next_request_id(), json!([slot, encoding]));
+        let payload = RpcRequest::GetBlock.build_request_json(
+            self.next_request_id(),
+            json!([slot, { "encoding": encoding, "maxSupportedTransactionVersion": 0 }]),
+        );
 
         let response = self
-            .call(&payload, GET_BLOCK_RESPONSE_SIZE_ESTIMATE)
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_BLOCK_RESPONSE_SIZE_ESTIMATE),
+            )
             .await?;
 
         let json_response =
             serde_json::from_str::<JsonRpcResponse<EncodedConfirmedBlock>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap())
+        }
+    }
+
+    ///
+    /// Returns a list of confirmed blocks between two slots
+    ///
+    pub async fn get_blocks(
+        &self,
+        start_slot: Slot,
+        last_slot: Option<Slot>,
+    ) -> RpcResult<Vec<u64>> {
+        let payload = RpcRequest::GetBlocks
+            .build_request_json(self.next_request_id(), json!([start_slot, last_slot]));
+
+        let avg_slot_str_size = last_slot
+            .unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE)
+            .to_string()
+            .len() as u64;
+
+        let max_response_bytes = 36
+            + avg_slot_str_size
+                * (last_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE) - start_slot) as u64;
+
+        let response = self.call(&payload, max_response_bytes).await?;
+
+        let json_response = serde_json::from_str::<JsonRpcResponse<Vec<u64>>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap())
+        }
+    }
+
+    ///
+    /// Returns the current block height of the node
+    ///
+    pub async fn get_block_height(&self, commitment: Option<CommitmentConfig>) -> RpcResult<u64> {
+        let payload = RpcRequest::GetBlockHeight.build_request_json(
+            self.next_request_id(),
+            json!([commitment.unwrap_or_default()]),
+        );
+
+        let response = self.call(&payload, 45).await?;
+
+        let json_response = serde_json::from_str::<JsonRpcResponse<u64>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap())
+        }
+    }
+
+    ///
+    /// Returns recent block production information from the current or previous epoch
+    ///
+    pub async fn get_block_production(
+        &self,
+        commitment: Option<CommitmentConfig>,
+        identity: Option<String>,
+        range: Option<RpcBlockProductionRange>,
+    ) -> RpcResult<RpcBlockProduction> {
+        let payload = RpcRequest::GetBlockProduction.build_request_json(
+            self.next_request_id(),
+            json!([commitment.unwrap_or_default(), identity, range]),
+        );
+
+        let response = self.call(&payload, 45).await?;
+
+        let json_response = serde_json::from_str::<JsonRpcResponse<RpcBlockProduction>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())

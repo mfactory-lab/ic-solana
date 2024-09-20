@@ -5,7 +5,7 @@ use {
     candid::{encode_args, encode_one},
     common::{decode_raw_wasm_result, fast_forward, MAINNET_PROVIDER_ID, SECRET1, USER_PRINCIPAL},
     ic_solana::types::{
-        Account, EncodedConfirmedTransactionWithStatusMeta,
+        Account, EncodedConfirmedTransactionWithStatusMeta, TaggedEncodedConfirmedBlock,
         TaggedEncodedConfirmedTransactionWithStatusMeta, UiTokenAmount,
     },
     ic_solana_provider::types::SendTransactionRequest,
@@ -66,6 +66,159 @@ async fn test_get_balance_mock() {
     assert_eq!(result.unwrap(), EXPECTED);
 
     pic.drop().await;
+}
+
+#[tokio::test]
+async fn test_get_block_mock() {
+    // const SLOT: u64 = 290304300; // TODO: this slot couldn't be fetched because it's size 3.3MB and the max response size limit is 2MB
+    const SLOT: u64 = 10_000;
+    const MAX_RESPONSE_BYTES: u64 = 1_500_000;
+
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":{"blockHeight":null,"blockTime":null,"blockhash":"FNy3uy9b9EMupvMpzG6Waqtbpt5Hto3naW2NnDwL1eYq","parentSlot":9999,"previousBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET","rewards":[],"transactions":[{"meta":null,"transaction":{"message":{"accountKeys":["7Np41oeYqPefeNQEHSv1UDhYrehxin3NStELsSKCT4K2","4785anyR2rYSas6cQGHtykgzwYEtChvFYhcEgdDw3gGL","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3VpnRF6CqaEftTmTtPNaoq5eaAxgTubYiNR7Jf3wpSvqhp2P7c7Dx68kAb","programIdIndex":4,"stackHeight":null}],"recentBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET"},"signatures":["4Kd11S9XoL2g9tkh45hW6JgnPwVhSCmFDxSJnPeXKQHYoLoTYf5aL3JU7r8DjiJ4EBvAPTwpCJdVaArSzQMuEWqA"]}},{"meta":null,"transaction":{"message":{"accountKeys":["DE1bawNcRJB9rVm3buyMVfr8mBEoyyu73NBovf2oXJsJ","8XgHUtBRY6qePVYERxosyX3MUq8NQkjtmFDSzQ2WpHTJ","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3VpnRF6CqaEftTmTtPNaoq5eaAxgTubYiNR7Jf3wpSvqhp2P7c7Dx68kAb","programIdIndex":4,"stackHeight":null}],"recentBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET"},"signatures":["2jY6X9aLUj45xrnFvjULjhMcWoMJwqECKsCLE9Nnhch4DDZajZLVB7pGzXXGpqDRcbpNDM1eG5k8VxQxGxPKnD6H"]}},{"meta":null,"transaction":{"message":{"accountKeys":["CakcnaRDHka2gXyfbEd2d3xsvkJkqsLw2akB3zsN1D2S","9bRDrYShoQ77MZKYTMoAsoCkU7dAR24mxYCBjXLpfEJx","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3VpnRF6CqaEftTmTtPNaoq5eaAxgTubYiNR7Jf3wpSvqhp2P7c7Dx68kAb","programIdIndex":4,"stackHeight":null}],"recentBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET"},"signatures":["9b4aincvJ7YgC9MFUZQP8TpT3hZ6cqvAfSVDBaw4TZ44ZpkZHR29aqcQ36yRy5gYvTS372o21C6PKUZNoRFAqEE"]}},{"meta":null,"transaction":{"message":{"accountKeys":["GdnSyH3YtwcxFvQrVVJMm1JhTS4QVX7MFsX56uJLUfiZ","sCtiJieP8B3SwYnXemiLpRFRR8KJLMtsMVN25fAFWjW","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3VpnRF6CqaEftTmTtPNaoq5eaAxgTubYiNR7Jf3wpSvqhp2P7c7Dx68kAb","programIdIndex":4,"stackHeight":null}],"recentBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET"},"signatures":["3rT1ykzcVCnGX3M3bauJ2i7eLBemrfvV2ZsigGSxpP3dE2iPUtaqUNGprfRP5PstEXPn5M2JX12m8oJXrRVUXCEb"]}}]},"id":0}"#;
+    const EXPECTED_BLOCKHASH: &str = "FNy3uy9b9EMupvMpzG6Waqtbpt5Hto3naW2NnDwL1eYq";
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getBlock",
+            encode_args((MAINNET_PROVIDER_ID, SLOT, MAX_RESPONSE_BYTES)).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<TaggedEncodedConfirmedBlock>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    assert_eq!(result.unwrap().blockhash, EXPECTED_BLOCKHASH);
+}
+
+#[tokio::test]
+async fn test_get_blocks_mock() {
+    const START_SLOT: u64 = 5_000_000;
+    const LAST_SLOT: u64 = 5_000_010;
+
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":[5000000,5000001,5000002,5000003,5000004,5000005,5000006,5000007,5000008,5000009,5000010],"id":0}"#;
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getBlocks",
+            encode_args((MAINNET_PROVIDER_ID, START_SLOT, Some(LAST_SLOT))).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<Vec<u64>>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            5000000, 5000001, 5000002, 5000003, 5000004, 5000005, 5000006, 5000007, 5000008,
+            5000009, 5000010,
+        ]
+    );
+}
+
+#[tokio::test]
+async fn test_get_block_height_mock() {
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":269611304,"id":0}"#;
+    const EXPECTED: u64 = 269611304;
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getBlockHeight",
+            encode_args((MAINNET_PROVIDER_ID,)).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<u64>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    assert_eq!(result.unwrap(), EXPECTED);
 }
 
 #[tokio::test]

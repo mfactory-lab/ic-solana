@@ -160,12 +160,16 @@ impl Display for UiTransactionEncoding {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionDetails {
+    #[serde(rename = "full")]
     Full,
+    #[serde(rename = "signatures")]
     Signatures,
+    #[serde(rename = "none")]
     None,
+    #[serde(rename = "accounts")]
     Accounts,
 }
 

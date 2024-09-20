@@ -55,10 +55,13 @@ type RegisterProviderArgs = record {
 type Result = variant { Ok : text; Err : RpcError };
 type Result_1 = variant { Ok : opt Account; Err : RpcError };
 type Result_2 = variant { Ok : nat64; Err : RpcError };
-type Result_3 = variant { Ok; Err : TransactionError };
-type Result_4 = variant { Ok : vec opt TransactionStatus; Err : RpcError };
-type Result_5 = variant { Ok : UiTokenAmount; Err : RpcError };
-type Result_6 = variant {
+type Result_3 = variant { Ok : TaggedEncodedConfirmedBlock; Err : RpcError };
+type Result_4 = variant { Ok : RpcBlockProduction; Err : RpcError };
+type Result_5 = variant { Ok : vec nat64; Err : RpcError };
+type Result_6 = variant { Ok; Err : TransactionError };
+type Result_7 = variant { Ok : vec opt TransactionStatus; Err : RpcError };
+type Result_8 = variant { Ok : UiTokenAmount; Err : RpcError };
+type Result_9 = variant {
   Ok : TaggedEncodedConfirmedTransactionWithStatusMeta;
   Err : RpcError;
 };
@@ -76,6 +79,14 @@ type RpcAuth = variant {
   PathSegment : record { segment : text };
   HeaderParam : record { value : text; name : text };
 };
+type RpcBlockProduction = record {
+  byIdentity : vec record { text; record { nat64; nat64 } };
+  range : RpcBlockProductionRange;
+};
+type RpcBlockProductionRange = record {
+  firstSlot : nat64;
+  lastSlot : opt nat64;
+};
 type RpcError = variant {
   Text : text;
   ParseError : text;
@@ -85,6 +96,14 @@ type RpcError = variant {
 type SendTransactionRequest = record {
   instructions : vec text;
   recent_blockhash : opt text;
+};
+type TaggedEncodedConfirmedBlock = record {
+  blockTime : opt int64;
+  blockhash : text;
+  blockHeight : opt nat64;
+  rewards : vec Reward;
+  previousBlockhash : text;
+  parentSlot : nat64;
 };
 type TaggedEncodedConfirmedTransactionWithStatusMeta = record {
   transaction : TaggedEncodedTransactionWithStatusMeta;
@@ -123,7 +142,7 @@ type TaggedUiTransaction = record {
 type TaggedUiTransactionStatusMeta = record {
   err : opt TransactionError;
   fee : nat64;
-  status : Result_3;
+  status : Result_6;
   preBalances : vec nat64;
   postTokenBalances : opt vec UiTransactionTokenBalance;
   innerInstructions : opt vec TaggedUiInnerInstructions;
@@ -183,7 +202,7 @@ type TransactionError = variant {
 type TransactionStatus = record {
   err : opt TransactionError;
   confirmations : opt nat64;
-  status : Result_3;
+  status : Result_6;
   slot : nat64;
   confirmation_status : opt TransactionConfirmationStatus;
 };
@@ -267,10 +286,16 @@ service : (InitArgs) -> {
   sol_address : () -> (text);
   sol_getAccountInfo : (text, text) -> (Result_1);
   sol_getBalance : (text, text) -> (Result_2);
+  sol_getBlock : (text, nat64, opt nat64) -> (Result_3);
+  sol_getBlockHeight : (text) -> (Result_2);
+  sol_getBlockProduction : (text, opt text, opt RpcBlockProductionRange) -> (
+      Result_4,
+    );
+  sol_getBlocks : (text, nat64, opt nat64) -> (Result_5);
   sol_getLatestBlockhash : (text) -> (Result);
-  sol_getSignatureStatuses : (text, vec text) -> (Result_4);
-  sol_getTokenBalance : (text, text) -> (Result_5);
-  sol_getTransaction : (text, text, opt nat64) -> (Result_6);
+  sol_getSignatureStatuses : (text, vec text) -> (Result_7);
+  sol_getTokenBalance : (text, text) -> (Result_8);
+  sol_getTransaction : (text, text, opt nat64) -> (Result_9);
   sol_requestAirdrop : (text, text, nat64) -> (Result);
   sol_sendRawTransaction : (text, text) -> (Result);
   sol_sendTransaction : (text, SendTransactionRequest) -> (Result);
