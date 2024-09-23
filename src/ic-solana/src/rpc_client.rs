@@ -621,7 +621,7 @@ impl RpcClient {
 
         let max_response_bytes = 36
             + avg_slot_str_size
-                * (last_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE) - start_slot) as u64;
+                * (last_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE) - start_slot);
 
         let response = self.call(&payload, max_response_bytes).await?;
 

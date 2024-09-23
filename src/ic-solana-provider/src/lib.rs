@@ -134,9 +134,9 @@ pub async fn sol_get_blocks(
     last_slot: Option<u64>,
 ) -> RpcResult<Vec<u64>> {
     let client = rpc_client(&provider);
-    let block = client.get_blocks(start_slot, last_slot).await?;
+    let blocks = client.get_blocks(start_slot, last_slot).await?;
 
-    Ok(block.into())
+    Ok(blocks)
 }
 
 ///
@@ -242,14 +242,14 @@ pub async fn sol_get_token_supply(
     max_response_bytes: Option<u64>,
 ) -> RpcResult<UiTokenAmount> {
     let client = rpc_client(&provider);
-    let accounts = client
+    let supply = client
         .get_token_supply(
             &Pubkey::from_str(&mint).expect("Invalid public key"),
             max_response_bytes,
         )
         .await?;
 
-    Ok(accounts.into())
+    Ok(supply)
 }
 
 ///
