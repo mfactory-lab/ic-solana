@@ -21,14 +21,15 @@ use {
         query, update,
     },
     ic_solana::{
-        response::{RpcBlockProduction, RpcBlockProductionRange},
+        response::RpcBlockProduction,
         rpc_client::{RpcError, RpcResult},
         types::{
             Account, BlockHash, CandidValue, Instruction, Message, Pubkey, RpcAccountInfoConfig,
             RpcContextConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
-            RpcTransactionConfig, Signature, TaggedEncodedConfirmedBlock,
-            TaggedEncodedConfirmedTransactionWithStatusMeta, Transaction, TransactionStatus,
-            UiAccountEncoding, UiTokenAmount, UiTransactionEncoding,
+            RpcTransactionConfig, Signature, TaggedEncodedConfirmedTransactionWithStatusMeta,
+            TaggedRpcBlockProductionConfig, TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance,
+            TaggedUiConfirmedBlock, TokenAccountsFilter, Transaction, TransactionDetails,
+            TransactionStatus, UiAccountEncoding, UiTokenAmount, UiTransactionEncoding,
         },
     },
     ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
@@ -107,11 +108,17 @@ pub async fn sol_get_balance(provider: String, pubkey: String) -> RpcResult<u64>
 pub async fn sol_get_block(
     provider: String,
     slot: u64,
+    transaction_details: TransactionDetails,
     max_response_bytes: Option<u64>,
-) -> RpcResult<TaggedEncodedConfirmedBlock> {
+) -> RpcResult<TaggedUiConfirmedBlock> {
     let client = rpc_client(&provider);
     let block = client
-        .get_block(slot, UiTransactionEncoding::Json, max_response_bytes)
+        .get_block(
+            slot,
+            UiTransactionEncoding::Json,
+            transaction_details,
+            max_response_bytes,
+        )
         .await?;
     Ok(block.into())
 }
@@ -152,14 +159,12 @@ pub async fn sol_get_block_height(provider: String) -> RpcResult<u64> {
 #[candid_method(rename = "sol_getBlockProduction")]
 pub async fn sol_get_block_production(
     provider: String,
-    identity: Option<String>,
-    range: Option<RpcBlockProductionRange>,
+    block_prodaction_config: TaggedRpcBlockProductionConfig,
 ) -> RpcResult<RpcBlockProduction> {
     let client = rpc_client(&provider);
-    let commitment = None;
 
     let block_production = client
-        .get_block_production(commitment, identity, range)
+        .get_block_production(block_prodaction_config.into())
         .await?;
 
     Ok(block_production)
@@ -180,6 +185,94 @@ pub async fn sol_get_token_balance(provider: String, pubkey: String) -> RpcResul
         )
         .await?;
     Ok(balance)
+}
+
+///
+/// Returns all SPL Token accounts by token owner.
+///
+#[update(name = "sol_getTokenAccountsByOwner")]
+#[candid_method(rename = "sol_getTokenAccountsByOwner")]
+pub async fn sol_get_token_accounts_by_owner(
+    provider: String,
+    pubkey: String,
+    token_accounts_filter: TokenAccountsFilter,
+    max_response_bytes: Option<u64>,
+) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
+    let client = rpc_client(&provider);
+    let accounts = client
+        .get_token_accounts_by_owner(
+            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
+            token_accounts_filter,
+            max_response_bytes,
+        )
+        .await?;
+
+    Ok(accounts.into_iter().map(Into::into).collect())
+}
+
+///
+/// Returns the 20 largest accounts of a particular SPL Token type.
+///
+#[update(name = "sol_getTokenLargestAccounts")]
+#[candid_method(rename = "sol_getTokenLargestAccounts")]
+pub async fn sol_get_token_largest_accounts(
+    provider: String,
+    mint: String,
+    max_response_bytes: Option<u64>,
+) -> RpcResult<Vec<TaggedRpcTokenAccountBalance>> {
+    let client = rpc_client(&provider);
+    let accounts = client
+        .get_token_largest_accounts(
+            &Pubkey::from_str(&mint).expect("Invalid public key"),
+            max_response_bytes,
+        )
+        .await?;
+
+    Ok(accounts.into_iter().map(Into::into).collect())
+}
+
+///
+/// Returns the total supply of an SPL Token type.
+///
+#[update(name = "sol_getTokenSupply")]
+#[candid_method(rename = "sol_getTokenSupply")]
+pub async fn sol_get_token_supply(
+    provider: String,
+    mint: String,
+    max_response_bytes: Option<u64>,
+) -> RpcResult<UiTokenAmount> {
+    let client = rpc_client(&provider);
+    let accounts = client
+        .get_token_supply(
+            &Pubkey::from_str(&mint).expect("Invalid public key"),
+            max_response_bytes,
+        )
+        .await?;
+
+    Ok(accounts.into())
+}
+
+///
+/// Returns all SPL Token accounts by approved Delegate.
+///
+#[update(name = "sol_getTokenAccountsByDelegate")]
+#[candid_method(rename = "sol_getTokenAccountsByDelegate")]
+pub async fn sol_get_token_accounts_by_delegate(
+    provider: String,
+    pubkey: String,
+    token_accounts_filter: TokenAccountsFilter,
+    max_response_bytes: Option<u64>,
+) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
+    let client = rpc_client(&provider);
+    let accounts = client
+        .get_token_accounts_by_delegate(
+            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
+            token_accounts_filter,
+            max_response_bytes,
+        )
+        .await?;
+
+    Ok(accounts.into_iter().map(Into::into).collect())
 }
 
 ///

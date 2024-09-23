@@ -1,7 +1,7 @@
 use {
     crate::types::{
         EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot,
-        TransactionConfirmationStatus, TransactionError, UiAccount, UnixTimestamp,
+        TransactionConfirmationStatus, TransactionError, UiAccount, UiTokenAmount, UnixTimestamp,
     },
     candid::CandidType,
     serde::{Deserialize, Serialize},
@@ -269,8 +269,8 @@ pub struct RpcBlockProductionRange {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockProduction {
-    #[serde(rename = "byIdentity")]
     /// Map of leader base58 identity pubkeys to a tuple of `(number of leader slots, number of blocks produced)`
+    #[serde(rename = "byIdentity")]
     pub by_identity: HashMap<String, (usize, usize)>,
     pub range: RpcBlockProductionRange,
 }
@@ -424,14 +424,26 @@ pub struct EncodedConfirmedBlock {
     pub block_time: Option<UnixTimestamp>,
     pub block_height: Option<u64>,
 }
-//
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcTokenAccountBalance {
-//     pub address: String,
-//     #[serde(flatten)]
-//     pub amount: UiTokenAmount,
-// }
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EncodedConfirmedBlockWithoutTransactions {
+    pub previous_blockhash: String,
+    pub blockhash: String,
+    pub parent_slot: Slot,
+    pub signatures: Vec<String>,
+    pub rewards: Rewards,
+    pub block_time: Option<UnixTimestamp>,
+    pub block_height: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcTokenAccountBalance {
+    pub address: String,
+    #[serde(flatten)]
+    pub amount: UiTokenAmount,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

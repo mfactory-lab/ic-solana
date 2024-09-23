@@ -1,10 +1,13 @@
 use {
-    crate::types::{
-        account::UiAccountEncoding,
-        commitment::{CommitmentConfig, CommitmentLevel},
-        filter::RpcFilterType,
-        transaction::{TransactionDetails, UiTransactionEncoding},
-        Epoch, Slot,
+    crate::{
+        response::RpcBlockProductionRange,
+        types::{
+            account::UiAccountEncoding,
+            commitment::{CommitmentConfig, CommitmentLevel},
+            filter::RpcFilterType,
+            transaction::{TransactionDetails, UiTransactionEncoding},
+            Epoch, Slot,
+        },
     },
     serde::{Deserialize, Serialize},
 };
@@ -72,18 +75,11 @@ pub struct RpcLeaderScheduleConfig {
     pub commitment: Option<CommitmentConfig>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RpcBlockProductionConfigRange {
-    pub first_slot: Slot,
-    pub last_slot: Option<Slot>,
-}
-
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockProductionConfig {
     pub identity: Option<String>, // validator identity, as a base-58 encoded string
-    pub range: Option<RpcBlockProductionConfigRange>, // current epoch if `None`
+    pub range: Option<RpcBlockProductionRange>, // current epoch if `None`
     #[serde(flatten)]
     pub commitment: Option<CommitmentConfig>,
 }

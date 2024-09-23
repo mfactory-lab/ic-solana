@@ -6,6 +6,8 @@ type Account = record {
   rentEpoch : nat64;
 };
 type Auth = variant { RegisterProvider; Manage };
+type CommitmentConfig = record { commitment : CommitmentLevel };
+type CommitmentLevel = variant { Finalized; Confirmed; Processed };
 type HttpRequest = record {
   url : text;
   method : text;
@@ -54,23 +56,28 @@ type RegisterProviderArgs = record {
 };
 type Result = variant { Ok : text; Err : RpcError };
 type Result_1 = variant { Ok : opt Account; Err : RpcError };
-type Result_2 = variant { Ok : nat64; Err : RpcError };
-type Result_3 = variant { Ok : TaggedEncodedConfirmedBlock; Err : RpcError };
-type Result_4 = variant { Ok : RpcBlockProduction; Err : RpcError };
-type Result_5 = variant { Ok : vec nat64; Err : RpcError };
-type Result_6 = variant { Ok; Err : TransactionError };
-type Result_7 = variant { Ok : vec opt TransactionStatus; Err : RpcError };
-type Result_8 = variant { Ok : UiTokenAmount; Err : RpcError };
-type Result_9 = variant {
+type Result_10 = variant {
+  Ok : vec TaggedRpcTokenAccountBalance;
+  Err : RpcError;
+};
+type Result_11 = variant {
   Ok : TaggedEncodedConfirmedTransactionWithStatusMeta;
   Err : RpcError;
 };
+type Result_2 = variant { Ok : nat64; Err : RpcError };
+type Result_3 = variant { Ok; Err : TransactionError };
+type Result_4 = variant { Ok : TaggedUiConfirmedBlock; Err : RpcError };
+type Result_5 = variant { Ok : RpcBlockProduction; Err : RpcError };
+type Result_6 = variant { Ok : vec nat64; Err : RpcError };
+type Result_7 = variant { Ok : vec opt TransactionStatus; Err : RpcError };
+type Result_8 = variant { Ok : vec TaggedRpcKeyedAccount; Err : RpcError };
+type Result_9 = variant { Ok : UiTokenAmount; Err : RpcError };
 type Reward = record {
   lamports : int64;
+  postBalance : nat64;
   commission : opt nat8;
   pubkey : text;
-  reward_type : opt RewardType;
-  post_balance : nat64;
+  rewardType : opt RewardType;
 };
 type RewardType = variant { Fee; Rent; Voting; Staking };
 type RpcAuth = variant {
@@ -97,14 +104,6 @@ type SendTransactionRequest = record {
   instructions : vec text;
   recent_blockhash : opt text;
 };
-type TaggedEncodedConfirmedBlock = record {
-  blockTime : opt int64;
-  blockhash : text;
-  blockHeight : opt nat64;
-  rewards : vec Reward;
-  previousBlockhash : text;
-  parentSlot : nat64;
-};
 type TaggedEncodedConfirmedTransactionWithStatusMeta = record {
   transaction : TaggedEncodedTransactionWithStatusMeta;
   slot : nat64;
@@ -121,7 +120,44 @@ type TaggedEncodedTransactionWithStatusMeta = record {
   transaction : TaggedEncodedTransaction;
   version : opt TaggedTransactionVersion;
 };
+type TaggedRpcBlockProductionConfig = record {
+  identity : opt text;
+  range : opt RpcBlockProductionRange;
+  commitment : opt CommitmentConfig;
+};
+type TaggedRpcKeyedAccount = record {
+  pubkey : text;
+  account : TaggedUiAccount;
+};
+type TaggedRpcTokenAccountBalance = record {
+  address : text;
+  amount : UiTokenAmount;
+};
 type TaggedTransactionVersion = variant { legacy : Legacy; number : nat8 };
+type TaggedUiAccount = record {
+  executable : bool;
+  owner : text;
+  lamports : nat64;
+  data : TaggedUiAccountData;
+  space : opt nat64;
+  rentEpoch : nat64;
+};
+type TaggedUiAccountData = variant {
+  json : ParsedAccount;
+  legacyBinary : text;
+  binary : record { text; UiAccountEncoding };
+};
+type TaggedUiConfirmedBlock = record {
+  blockTime : opt int64;
+  blockhash : text;
+  blockHeight : opt nat64;
+  signatures : opt vec text;
+  rewards : opt vec Reward;
+  transactions : opt vec TaggedEncodedTransactionWithStatusMeta;
+  numRewardPartitions : opt nat64;
+  previousBlockhash : text;
+  parentSlot : nat64;
+};
 type TaggedUiInnerInstructions = record {
   instructions : vec TaggedUiInstruction;
   index : nat8;
@@ -142,7 +178,7 @@ type TaggedUiTransaction = record {
 type TaggedUiTransactionStatusMeta = record {
   err : opt TransactionError;
   fee : nat64;
-  status : Result_6;
+  status : Result_3;
   preBalances : vec nat64;
   postTokenBalances : opt vec UiTransactionTokenBalance;
   innerInstructions : opt vec TaggedUiInnerInstructions;
@@ -154,12 +190,9 @@ type TaggedUiTransactionStatusMeta = record {
   preTokenBalances : opt vec UiTransactionTokenBalance;
   computeUnitsConsumed : opt nat64;
 };
+type TokenAccountsFilter = variant { owner : text; mint : text };
 type TransactionBinaryEncoding = variant { Base58; Base64 };
-type TransactionConfirmationStatus = variant {
-  Finalized;
-  Confirmed;
-  Processed;
-};
+type TransactionDetails = variant { full; none; accounts; signatures };
 type TransactionError = variant {
   InvalidAccountForFee;
   AddressLookupTableNotFound;
@@ -202,9 +235,16 @@ type TransactionError = variant {
 type TransactionStatus = record {
   err : opt TransactionError;
   confirmations : opt nat64;
-  status : Result_6;
+  status : Result_3;
   slot : nat64;
-  confirmation_status : opt TransactionConfirmationStatus;
+  confirmation_status : opt CommitmentLevel;
+};
+type UiAccountEncoding = variant {
+  "base64+zstd";
+  jsonParsed;
+  base58;
+  base64;
+  bianry;
 };
 type UiAccountsList = record {
   signatures : vec text;
@@ -286,16 +326,28 @@ service : (InitArgs) -> {
   sol_address : () -> (text);
   sol_getAccountInfo : (text, text) -> (Result_1);
   sol_getBalance : (text, text) -> (Result_2);
-  sol_getBlock : (text, nat64, opt nat64) -> (Result_3);
+  sol_getBlock : (text, nat64, TransactionDetails, opt nat64) -> (Result_4);
   sol_getBlockHeight : (text) -> (Result_2);
-  sol_getBlockProduction : (text, opt text, opt RpcBlockProductionRange) -> (
-      Result_4,
-    );
-  sol_getBlocks : (text, nat64, opt nat64) -> (Result_5);
+  sol_getBlockProduction : (text, TaggedRpcBlockProductionConfig) -> (Result_5);
+  sol_getBlocks : (text, nat64, opt nat64) -> (Result_6);
   sol_getLatestBlockhash : (text) -> (Result);
   sol_getSignatureStatuses : (text, vec text) -> (Result_7);
-  sol_getTokenBalance : (text, text) -> (Result_8);
-  sol_getTransaction : (text, text, opt nat64) -> (Result_9);
+  sol_getTokenAccountsByDelegate : (
+      text,
+      text,
+      TokenAccountsFilter,
+      opt nat64,
+    ) -> (Result_8);
+  sol_getTokenAccountsByOwner : (
+      text,
+      text,
+      TokenAccountsFilter,
+      opt nat64,
+    ) -> (Result_8);
+  sol_getTokenBalance : (text, text) -> (Result_9);
+  sol_getTokenLargestAccounts : (text, text, opt nat64) -> (Result_10);
+  sol_getTokenSupply : (text, text, opt nat64) -> (Result_9);
+  sol_getTransaction : (text, text, opt nat64) -> (Result_11);
   sol_requestAirdrop : (text, text, nat64) -> (Result);
   sol_sendRawTransaction : (text, text) -> (Result);
   sol_sendTransaction : (text, SendTransactionRequest) -> (Result);

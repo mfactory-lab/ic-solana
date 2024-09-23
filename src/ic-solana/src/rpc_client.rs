@@ -3,16 +3,17 @@ use {
         constants::*,
         request::RpcRequest,
         response::{
-            EncodedConfirmedBlock, OptionalContext, Response, RpcBlockProduction,
-            RpcBlockProductionRange, RpcBlockhash, RpcConfirmedTransactionStatusWithSignature,
-            RpcKeyedAccount, RpcSupply, RpcVersionInfo,
+            OptionalContext, Response, RpcBlockProduction, RpcBlockhash,
+            RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply,
+            RpcTokenAccountBalance, RpcVersionInfo,
         },
         types::{
             Account, BlockHash, Cluster, CommitmentConfig,
             EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
-            RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSupplyConfig,
-            RpcTransactionConfig, Signature, Slot, Transaction, TransactionStatus, UiAccount,
+            RpcBlockProductionConfig, RpcContextConfig, RpcProgramAccountsConfig,
+            RpcSendTransactionConfig, RpcSignatureStatusConfig, RpcSignaturesForAddressConfig,
+            RpcSupplyConfig, RpcTransactionConfig, Signature, Slot, TokenAccountsFilter,
+            Transaction, TransactionDetails, TransactionStatus, UiAccount, UiConfirmedBlock,
             UiTokenAmount, UiTransactionEncoding,
         },
     },
@@ -367,6 +368,139 @@ impl RpcClient {
     }
 
     ///
+    /// Returns all SPL Token accounts by approved Delegate.
+    ///
+    /// Method relies on the `getTokenAccountsByDelegate` RPC call to get the token balance:
+    ///   https://solana.com/docs/rpc/http/gettokenaccountsbydelegate
+    ///
+    pub async fn get_token_accounts_by_delegate(
+        &self,
+        pubkey: &Pubkey,
+        token_accounts_filter: TokenAccountsFilter,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<Vec<RpcKeyedAccount>> {
+        let payload = RpcRequest::GetTokenAccountsByDelegate.build_request_json(
+            self.next_request_id(),
+            json!([pubkey.to_string(), token_accounts_filter]),
+        );
+
+        let response = self
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE),
+            )
+            .await?;
+
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>,
+        >(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
+    /// Returns all SPL Token accounts by token owner
+    ///
+    /// Method relies on the `getTokenAccountsByOwner` RPC call to get the token balance:
+    ///   https://solana.com/docs/rpc/http/gettokenaccountsbyowner
+    ///
+    pub async fn get_token_accounts_by_owner(
+        &self,
+        pubkey: &Pubkey,
+        token_accounts_filter: TokenAccountsFilter,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<Vec<RpcKeyedAccount>> {
+        let payload = RpcRequest::GetTokenAccountsByOwner.build_request_json(
+            self.next_request_id(),
+            json!([pubkey.to_string(), token_accounts_filter]),
+        );
+
+        let response = self
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE),
+            )
+            .await?;
+
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>,
+        >(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
+    /// Returns the 20 largest accounts of a particular SPL Token type.
+    ///
+    /// Method relies on the `getTokenLargestAccounts` RPC call to get the token balance:
+    ///   https://solana.com/docs/rpc/http/gettokenlargestaccounts
+    ///
+    pub async fn get_token_largest_accounts(
+        &self,
+        mint: &Pubkey,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<Vec<RpcTokenAccountBalance>> {
+        let payload = RpcRequest::GetTokenLargestAccounts
+            .build_request_json(self.next_request_id(), json!([mint.to_string()]));
+
+        let response = self
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_TOKEN_LARGEST_ACCOUNTS_SIZE_ESTIMATE),
+            )
+            .await?;
+
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<Vec<RpcTokenAccountBalance>>>,
+        >(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
+    /// Returns the total supply of an SPL Token type.
+    ///
+    /// Method relies on the `getTokenSupply` RPC call to get the token balance:
+    ///   https://solana.com/docs/rpc/http/gettokensupply
+    ///
+    pub async fn get_token_supply(
+        &self,
+        mint: &Pubkey,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<UiTokenAmount> {
+        let payload = RpcRequest::GetTokenSupply
+            .build_request_json(self.next_request_id(), json!([mint.to_string()]));
+
+        let response = self
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_TOKEN_SUPPLY_SIZE_ESTIMATE),
+            )
+            .await?;
+
+        let json_response =
+            serde_json::from_str::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
     /// Returns all information associated with the account of the provided Pubkey.
     ///
     /// Method relies on the `getAccountInfo` RPC call to get the account info:
@@ -445,11 +579,12 @@ impl RpcClient {
         &self,
         slot: Slot,
         encoding: UiTransactionEncoding,
+        transaction_details: TransactionDetails,
         max_response_bytes: Option<u64>,
-    ) -> RpcResult<EncodedConfirmedBlock> {
+    ) -> RpcResult<UiConfirmedBlock> {
         let payload = RpcRequest::GetBlock.build_request_json(
             self.next_request_id(),
-            json!([slot, { "encoding": encoding, "maxSupportedTransactionVersion": 0 }]),
+            json!([slot, { "encoding": encoding, "maxSupportedTransactionVersion": 0, "transactionDetails": transaction_details }]),
         );
 
         let response = self
@@ -459,8 +594,7 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response =
-            serde_json::from_str::<JsonRpcResponse<EncodedConfirmedBlock>>(&response)?;
+        let json_response = serde_json::from_str::<JsonRpcResponse<UiConfirmedBlock>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -525,23 +659,21 @@ impl RpcClient {
     ///
     pub async fn get_block_production(
         &self,
-        commitment: Option<CommitmentConfig>,
-        identity: Option<String>,
-        range: Option<RpcBlockProductionRange>,
+        config: RpcBlockProductionConfig,
     ) -> RpcResult<RpcBlockProduction> {
-        let payload = RpcRequest::GetBlockProduction.build_request_json(
-            self.next_request_id(),
-            json!([commitment.unwrap_or_default(), identity, range]),
-        );
+        let payload = RpcRequest::GetBlockProduction
+            .build_request_json(self.next_request_id(), json!([config]));
 
-        let response = self.call(&payload, 45).await?;
+        let response = self.call(&payload, 100_000).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<RpcBlockProduction>>(&response)?;
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<RpcBlockProduction>>,
+        >(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
         } else {
-            Ok(json_response.result.unwrap())
+            Ok(json_response.result.unwrap().parse_value())
         }
     }
 

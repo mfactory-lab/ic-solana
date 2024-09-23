@@ -1,4 +1,5 @@
 use {
+    super::CandidValue,
     crate::types::{pubkey::Pubkey, Epoch},
     base64::{prelude::BASE64_STANDARD, Engine},
     candid::{CandidType, Deserialize},
@@ -76,9 +77,13 @@ impl UiAccountData {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum UiAccountEncoding {
+    #[serde(rename = "bianry")]
     Binary, // Legacy. Retained for RPC backwards compatibility
+    #[serde(rename = "base58")]
     Base58,
+    #[serde(rename = "base64")]
     Base64,
+    #[serde(rename = "jsonParsed")]
     JsonParsed,
     #[serde(rename = "base64+zstd")]
     Base64Zstd,
@@ -88,8 +93,7 @@ pub enum UiAccountEncoding {
 #[serde(rename_all = "camelCase")]
 pub struct ParsedAccount {
     pub program: String,
-    // pub parsed: Value,
-    pub parsed: String,
+    pub parsed: CandidValue,
     pub space: u64,
 }
 

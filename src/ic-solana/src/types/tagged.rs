@@ -4,18 +4,226 @@
 //! the "tagged" versions of structs in order to send them as candid types.
 use {
     super::{
-        EncodedConfirmedTransactionWithStatusMeta, EncodedTransaction,
-        EncodedTransactionWithStatusMeta, Legacy, ParsedInstruction, Rewards, Slot,
-        TransactionBinaryEncoding, TransactionError, TransactionResult, TransactionVersion,
-        UiAccountsList, UiCompiledInstruction, UiInnerInstructions, UiInstruction,
-        UiLoadedAddresses, UiMessage, UiParsedInstruction, UiParsedMessage,
-        UiPartiallyDecodedInstruction, UiRawMessage, UiTransaction, UiTransactionReturnData,
-        UiTransactionStatusMeta, UiTransactionTokenBalance, UnixTimestamp,
+        CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EncodedTransaction,
+        EncodedTransactionWithStatusMeta, Epoch, Legacy, ParsedAccount, ParsedInstruction, Rewards,
+        RpcBlockProductionConfig, Slot, TransactionBinaryEncoding, TransactionError,
+        TransactionResult, TransactionVersion, UiAccount, UiAccountData, UiAccountEncoding,
+        UiAccountsList, UiCompiledInstruction, UiConfirmedBlock, UiInnerInstructions,
+        UiInstruction, UiLoadedAddresses, UiMessage, UiParsedInstruction, UiParsedMessage,
+        UiPartiallyDecodedInstruction, UiRawMessage, UiTokenAmount, UiTransaction,
+        UiTransactionReturnData, UiTransactionStatusMeta, UiTransactionTokenBalance, UnixTimestamp,
     },
-    crate::response::EncodedConfirmedBlock,
+    crate::response::{
+        EncodedConfirmedBlock, RpcBlockProductionRange, RpcKeyedAccount, RpcTokenAccountBalance,
+    },
     candid::CandidType,
     serde::{Deserialize, Serialize},
 };
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TaggedRpcBlockProductionConfig {
+    pub identity: Option<String>, // validator identity, as a base-58 encoded string
+    pub range: Option<RpcBlockProductionRange>, // current epoch if `None`
+    pub commitment: Option<CommitmentConfig>,
+}
+
+impl From<TaggedRpcBlockProductionConfig> for RpcBlockProductionConfig {
+    fn from(tagged: TaggedRpcBlockProductionConfig) -> Self {
+        RpcBlockProductionConfig {
+            identity: tagged.identity,
+            range: tagged.range,
+            commitment: tagged.commitment,
+        }
+    }
+}
+
+impl From<RpcBlockProductionConfig> for TaggedRpcBlockProductionConfig {
+    fn from(rpc_block_production_config: RpcBlockProductionConfig) -> Self {
+        TaggedRpcBlockProductionConfig {
+            identity: rpc_block_production_config.identity,
+            range: rpc_block_production_config.range,
+            commitment: rpc_block_production_config.commitment,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, CandidType)]
+pub struct TaggedRpcTokenAccountBalance {
+    pub address: String,
+    pub amount: UiTokenAmount,
+}
+
+impl From<TaggedRpcTokenAccountBalance> for RpcTokenAccountBalance {
+    fn from(tagged: TaggedRpcTokenAccountBalance) -> Self {
+        RpcTokenAccountBalance {
+            address: tagged.address,
+            amount: tagged.amount,
+        }
+    }
+}
+
+impl From<RpcTokenAccountBalance> for TaggedRpcTokenAccountBalance {
+    fn from(rpc_token_account_balance: RpcTokenAccountBalance) -> Self {
+        TaggedRpcTokenAccountBalance {
+            address: rpc_token_account_balance.address,
+            amount: rpc_token_account_balance.amount,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, CandidType)]
+pub struct TaggedUiConfirmedBlock {
+    #[serde(rename = "previousBlockhash")]
+    pub previous_blockhash: String,
+    pub blockhash: String,
+    #[serde(rename = "parentSlot")]
+    pub parent_slot: Slot,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transactions: Option<Vec<TaggedEncodedTransactionWithStatusMeta>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signatures: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rewards: Option<Rewards>,
+    #[serde(
+        default,
+        rename = "numRewardPartitions",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub num_reward_partitions: Option<u64>,
+    #[serde(rename = "blockTime")]
+    pub block_time: Option<UnixTimestamp>,
+    #[serde(rename = "blockHeight")]
+    pub block_height: Option<u64>,
+}
+
+impl From<TaggedUiConfirmedBlock> for UiConfirmedBlock {
+    fn from(tagged: TaggedUiConfirmedBlock) -> Self {
+        UiConfirmedBlock {
+            previous_blockhash: tagged.previous_blockhash,
+            blockhash: tagged.blockhash,
+            parent_slot: tagged.parent_slot,
+            transactions: tagged
+                .transactions
+                .map(|transactions| transactions.into_iter().map(Into::into).collect()),
+            signatures: tagged.signatures,
+            rewards: tagged.rewards,
+            num_reward_partitions: tagged.num_reward_partitions,
+            block_time: tagged.block_time,
+            block_height: tagged.block_height,
+        }
+    }
+}
+
+impl From<UiConfirmedBlock> for TaggedUiConfirmedBlock {
+    fn from(ui_confirmed_block: UiConfirmedBlock) -> Self {
+        TaggedUiConfirmedBlock {
+            previous_blockhash: ui_confirmed_block.previous_blockhash,
+            blockhash: ui_confirmed_block.blockhash,
+            parent_slot: ui_confirmed_block.parent_slot,
+            transactions: ui_confirmed_block
+                .transactions
+                .map(|transactions| transactions.into_iter().map(Into::into).collect()),
+            signatures: ui_confirmed_block.signatures,
+            rewards: ui_confirmed_block.rewards,
+            num_reward_partitions: ui_confirmed_block.num_reward_partitions,
+            block_time: ui_confirmed_block.block_time,
+            block_height: ui_confirmed_block.block_height,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+pub enum TaggedUiAccountData {
+    #[serde(rename = "legacyBinary")]
+    LegacyBinary(String), // Legacy. Retained for RPC backwards compatibility
+    #[serde(rename = "json")]
+    Json(ParsedAccount),
+    #[serde(rename = "binary")]
+    Binary(String, UiAccountEncoding),
+}
+
+impl From<UiAccountData> for TaggedUiAccountData {
+    fn from(ui_account_data: UiAccountData) -> Self {
+        match ui_account_data {
+            UiAccountData::LegacyBinary(blob) => TaggedUiAccountData::LegacyBinary(blob),
+            UiAccountData::Json(parsed) => TaggedUiAccountData::Json(parsed),
+            UiAccountData::Binary(blob, encoding) => TaggedUiAccountData::Binary(blob, encoding),
+        }
+    }
+}
+
+impl From<TaggedUiAccountData> for UiAccountData {
+    fn from(tagged_ui_account_data: TaggedUiAccountData) -> Self {
+        match tagged_ui_account_data {
+            TaggedUiAccountData::LegacyBinary(blob) => UiAccountData::LegacyBinary(blob),
+            TaggedUiAccountData::Json(parsed) => UiAccountData::Json(parsed),
+            TaggedUiAccountData::Binary(blob, encoding) => UiAccountData::Binary(blob, encoding),
+        }
+    }
+}
+
+/// A duplicate representation of an Account for pretty JSON serialization
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType)]
+pub struct TaggedUiAccount {
+    pub lamports: u64,
+    pub data: TaggedUiAccountData,
+    pub owner: String,
+    pub executable: bool,
+    #[serde(rename = "rentEpoch")]
+    pub rent_epoch: Epoch,
+    pub space: Option<u64>,
+}
+
+impl From<TaggedUiAccount> for UiAccount {
+    fn from(tagged: TaggedUiAccount) -> Self {
+        UiAccount {
+            lamports: tagged.lamports,
+            data: tagged.data.into(),
+            owner: tagged.owner,
+            executable: tagged.executable,
+            rent_epoch: tagged.rent_epoch,
+            space: tagged.space,
+        }
+    }
+}
+
+impl From<UiAccount> for TaggedUiAccount {
+    fn from(ui_account: UiAccount) -> Self {
+        TaggedUiAccount {
+            lamports: ui_account.lamports,
+            data: ui_account.data.into(),
+            owner: ui_account.owner,
+            executable: ui_account.executable,
+            rent_epoch: ui_account.rent_epoch,
+            space: ui_account.space,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType)]
+pub struct TaggedRpcKeyedAccount {
+    pub pubkey: String,
+    pub account: TaggedUiAccount,
+}
+
+impl From<TaggedRpcKeyedAccount> for RpcKeyedAccount {
+    fn from(tagged: TaggedRpcKeyedAccount) -> Self {
+        RpcKeyedAccount {
+            pubkey: tagged.pubkey,
+            account: tagged.account.into(),
+        }
+    }
+}
+
+impl From<RpcKeyedAccount> for TaggedRpcKeyedAccount {
+    fn from(rpc_keyed_account: RpcKeyedAccount) -> Self {
+        TaggedRpcKeyedAccount {
+            pubkey: rpc_keyed_account.pubkey,
+            account: rpc_keyed_account.account.into(),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
