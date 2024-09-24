@@ -159,13 +159,10 @@ pub async fn sol_get_block_height(provider: String) -> RpcResult<u64> {
 #[candid_method(rename = "sol_getBlockProduction")]
 pub async fn sol_get_block_production(
     provider: String,
-    block_prodaction_config: TaggedRpcBlockProductionConfig,
+    config: TaggedRpcBlockProductionConfig,
 ) -> RpcResult<RpcBlockProduction> {
     let client = rpc_client(&provider);
-
-    let block_production = client
-        .get_block_production(block_prodaction_config.into())
-        .await?;
+    let block_production = client.get_block_production(config.into()).await?;
 
     Ok(block_production)
 }
@@ -558,7 +555,6 @@ fn init(args: InitArgs) {
     STATE.with(|s| {
         *s.borrow_mut() = Some(args.into());
     });
-    // mutate_state(|s| *s = args.into())
 }
 
 #[ic_cdk::post_upgrade]

@@ -164,7 +164,7 @@ impl RpcClient {
     /// # Returns
     ///
     /// * `RpcResult<String>` - A result type that contains the response body as a string if the request
-    /// is successful, or an `RpcError` if the request fails.
+    ///   is successful, or an `RpcError` if the request fails.
     ///
     /// # Errors
     ///
@@ -539,6 +539,9 @@ impl RpcClient {
     ///
     /// Returns the current Solana version running on the node.
     ///
+    /// Method relies on the `getVersion` RPC call to get the version info:
+    ///   https://solana.com/docs/rpc/http/getVersion
+    ///
     pub async fn get_version(&self) -> RpcResult<RpcVersionInfo> {
         let payload =
             RpcRequest::GetVersion.build_request_json(self.next_request_id(), Value::Null);
@@ -558,6 +561,9 @@ impl RpcClient {
     /// Returns the current health of the node.
     /// A healthy node is one that is within HEALTH_CHECK_SLOT_DISTANCE slots of the latest cluster-confirmed slot.
     ///
+    /// Method relies on the `getHealth` RPC call to get the health status:
+    ///   https://solana.com/docs/rpc/http/getHealth
+    ///
     pub async fn get_health(&self) -> RpcResult<String> {
         let payload = RpcRequest::GetHealth.build_request_json(self.next_request_id(), Value::Null);
 
@@ -574,6 +580,9 @@ impl RpcClient {
 
     ///
     /// Returns identity and transaction information about a confirmed block in the ledger.
+    ///
+    /// Method relies on the `getBlock` RPC call to get the block:
+    ///   https://solana.com/docs/rpc/http/getBlock
     ///
     pub async fn get_block(
         &self,
@@ -604,7 +613,10 @@ impl RpcClient {
     }
 
     ///
-    /// Returns a list of confirmed blocks between two slots
+    /// Returns a list of confirmed blocks between two slots.
+    ///
+    /// Method relies on the `getBlocks` RPC call to get the blocks:
+    ///   https://solana.com/docs/rpc/http/getBlocks
     ///
     pub async fn get_blocks(
         &self,
@@ -637,6 +649,9 @@ impl RpcClient {
     ///
     /// Returns the current block height of the node
     ///
+    /// Method relies on the `getBlockHeight` RPC call to get the block height:
+    ///   https://solana.com/docs/rpc/http/getBlockHeight
+    ///
     pub async fn get_block_height(&self, commitment: Option<CommitmentConfig>) -> RpcResult<u64> {
         let payload = RpcRequest::GetBlockHeight.build_request_json(
             self.next_request_id(),
@@ -655,7 +670,10 @@ impl RpcClient {
     }
 
     ///
-    /// Returns recent block production information from the current or previous epoch
+    /// Returns recent block production information from the current or previous epoch.
+    ///
+    /// Method relies on the `getBlockProduction` RPC call to get the block production:
+    ///   https://solana.com/docs/rpc/http/getBlockProduction
     ///
     pub async fn get_block_production(
         &self,
@@ -680,6 +698,9 @@ impl RpcClient {
     ///
     /// Returns the slot that has reached the given or default commitment level.
     ///
+    /// Method relies on the `getSlot` RPC call to get the slot:
+    ///   https://solana.com/docs/rpc/http/getSlot
+    ///
     pub async fn get_slot(&self) -> RpcResult<Slot> {
         let payload = RpcRequest::GetSlot.build_request_json(self.next_request_id(), Value::Null);
 
@@ -696,6 +717,9 @@ impl RpcClient {
 
     ///
     /// Returns information about the current supply.
+    ///
+    /// Method relies on the `getSupply` RPC call to get the supply:
+    ///   https://solana.com/docs/rpc/http/getSupply
     ///
     pub async fn get_supply(&self, config: RpcSupplyConfig) -> RpcResult<RpcSupply> {
         let payload =
