@@ -621,22 +621,19 @@ impl RpcClient {
     pub async fn get_blocks(
         &self,
         start_slot: Slot,
-        last_slot: Option<Slot>,
+        end_slot: Option<Slot>,
     ) -> RpcResult<Vec<u64>> {
         let payload = RpcRequest::GetBlocks
-            .build_request_json(self.next_request_id(), json!([start_slot, last_slot]));
+            .build_request_json(self.next_request_id(), json!([start_slot, end_slot]));
 
-        let avg_slot_str_size = last_slot
-            .unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE)
-            .to_string()
-            .len() as u64;
-
-        let max_response_bytes = 36
-            + avg_slot_str_size
-                * (last_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE) - start_slot);
+        // Total response size estimation
+        let end_slot = end_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE);
+        let max_slot_str_len = end_slot.to_string().len() as u64;
+        let slot_range = end_slot.saturating_sub(start_slot);
+        let commas_size = if slot_range > 0 { slot_range - 1 } else { 0 };
+        let max_response_bytes = 36 + max_slot_str_len * slot_range + commas_size;
 
         let response = self.call(&payload, max_response_bytes).await?;
-
         let json_response = serde_json::from_str::<JsonRpcResponse<Vec<u64>>>(&response)?;
 
         if let Some(e) = json_response.error {
