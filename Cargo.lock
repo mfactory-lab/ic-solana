@@ -2167,9 +2167,9 @@ dependencies = [
 
 [[package]]
 name = "ic-agent"
-version = "0.37.1"
+version = "0.38.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fd3fdf5e5c4f4a9fe5ca612f0febd22dcb161d2f2b75b0142326732be5e4978"
+checksum = "a4c2407d2c529d91d2956bd9d7536f2f497dbab747701f15eb35f41c52b472f2"
 dependencies = [
  "async-lock",
  "backoff",
@@ -2471,7 +2471,7 @@ dependencies = [
  "ic-solana",
  "ic-solana-common",
  "ic-stable-structures",
- "ic-utils 0.37.0",
+ "ic-utils 0.38.1",
  "lazy_static",
  "pocket-ic",
  "rand 0.8.5",
@@ -2496,9 +2496,9 @@ dependencies = [
 
 [[package]]
 name = "ic-transport-types"
-version = "0.37.1"
+version = "0.38.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "875dc4704780383112e8e8b5063a1b98de114321d0c7d3e7f635dcf360a57fba"
+checksum = "8a49e37736106da0dc2416935ffaf53abc6afc9e758314b7afc85fcebfb2e943"
 dependencies = [
  "candid",
  "hex",
@@ -2524,9 +2524,9 @@ dependencies = [
 
 [[package]]
 name = "ic-utils"
-version = "0.37.0"
+version = "0.38.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fa832296800758c9c921dd1704985ded6b3e6fbc3aee409727eb1f00d69a595"
+checksum = "c568322abc65d2eda5f5b2264bd77dca9406294bc6a3c3a9e1ff8a245d18f0f5"
 dependencies = [
  "async-trait",
  "candid",
