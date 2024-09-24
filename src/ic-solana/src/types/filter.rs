@@ -1,6 +1,7 @@
 #![allow(deprecated)]
 
 use {
+    candid::CandidType,
     serde::{Deserialize, Serialize},
     std::borrow::Cow,
     thiserror::Error,
@@ -236,6 +237,14 @@ enum RpcMemcmpEncoding {
     // This variant exists only to preserve backward compatibility with generic `Memcmp` serde
     #[serde(other)]
     Binary,
+}
+
+#[derive(Serialize, Deserialize, CandidType)]
+pub enum TokenAccountsFilter {
+    #[serde(rename = "mint")]
+    Mint(String),
+    #[serde(rename = "owner")]
+    ProgramId(String),
 }
 
 // Internal struct to enable Memcmp filters with explicit Base58 and Base64 encoding. The From

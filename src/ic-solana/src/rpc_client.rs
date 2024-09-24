@@ -3,15 +3,17 @@ use {
         constants::*,
         request::RpcRequest,
         response::{
-            EncodedConfirmedBlock, OptionalContext, Response, RpcBlockhash,
-            RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcVersionInfo,
+            OptionalContext, Response, RpcBlockProduction, RpcBlockhash,
+            RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply,
+            RpcTokenAccountBalance, RpcVersionInfo,
         },
         types::{
             Account, BlockHash, Cluster, CommitmentConfig,
             EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
-            RpcContextConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSupplyConfig,
-            RpcTransactionConfig, Signature, Slot, Transaction, TransactionStatus, UiAccount,
+            RpcBlockProductionConfig, RpcContextConfig, RpcProgramAccountsConfig,
+            RpcSendTransactionConfig, RpcSignatureStatusConfig, RpcSignaturesForAddressConfig,
+            RpcSupplyConfig, RpcTransactionConfig, Signature, Slot, TokenAccountsFilter,
+            Transaction, TransactionDetails, TransactionStatus, UiAccount, UiConfirmedBlock,
             UiTokenAmount, UiTransactionEncoding,
         },
     },
@@ -162,7 +164,7 @@ impl RpcClient {
     /// # Returns
     ///
     /// * `RpcResult<String>` - A result type that contains the response body as a string if the request
-    /// is successful, or an `RpcError` if the request fails.
+    ///   is successful, or an `RpcError` if the request fails.
     ///
     /// # Errors
     ///
@@ -366,6 +368,139 @@ impl RpcClient {
     }
 
     ///
+    /// Returns all SPL Token accounts by approved Delegate.
+    ///
+    /// Method relies on the `getTokenAccountsByDelegate` RPC call to get the token balance:
+    ///   https://solana.com/docs/rpc/http/gettokenaccountsbydelegate
+    ///
+    pub async fn get_token_accounts_by_delegate(
+        &self,
+        pubkey: &Pubkey,
+        token_accounts_filter: TokenAccountsFilter,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<Vec<RpcKeyedAccount>> {
+        let payload = RpcRequest::GetTokenAccountsByDelegate.build_request_json(
+            self.next_request_id(),
+            json!([pubkey.to_string(), token_accounts_filter]),
+        );
+
+        let response = self
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE),
+            )
+            .await?;
+
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>,
+        >(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
+    /// Returns all SPL Token accounts by token owner
+    ///
+    /// Method relies on the `getTokenAccountsByOwner` RPC call to get the token balance:
+    ///   https://solana.com/docs/rpc/http/gettokenaccountsbyowner
+    ///
+    pub async fn get_token_accounts_by_owner(
+        &self,
+        pubkey: &Pubkey,
+        token_accounts_filter: TokenAccountsFilter,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<Vec<RpcKeyedAccount>> {
+        let payload = RpcRequest::GetTokenAccountsByOwner.build_request_json(
+            self.next_request_id(),
+            json!([pubkey.to_string(), token_accounts_filter]),
+        );
+
+        let response = self
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE),
+            )
+            .await?;
+
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>,
+        >(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
+    /// Returns the 20 largest accounts of a particular SPL Token type.
+    ///
+    /// Method relies on the `getTokenLargestAccounts` RPC call to get the token balance:
+    ///   https://solana.com/docs/rpc/http/gettokenlargestaccounts
+    ///
+    pub async fn get_token_largest_accounts(
+        &self,
+        mint: &Pubkey,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<Vec<RpcTokenAccountBalance>> {
+        let payload = RpcRequest::GetTokenLargestAccounts
+            .build_request_json(self.next_request_id(), json!([mint.to_string()]));
+
+        let response = self
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_TOKEN_LARGEST_ACCOUNTS_SIZE_ESTIMATE),
+            )
+            .await?;
+
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<Vec<RpcTokenAccountBalance>>>,
+        >(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
+    /// Returns the total supply of an SPL Token type.
+    ///
+    /// Method relies on the `getTokenSupply` RPC call to get the token balance:
+    ///   https://solana.com/docs/rpc/http/gettokensupply
+    ///
+    pub async fn get_token_supply(
+        &self,
+        mint: &Pubkey,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<UiTokenAmount> {
+        let payload = RpcRequest::GetTokenSupply
+            .build_request_json(self.next_request_id(), json!([mint.to_string()]));
+
+        let response = self
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_TOKEN_SUPPLY_SIZE_ESTIMATE),
+            )
+            .await?;
+
+        let json_response =
+            serde_json::from_str::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
     /// Returns all information associated with the account of the provided Pubkey.
     ///
     /// Method relies on the `getAccountInfo` RPC call to get the account info:
@@ -404,6 +539,9 @@ impl RpcClient {
     ///
     /// Returns the current Solana version running on the node.
     ///
+    /// Method relies on the `getVersion` RPC call to get the version info:
+    ///   https://solana.com/docs/rpc/http/getVersion
+    ///
     pub async fn get_version(&self) -> RpcResult<RpcVersionInfo> {
         let payload =
             RpcRequest::GetVersion.build_request_json(self.next_request_id(), Value::Null);
@@ -423,6 +561,9 @@ impl RpcClient {
     /// Returns the current health of the node.
     /// A healthy node is one that is within HEALTH_CHECK_SLOT_DISTANCE slots of the latest cluster-confirmed slot.
     ///
+    /// Method relies on the `getHealth` RPC call to get the health status:
+    ///   https://solana.com/docs/rpc/http/getHealth
+    ///
     pub async fn get_health(&self) -> RpcResult<String> {
         let payload = RpcRequest::GetHealth.build_request_json(self.next_request_id(), Value::Null);
 
@@ -440,20 +581,29 @@ impl RpcClient {
     ///
     /// Returns identity and transaction information about a confirmed block in the ledger.
     ///
+    /// Method relies on the `getBlock` RPC call to get the block:
+    ///   https://solana.com/docs/rpc/http/getBlock
+    ///
     pub async fn get_block(
         &self,
         slot: Slot,
         encoding: UiTransactionEncoding,
-    ) -> RpcResult<EncodedConfirmedBlock> {
-        let payload = RpcRequest::GetBlock
-            .build_request_json(self.next_request_id(), json!([slot, encoding]));
+        transaction_details: TransactionDetails,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<UiConfirmedBlock> {
+        let payload = RpcRequest::GetBlock.build_request_json(
+            self.next_request_id(),
+            json!([slot, { "encoding": encoding, "maxSupportedTransactionVersion": 0, "transactionDetails": transaction_details }]),
+        );
 
         let response = self
-            .call(&payload, GET_BLOCK_RESPONSE_SIZE_ESTIMATE)
+            .call(
+                &payload,
+                max_response_bytes.unwrap_or(GET_BLOCK_RESPONSE_SIZE_ESTIMATE),
+            )
             .await?;
 
-        let json_response =
-            serde_json::from_str::<JsonRpcResponse<EncodedConfirmedBlock>>(&response)?;
+        let json_response = serde_json::from_str::<JsonRpcResponse<UiConfirmedBlock>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -463,7 +613,90 @@ impl RpcClient {
     }
 
     ///
+    /// Returns a list of confirmed blocks between two slots.
+    ///
+    /// Method relies on the `getBlocks` RPC call to get the blocks:
+    ///   https://solana.com/docs/rpc/http/getBlocks
+    ///
+    pub async fn get_blocks(
+        &self,
+        start_slot: Slot,
+        end_slot: Option<Slot>,
+    ) -> RpcResult<Vec<u64>> {
+        let payload = RpcRequest::GetBlocks
+            .build_request_json(self.next_request_id(), json!([start_slot, end_slot]));
+
+        // Total response size estimation
+        let end_slot = end_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE);
+        let max_slot_str_len = end_slot.to_string().len() as u64;
+        let slot_range = end_slot.saturating_sub(start_slot);
+        let commas_size = if slot_range > 0 { slot_range - 1 } else { 0 };
+        let max_response_bytes = 36 + max_slot_str_len * slot_range + commas_size;
+
+        let response = self.call(&payload, max_response_bytes).await?;
+        let json_response = serde_json::from_str::<JsonRpcResponse<Vec<u64>>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap())
+        }
+    }
+
+    ///
+    /// Returns the current block height of the node
+    ///
+    /// Method relies on the `getBlockHeight` RPC call to get the block height:
+    ///   https://solana.com/docs/rpc/http/getBlockHeight
+    ///
+    pub async fn get_block_height(&self, commitment: Option<CommitmentConfig>) -> RpcResult<u64> {
+        let payload = RpcRequest::GetBlockHeight.build_request_json(
+            self.next_request_id(),
+            json!([commitment.unwrap_or_default()]),
+        );
+
+        let response = self.call(&payload, 45).await?;
+
+        let json_response = serde_json::from_str::<JsonRpcResponse<u64>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap())
+        }
+    }
+
+    ///
+    /// Returns recent block production information from the current or previous epoch.
+    ///
+    /// Method relies on the `getBlockProduction` RPC call to get the block production:
+    ///   https://solana.com/docs/rpc/http/getBlockProduction
+    ///
+    pub async fn get_block_production(
+        &self,
+        config: RpcBlockProductionConfig,
+    ) -> RpcResult<RpcBlockProduction> {
+        let payload = RpcRequest::GetBlockProduction
+            .build_request_json(self.next_request_id(), json!([config]));
+
+        let response = self.call(&payload, 100_000).await?;
+
+        let json_response = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<RpcBlockProduction>>,
+        >(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap().parse_value())
+        }
+    }
+
+    ///
     /// Returns the slot that has reached the given or default commitment level.
+    ///
+    /// Method relies on the `getSlot` RPC call to get the slot:
+    ///   https://solana.com/docs/rpc/http/getSlot
     ///
     pub async fn get_slot(&self) -> RpcResult<Slot> {
         let payload = RpcRequest::GetSlot.build_request_json(self.next_request_id(), Value::Null);
@@ -481,6 +714,9 @@ impl RpcClient {
 
     ///
     /// Returns information about the current supply.
+    ///
+    /// Method relies on the `getSupply` RPC call to get the supply:
+    ///   https://solana.com/docs/rpc/http/getSupply
     ///
     pub async fn get_supply(&self, config: RpcSupplyConfig) -> RpcResult<RpcSupply> {
         let payload =

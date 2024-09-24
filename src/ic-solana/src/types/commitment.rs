@@ -5,7 +5,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy, Debug, PartialEq, Eq, Hash, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct CommitmentConfig {
     pub commitment: CommitmentLevel,

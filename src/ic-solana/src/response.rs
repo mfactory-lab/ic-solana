@@ -1,10 +1,11 @@
 use {
     crate::types::{
         EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot,
-        TransactionConfirmationStatus, TransactionError, UiAccount, UnixTimestamp,
+        TransactionConfirmationStatus, TransactionError, UiAccount, UiTokenAmount, UnixTimestamp,
     },
+    candid::CandidType,
     serde::{Deserialize, Serialize},
-    std::fmt,
+    std::{collections::HashMap, fmt},
 };
 
 /// Wrapper for rpc return types of methods that provide responses both with and without context.
@@ -256,20 +257,23 @@ pub struct RpcKeyedAccount {
 // /// Map of leader base58 identity pubkeys to the slot indices relative to the first epoch slot
 // pub type RpcLeaderSchedule = HashMap<String, Vec<usize>>;
 //
-// #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcBlockProductionRange {
-//     pub first_slot: Slot,
-//     pub last_slot: Slot,
-// }
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcBlockProductionRange {
+    #[serde(rename = "firstSlot")]
+    pub first_slot: Slot,
+    #[serde(rename = "lastSlot", skip_serializing_if = "Option::is_none")]
+    pub last_slot: Option<Slot>,
+}
 //
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcBlockProduction {
-//     /// Map of leader base58 identity pubkeys to a tuple of `(number of leader slots, number of blocks produced)`
-//     pub by_identity: HashMap<String, (usize, usize)>,
-//     pub range: RpcBlockProductionRange,
-// }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcBlockProduction {
+    /// Map of leader base58 identity pubkeys to a tuple of `(number of leader slots, number of blocks produced)`
+    #[serde(rename = "byIdentity")]
+    pub by_identity: HashMap<String, (usize, usize)>,
+    pub range: RpcBlockProductionRange,
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
@@ -420,14 +424,26 @@ pub struct EncodedConfirmedBlock {
     pub block_time: Option<UnixTimestamp>,
     pub block_height: Option<u64>,
 }
-//
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcTokenAccountBalance {
-//     pub address: String,
-//     #[serde(flatten)]
-//     pub amount: UiTokenAmount,
-// }
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EncodedConfirmedBlockWithoutTransactions {
+    pub previous_blockhash: String,
+    pub blockhash: String,
+    pub parent_slot: Slot,
+    pub signatures: Vec<String>,
+    pub rewards: Rewards,
+    pub block_time: Option<UnixTimestamp>,
+    pub block_height: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcTokenAccountBalance {
+    pub address: String,
+    #[serde(flatten)]
+    pub amount: UiTokenAmount,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

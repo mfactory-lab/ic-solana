@@ -10,11 +10,13 @@ use {
     core::panic,
     ic_agent::Agent,
     ic_solana::{
+        response::RpcBlockProduction,
         rpc_client::RpcError,
         types::{
             Account, CandidValue, CommitmentConfig,
             TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedEncodedTransaction,
-            TaggedUiMessage, TransactionStatus, UiTokenAmount,
+            TaggedRpcBlockProductionConfig, TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock,
+            TaggedUiMessage, TransactionDetails, TransactionStatus, UiTokenAmount,
         },
     },
     ic_solana_provider::types::SendTransactionRequest,
@@ -52,6 +54,220 @@ async fn test_get_balance() {
         .unwrap();
 
     let _ = Decode!(&res, ic_solana::rpc_client::RpcResult<u64>).unwrap();
+}
+
+#[tokio::test]
+async fn test_get_block() {
+    const SLOT: u64 = 290304300;
+    const MAX_RESPONSE_BYTES: u64 = 163_314;
+
+    let mut pic = PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_ii_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await;
+
+    let endpoint = pic.make_live(None).await;
+
+    // Create an agent for the PocketIC instance.
+    let agent = Agent::builder().with_url(endpoint).build().unwrap();
+    agent.fetch_root_key().await.unwrap();
+
+    let canister_id = init(&pic).await;
+
+    let res = agent
+        .update(&canister_id, "sol_getBlock")
+        .with_arg(
+            encode_args((
+                MAINNET_PROVIDER_ID,
+                SLOT,
+                TransactionDetails::Signatures,
+                Some(MAX_RESPONSE_BYTES),
+            ))
+            .unwrap(),
+        )
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let _ = Decode!(
+        &res,
+        ic_solana::rpc_client::RpcResult<TaggedUiConfirmedBlock>
+    )
+    .unwrap()
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_get_token_largest_accounts() {
+    const MINT: &str = "So11111111111111111111111111111111111111112";
+    const MAX_RESPONSE_BYTES: u64 = 3400;
+
+    let mut pic = PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_ii_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await;
+
+    let endpoint = pic.make_live(None).await;
+
+    // Create an agent for the PocketIC instance.
+    let agent = Agent::builder().with_url(endpoint).build().unwrap();
+    agent.fetch_root_key().await.unwrap();
+
+    let canister_id = init(&pic).await;
+
+    let res = agent
+        .update(&canister_id, "sol_getTokenLargestAccounts")
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, MINT, Some(MAX_RESPONSE_BYTES))).unwrap())
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let _ = Decode!(
+        &res,
+        ic_solana::rpc_client::RpcResult<Vec<TaggedRpcTokenAccountBalance>>
+    )
+    .unwrap()
+    .unwrap();
+}
+
+#[tokio::test]
+async fn test_get_token_supply() {
+    const MINT: &str = "TVZMHMzujTLJzDJ3Y8HXo33wUVU67sPS26eRuYNninj";
+
+    let mut pic = PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_ii_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await;
+
+    let endpoint = pic.make_live(None).await;
+
+    // Create an agent for the PocketIC instance.
+    let agent = Agent::builder().with_url(endpoint).build().unwrap();
+    agent.fetch_root_key().await.unwrap();
+
+    let canister_id = init(&pic).await;
+
+    let res = agent
+        .update(&canister_id, "sol_getTokenSupply")
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, MINT)).unwrap())
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let _ = Decode!(&res, ic_solana::rpc_client::RpcResult<UiTokenAmount>)
+        .unwrap()
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_get_blocks() {
+    // const SLOT: u64 = 290304300; // TODO: this slot couldn't be fetched because it's size 3.3MB and the max response size limit is 2MB
+    const START_SLOT: u64 = 5_000_000;
+    const LAST_SLOT: u64 = 5_000_010;
+
+    let mut pic = PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_ii_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await;
+
+    let endpoint = pic.make_live(None).await;
+
+    // Create an agent for the PocketIC instance.
+    let agent = Agent::builder().with_url(endpoint).build().unwrap();
+    agent.fetch_root_key().await.unwrap();
+
+    let canister_id = init(&pic).await;
+
+    let res = agent
+        .update(&canister_id, "sol_getBlocks")
+        .with_arg(encode_args((MAINNET_PROVIDER_ID, START_SLOT, Some(LAST_SLOT))).unwrap())
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let result = Decode!(&res, ic_solana::rpc_client::RpcResult<Vec<u64>>).unwrap();
+
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            5000000, 5000001, 5000002, 5000003, 5000004, 5000005, 5000006, 5000007, 5000008,
+            5000009, 5000010,
+        ]
+    );
+}
+
+#[tokio::test]
+async fn test_get_block_height() {
+    let mut pic = PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_ii_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await;
+
+    let endpoint = pic.make_live(None).await;
+
+    // Create an agent for the PocketIC instance.
+    let agent = Agent::builder().with_url(endpoint).build().unwrap();
+    agent.fetch_root_key().await.unwrap();
+
+    let canister_id = init(&pic).await;
+
+    let res = agent
+        .update(&canister_id, "sol_getBlockHeight")
+        .with_arg(encode_args((MAINNET_PROVIDER_ID,)).unwrap())
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let _ = Decode!(&res, ic_solana::rpc_client::RpcResult<u64>).unwrap();
+}
+
+#[tokio::test]
+async fn test_get_block_prodaction() {
+    let mut pic = PocketIcBuilder::new()
+        .with_nns_subnet()
+        .with_ii_subnet()
+        .with_application_subnet()
+        .build_async()
+        .await;
+
+    let endpoint = pic.make_live(None).await;
+
+    // Create an agent for the PocketIC instance.
+    let agent = Agent::builder().with_url(endpoint).build().unwrap();
+    agent.fetch_root_key().await.unwrap();
+
+    let canister_id = init(&pic).await;
+
+    let res = agent
+        .update(&canister_id, "sol_getBlockProduction")
+        .with_arg(
+            encode_args((
+                MAINNET_PROVIDER_ID,
+                TaggedRpcBlockProductionConfig {
+                    identity: Some("A8vNkfP4Rv6msJyuXgwvUSUUu5vPfLxMJB5ddNkHaCGJ".to_string()),
+                    range: None,
+                    commitment: None,
+                },
+            ))
+            .unwrap(),
+        )
+        .call_and_wait()
+        .await
+        .unwrap();
+
+    let tmp = Decode!(&res, ic_solana::rpc_client::RpcResult<RpcBlockProduction>).unwrap();
+
+    println!("TMP: {:?}", tmp);
 }
 
 #[tokio::test]

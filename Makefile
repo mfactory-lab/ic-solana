@@ -1,6 +1,6 @@
 #!/usr/bin/make
 
-POCKET_IC_BIN := ./pocket-ic
+POCKET_IC_BIN := $(shell pwd)/pocket-ic
 IC_SOLANA_PROVIDER_WASM := ./target/wasm32-unknown-unknown/release/ic_solana_provider.wasm.gz
 
 .DEFAULT_GOAL: help
@@ -33,7 +33,7 @@ metrics: ## Fetch metrics
 	@dfx canister call ic-solana-provider getMetrics '()'
 
 .PHONY: test
-test: ## Run tests
+test: build ## Run tests
 	@echo "Running tests..."
 	@if [ ! -f "$(POCKET_IC_BIN)" ]; then \
 		echo "Pocket IC binary not found. Fetching..."; \

@@ -1,10 +1,3 @@
-// /// This constant is our approximation of the expected header size.
-// /// The HTTP standard doesn't define any limit, and many implementations limit
-// /// the headers size to 8 KiB. We chose a lower limit because headers observed on most providers
-// /// fit in the constant defined below, and if there is a spike, then the payload size adjustment
-// /// should take care of that.
-// pub const HEADER_SIZE_LIMIT: u64 = 2 * 1024;
-
 // /// Maximum permitted size of account data (10 MiB).
 // pub const MAX_ACCOUNT_DATA_LENGTH: u64 = 10 * 1024 * 1024;
 
@@ -22,4 +15,9 @@ pub const TRANSACTION_STATUS_RESPONSE_SIZE_ESTIMATE: u64 = 256;
 
 pub const GET_BLOCK_RESPONSE_SIZE_ESTIMATE: u64 = 516_000;
 pub const GET_SUPPLY_SIZE_ESTIMATE: u64 = 1024;
+pub const GET_TOKEN_SUPPLY_SIZE_ESTIMATE: u64 = 512;
 pub const GET_EPOCH_INFO_SIZE_ESTIMATE: u64 = 56;
+pub const GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE: u64 = 1400;
+pub const GET_TOKEN_LARGEST_ACCOUNTS_SIZE_ESTIMATE: u64 = 3350;
+
+pub const MAX_GET_BLOCKS_RANGE: u64 = 500_000;

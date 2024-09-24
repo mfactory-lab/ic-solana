@@ -6,7 +6,9 @@ use {
     common::{decode_raw_wasm_result, fast_forward, MAINNET_PROVIDER_ID, SECRET1, USER_PRINCIPAL},
     ic_solana::types::{
         Account, EncodedConfirmedTransactionWithStatusMeta,
-        TaggedEncodedConfirmedTransactionWithStatusMeta, UiTokenAmount,
+        TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedRpcKeyedAccount,
+        TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock, TokenAccountsFilter,
+        TransactionDetails, UiTokenAmount,
     },
     ic_solana_provider::types::SendTransactionRequest,
     pocket_ic::{
@@ -66,6 +68,407 @@ async fn test_get_balance_mock() {
     assert_eq!(result.unwrap(), EXPECTED);
 
     pic.drop().await;
+}
+
+#[tokio::test]
+async fn test_get_block_mock() {
+    const SLOT: u64 = 10_000;
+    const MAX_RESPONSE_BYTES: u64 = 1_500_000;
+
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":{"blockHeight":null,"blockTime":null,"blockhash":"FNy3uy9b9EMupvMpzG6Waqtbpt5Hto3naW2NnDwL1eYq","parentSlot":9999,"previousBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET","rewards":[],"transactions":[{"meta":null,"transaction":{"message":{"accountKeys":["7Np41oeYqPefeNQEHSv1UDhYrehxin3NStELsSKCT4K2","4785anyR2rYSas6cQGHtykgzwYEtChvFYhcEgdDw3gGL","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3VpnRF6CqaEftTmTtPNaoq5eaAxgTubYiNR7Jf3wpSvqhp2P7c7Dx68kAb","programIdIndex":4,"stackHeight":null}],"recentBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET"},"signatures":["4Kd11S9XoL2g9tkh45hW6JgnPwVhSCmFDxSJnPeXKQHYoLoTYf5aL3JU7r8DjiJ4EBvAPTwpCJdVaArSzQMuEWqA"]}},{"meta":null,"transaction":{"message":{"accountKeys":["DE1bawNcRJB9rVm3buyMVfr8mBEoyyu73NBovf2oXJsJ","8XgHUtBRY6qePVYERxosyX3MUq8NQkjtmFDSzQ2WpHTJ","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3VpnRF6CqaEftTmTtPNaoq5eaAxgTubYiNR7Jf3wpSvqhp2P7c7Dx68kAb","programIdIndex":4,"stackHeight":null}],"recentBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET"},"signatures":["2jY6X9aLUj45xrnFvjULjhMcWoMJwqECKsCLE9Nnhch4DDZajZLVB7pGzXXGpqDRcbpNDM1eG5k8VxQxGxPKnD6H"]}},{"meta":null,"transaction":{"message":{"accountKeys":["CakcnaRDHka2gXyfbEd2d3xsvkJkqsLw2akB3zsN1D2S","9bRDrYShoQ77MZKYTMoAsoCkU7dAR24mxYCBjXLpfEJx","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3VpnRF6CqaEftTmTtPNaoq5eaAxgTubYiNR7Jf3wpSvqhp2P7c7Dx68kAb","programIdIndex":4,"stackHeight":null}],"recentBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET"},"signatures":["9b4aincvJ7YgC9MFUZQP8TpT3hZ6cqvAfSVDBaw4TZ44ZpkZHR29aqcQ36yRy5gYvTS372o21C6PKUZNoRFAqEE"]}},{"meta":null,"transaction":{"message":{"accountKeys":["GdnSyH3YtwcxFvQrVVJMm1JhTS4QVX7MFsX56uJLUfiZ","sCtiJieP8B3SwYnXemiLpRFRR8KJLMtsMVN25fAFWjW","SysvarS1otHashes111111111111111111111111111","SysvarC1ock11111111111111111111111111111111","Vote111111111111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":3,"numRequiredSignatures":1},"instructions":[{"accounts":[1,2,3,0],"data":"37u9WtQpcm6ULa3VpnRF6CqaEftTmTtPNaoq5eaAxgTubYiNR7Jf3wpSvqhp2P7c7Dx68kAb","programIdIndex":4,"stackHeight":null}],"recentBlockhash":"8sxZZjKCz85m5ZsgPzhE1z5tSqzjcsXM45M78sPb55ET"},"signatures":["3rT1ykzcVCnGX3M3bauJ2i7eLBemrfvV2ZsigGSxpP3dE2iPUtaqUNGprfRP5PstEXPn5M2JX12m8oJXrRVUXCEb"]}}]},"id":0}"#;
+    const EXPECTED_BLOCKHASH: &str = "FNy3uy9b9EMupvMpzG6Waqtbpt5Hto3naW2NnDwL1eYq";
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getBlock",
+            encode_args((
+                MAINNET_PROVIDER_ID,
+                SLOT,
+                TransactionDetails::Signatures,
+                MAX_RESPONSE_BYTES,
+            ))
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<TaggedUiConfirmedBlock>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    assert_eq!(result.unwrap().blockhash, EXPECTED_BLOCKHASH);
+}
+
+#[tokio::test]
+async fn test_get_blocks_mock() {
+    const START_SLOT: u64 = 5_000_000;
+    const LAST_SLOT: u64 = 5_000_010;
+
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":[5000000,5000001,5000002,5000003,5000004,5000005,5000006,5000007,5000008,5000009,5000010],"id":0}"#;
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getBlocks",
+            encode_args((MAINNET_PROVIDER_ID, START_SLOT, Some(LAST_SLOT))).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<Vec<u64>>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    assert_eq!(
+        result.unwrap(),
+        vec![
+            5000000, 5000001, 5000002, 5000003, 5000004, 5000005, 5000006, 5000007, 5000008,
+            5000009, 5000010,
+        ]
+    );
+}
+
+#[tokio::test]
+async fn test_get_token_accounts_by_delegate_mock() {
+    const PUBKEY: &str = "4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T";
+    const PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":{"context":{"slot":1114},"value":[{"account":{"data":{"program":"spl-token","parsed":{"info":{"tokenAmount":{"amount":"1","decimals":1,"uiAmount":0.1,"uiAmountString":"0.1"},"delegate":"4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T","delegatedAmount":{"amount":"1","decimals":1,"uiAmount":0.1,"uiAmountString":"0.1"},"state":"initialized","isNative":false,"mint":"3wyAj7Rt1TWVPZVteFJPLa26JmLvdb1CAKEFZm3NY75E","owner":"CnPoSPKXu7wJqxe59Fs72tkBeALovhsCxYeFwPCQH9TD"},"type":"account"},"space":165},"executable":false,"lamports":1726080,"owner":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","rentEpoch":4,"space":165},"pubkey":"28YTZEwqtMHWrhWcvv34se7pjS7wctgqzCPB3gReCFKp"}]},"id":1}"#;
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getTokenAccountsByDelegate",
+            encode_args((
+                MAINNET_PROVIDER_ID,
+                PUBKEY,
+                TokenAccountsFilter::ProgramId(PROGRAM_ID.to_string()),
+            ))
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<Vec<TaggedRpcKeyedAccount>>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    let result = result.unwrap();
+    let first = result.first().unwrap();
+
+    assert_eq!(first.pubkey, "28YTZEwqtMHWrhWcvv34se7pjS7wctgqzCPB3gReCFKp");
+    assert_eq!(first.account.executable, false);
+    assert_eq!(first.account.lamports, 1726080);
+    assert_eq!(
+        first.account.owner,
+        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    );
+    assert_eq!(first.account.rent_epoch, 4);
+    assert_eq!(first.account.space, Some(165));
+}
+
+#[tokio::test]
+async fn test_get_token_accounts_by_owner_mock() {
+    const PUBKEY: &str = "4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T";
+    const PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":{"context":{"slot":1114},"value":[{"account":{"data":{"program":"spl-token","parsed":{"info":{"tokenAmount":{"amount":"1","decimals":1,"uiAmount":0.1,"uiAmountString":"0.1"},"delegate":"4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T","delegatedAmount":{"amount":"1","decimals":1,"uiAmount":0.1,"uiAmountString":"0.1"},"state":"initialized","isNative":false,"mint":"3wyAj7Rt1TWVPZVteFJPLa26JmLvdb1CAKEFZm3NY75E","owner":"CnPoSPKXu7wJqxe59Fs72tkBeALovhsCxYeFwPCQH9TD"},"type":"account"},"space":165},"executable":false,"lamports":1726080,"owner":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","rentEpoch":4,"space":165},"pubkey":"28YTZEwqtMHWrhWcvv34se7pjS7wctgqzCPB3gReCFKp"}]},"id":1}"#;
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getTokenAccountsByOwner",
+            encode_args((
+                MAINNET_PROVIDER_ID,
+                PUBKEY,
+                TokenAccountsFilter::ProgramId(PROGRAM_ID.to_string()),
+            ))
+            .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<Vec<TaggedRpcKeyedAccount>>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    let result = result.unwrap();
+    let first = result.first().unwrap();
+
+    assert_eq!(first.pubkey, "28YTZEwqtMHWrhWcvv34se7pjS7wctgqzCPB3gReCFKp");
+    assert_eq!(first.account.executable, false);
+    assert_eq!(first.account.lamports, 1726080);
+    assert_eq!(
+        first.account.owner,
+        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    );
+    assert_eq!(first.account.rent_epoch, 4);
+    assert_eq!(first.account.space, Some(165));
+}
+
+#[tokio::test]
+async fn test_get_token_supply_mock() {
+    const MINT: &str = "TVZMHMzujTLJzDJ3Y8HXo33wUVU67sPS26eRuYNninj";
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":{"context":{"apiVersion":"1.18.23","slot":291507458},"value":{"amount":"899966960617203","decimals":6,"uiAmount":899966960.617203,"uiAmountString":"899966960.617203"}},"id":0}"#;
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getTokenSupply",
+            encode_args((MAINNET_PROVIDER_ID, MINT)).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<UiTokenAmount>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    let result = result.unwrap();
+
+    assert_eq!(result.amount, "899966960617203");
+    assert_eq!(result.decimals, 6);
+    assert_eq!(result.ui_amount, Some(899966960.617203));
+    assert_eq!(result.ui_amount_string, "899966960.617203".to_string());
+}
+
+#[tokio::test]
+async fn test_get_token_largest_accounts_mock() {
+    const MINT: &str = "So11111111111111111111111111111111111111112";
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":{"context":{"apiVersion":"1.18.23","slot":291508155},"value":[{"address":"BUvduFTd2sWFagCunBPLupG8fBTJqweLw9DuhruNFSCm","amount":"2291416519000987","decimals":9,"uiAmount":2291416.519000987,"uiAmountString":"2291416.519000987"},{"address":"2nQNF8F9LLWMqdjymiLK2u8HoHMvYa4orCXsp3w65fQ2","amount":"712421225401090","decimals":9,"uiAmount":712421.22540109,"uiAmountString":"712421.22540109"},{"address":"GafNuUXj9rxGLn4y79dPu6MHSuPWeJR6UtTWuexpGh3U","amount":"369775973393568","decimals":9,"uiAmount":369775.973393568,"uiAmountString":"369775.973393568"},{"address":"8UviNr47S8eL6J3WfDxMRa3hvLta1VDJwNWqsDgtN3Cv","amount":"346523421643623","decimals":9,"uiAmount":346523.421643623,"uiAmountString":"346523.421643623"},{"address":"2eicbpitfJXDwqCuFAmPgDP7t2oUotnAzbGzRKLMgSLe","amount":"273088293895558","decimals":9,"uiAmount":273088.293895558,"uiAmountString":"273088.293895558"},{"address":"DfYCNezifxAEsQbAJ1b3j6PX3JVBe8fu11KBhxsbw5d2","amount":"251047800078847","decimals":9,"uiAmount":251047.800078847,"uiAmountString":"251047.800078847"},{"address":"5Zumc1SYPmQ89nqwXqzogeuhdJ85iEMpSk35A4P87pmD","amount":"189657851688438","decimals":9,"uiAmount":189657.851688438,"uiAmountString":"189657.851688438"},{"address":"GuXKCb9ibwSeRSdSYqaCL3dcxBZ7jJcj6Y7rDwzmUBu9","amount":"150148879844273","decimals":9,"uiAmount":150148.879844273,"uiAmountString":"150148.879844273"},{"address":"7YttLkHDoNj9wyDur5pM1ejNaAvT9X4eqaYcHQqtj2G5","amount":"143008982456158","decimals":9,"uiAmount":143008.982456158,"uiAmountString":"143008.982456158"},{"address":"F7tcS67EfP4bBJhWLxCk6ZmPVcsmPnJvPLQcDw5eeR67","amount":"123626802779403","decimals":9,"uiAmount":123626.802779403,"uiAmountString":"123626.802779403"},{"address":"BhNdEGJef9jSqT1iCEkFZ2bYZCdpC1vuiWtqDt87vBVp","amount":"111265135102712","decimals":9,"uiAmount":111265.135102712,"uiAmountString":"111265.135102712"},{"address":"7dSiEK9yWTxxSWpMkjHpY968nJ4Xj4aNgK3sgM23nCeL","amount":"103700132432281","decimals":9,"uiAmount":103700.132432281,"uiAmountString":"103700.132432281"},{"address":"HiLcngHP5y1Jno53tuuNeFHKWhyyZp3XuxtKPszD6rG2","amount":"92845304591505","decimals":9,"uiAmount":92845.304591505,"uiAmountString":"92845.304591505"},{"address":"9Hst4fTfQJXp1fxyVx1Lk1TubjNegFwXCedZkMRPaYAK","amount":"88176311056277","decimals":9,"uiAmount":88176.311056277,"uiAmountString":"88176.311056277"},{"address":"EUuUbDcafPrmVTD5M6qoJAoyyNbihBhugADAxRMn5he9","amount":"69211352603916","decimals":9,"uiAmount":69211.352603916,"uiAmountString":"69211.352603916"},{"address":"HZeLxbZ9uHtSpwZC3LBr4Nubd14iHwz7bRSghRZf5VCG","amount":"66669857902120","decimals":9,"uiAmount":66669.85790212,"uiAmountString":"66669.85790212"},{"address":"7e9ExBAvDvuJP3GE6eKL5aSMi4RfXv3LkQaiNZBPmffR","amount":"53644585856285","decimals":9,"uiAmount":53644.585856285,"uiAmountString":"53644.585856285"},{"address":"2hNHZg7XBhuhHVZ3JDEi4buq2fPQwuWBdQ9xkH7t1GQX","amount":"53552534347763","decimals":9,"uiAmount":53552.534347763,"uiAmountString":"53552.534347763"},{"address":"n6CwMY77wdEftf2VF6uPvbusYoraYUci3nYBPqH1DJ5","amount":"45389202140256","decimals":9,"uiAmount":45389.202140256,"uiAmountString":"45389.202140256"},{"address":"2kjCeDKKK9pCiDqfsbS72q81RZiUnSwoaruuwz1avUWn","amount":"40541538030945","decimals":9,"uiAmount":40541.538030945,"uiAmountString":"40541.538030945"}]},"id":0}"#;
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getTokenLargestAccounts",
+            encode_args((MAINNET_PROVIDER_ID, MINT)).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<Vec<TaggedRpcTokenAccountBalance>>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    let result = result.unwrap();
+
+    assert_eq!(result.len(), 20);
+
+    let first = result.first().unwrap();
+
+    assert_eq!(
+        first.address,
+        "BUvduFTd2sWFagCunBPLupG8fBTJqweLw9DuhruNFSCm"
+    );
+    assert_eq!(first.amount.amount, "2291416519000987");
+    assert_eq!(first.amount.decimals, 9);
+    assert_eq!(first.amount.ui_amount, Some(2291416.519000987));
+    assert_eq!(
+        first.amount.ui_amount_string,
+        "2291416.519000987".to_string()
+    );
+}
+
+#[tokio::test]
+async fn test_get_block_height_mock() {
+    const RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","result":269611304,"id":0}"#;
+    const EXPECTED: u64 = 269611304;
+
+    let pic = PocketIcBuilder::new()
+        .with_application_subnet()
+        .with_nns_subnet()
+        .build_async()
+        .await;
+
+    let canister_id = init(&pic).await;
+
+    let call = pic
+        .submit_call(
+            canister_id,
+            *USER_PRINCIPAL,
+            "sol_getBlockHeight",
+            encode_args((MAINNET_PROVIDER_ID,)).unwrap(),
+        )
+        .await
+        .unwrap();
+
+    fast_forward(&pic, 5).await;
+
+    let reqs = pic.get_canister_http().await;
+    let req = reqs.first().unwrap();
+
+    let mock = MockCanisterHttpResponse {
+        subnet_id: req.subnet_id,
+        request_id: req.request_id,
+        response: CanisterHttpResponse::CanisterHttpReply(CanisterHttpReply {
+            status: 200,
+            headers: vec![],
+            body: RESPONSE.to_vec(),
+        }),
+        additional_responses: vec![],
+    };
+
+    pic.mock_canister_http_response(mock).await;
+
+    let (result,): (ic_solana::rpc_client::RpcResult<u64>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+
+    assert_eq!(result.unwrap(), EXPECTED);
 }
 
 #[tokio::test]
