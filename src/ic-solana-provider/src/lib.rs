@@ -452,7 +452,8 @@ pub async fn request(
         "params": params
     });
 
-    client.call(&payload, max_response_bytes).await
+    let res = client.call(&payload, max_response_bytes).await?;
+    String::from_utf8(res).map_err(|e| RpcError::ParseError(e.to_string()))
 }
 
 ///

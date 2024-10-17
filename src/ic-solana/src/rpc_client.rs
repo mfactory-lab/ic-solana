@@ -38,13 +38,13 @@ thread_local! {
     static NEXT_ID: RefCell<u64> = RefCell::default();
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct JsonRpcError {
     pub code: i64,
     pub message: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
 pub struct JsonRpcResponse<T> {
     pub jsonrpc: String,
     pub result: Option<T>,
@@ -52,7 +52,7 @@ pub struct JsonRpcResponse<T> {
     pub id: u64,
 }
 
-#[derive(Debug, thiserror::Error, Deserialize, CandidType)]
+#[derive(Debug, Clone, Eq, PartialEq, thiserror::Error, Deserialize, CandidType)]
 pub enum RpcError {
     #[error("RPC request error: {0}")]
     RpcRequestError(String),
@@ -172,7 +172,7 @@ impl RpcClient {
     /// * If the response body cannot be parsed as a UTF-8 string, a `ParseError` is returned.
     /// * If the HTTP request fails, an `RpcRequestError` is returned with the error details.
     ///
-    pub async fn call(&self, payload: &Value, max_response_bytes: u64) -> RpcResult<String> {
+    pub async fn call(&self, payload: &Value, max_response_bytes: u64) -> RpcResult<Vec<u8>> {
         let url = self.cluster.url();
 
         let mut headers = self.headers.clone().unwrap_or_default();
@@ -186,48 +186,42 @@ impl RpcClient {
             });
         }
 
+        let body = serde_json::to_vec(payload).map_err(|e| RpcError::ParseError(e.to_string()))?;
+
         let request = CanisterHttpRequestArgument {
             url: url.to_string(),
             max_response_bytes: Some(max_response_bytes + self.extra_response_bytes),
             method: HttpMethod::POST,
             headers,
-            body: Some(payload.to_string().as_bytes().to_vec()),
+            body: Some(body),
             transform: self.transform_context.clone(),
         };
 
-        let (cycles_cost, cycles_cost_with_collateral) =
-            if let Some(cost_calculator) = self.cost_calculator {
-                cost_calculator(&request)
-            } else {
-                Default::default()
-            };
+        // Calculate cycles if a calculator is provided
+        let (cycles_cost, cycles_cost_with_collateral) = self
+            .cost_calculator
+            .as_ref()
+            .map_or((0, 0), |calc| calc(&request));
 
-        let parsed_url = match url::Url::parse(url) {
-            Ok(url) => url,
-            Err(_) => return Err(RpcError::ParseError(format!("Error parsing URL: {}", url))),
-        };
+        let parsed_url = url::Url::parse(url)
+            .map_err(|_| RpcError::ParseError(format!("Invalid URL: {}", url)))?;
 
-        let host = match parsed_url.host_str() {
-            Some(host) => host,
-            None => {
-                return Err(RpcError::ParseError(format!(
-                    "Error parsing hostname from URL: {}",
-                    url
-                )))
-            }
-        };
+        let host = parsed_url.host_str().ok_or_else(|| {
+            RpcError::ParseError(format!("Error parsing hostname from URL: {}", url))
+        })?;
 
         let rpc_host = MetricRpcHost(host.to_string());
         let rpc_method = MetricRpcMethod(payload["method"].to_string());
 
-        if self.hosts_blocklist.contains(&rpc_host.0.as_str()) {
+        if self.hosts_blocklist.contains(&host) {
             add_metric_entry!(err_host_not_allowed, rpc_host.clone(), 1);
             return Err(RpcError::Text(format!(
                 "Disallowed RPC service host: {}",
-                rpc_host.0
+                host
             )));
         }
 
+        // Handle cycle accounting if not in demo mode
         if !self.is_demo_active {
             let cycles_available = ic_cdk::api::call::msg_cycles_available128();
             if cycles_available < cycles_cost_with_collateral {
@@ -253,11 +247,15 @@ impl RpcClient {
 
         match http_request(request, cycles_cost).await {
             Ok((response,)) => {
+                let body_len = response.body.len();
+                let body_str = std::str::from_utf8(&response.body)
+                    .map_err(|e| RpcError::ParseError(e.to_string()))?;
+
                 log!(
                     DEBUG,
                     "Got response (with {} bytes): {} from url: {} with status: {}",
-                    response.body.len(),
-                    String::from_utf8_lossy(&response.body),
+                    body_len,
+                    body_str,
                     url,
                     response.status
                 );
@@ -265,10 +263,7 @@ impl RpcClient {
                 let status: u32 = response.status.0.try_into().unwrap_or(0);
                 add_metric_entry!(responses, (rpc_method, rpc_host, status.into()), 1);
 
-                match String::from_utf8(response.body) {
-                    Ok(body) => Ok(body),
-                    Err(error) => Err(RpcError::ParseError(error.to_string())),
-                }
+                Ok(response.body)
             }
             Err((r, m)) => {
                 add_metric_entry!(err_http_outcall, (rpc_method, rpc_host), 1);
@@ -299,7 +294,7 @@ impl RpcClient {
         let response = self.call(&payload, 156).await?;
 
         let json_response =
-            serde_json::from_str::<JsonRpcResponse<OptionalContext<RpcBlockhash>>>(&response)?;
+            serde_json::from_slice::<JsonRpcResponse<OptionalContext<RpcBlockhash>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -330,7 +325,7 @@ impl RpcClient {
         let response = self.call(&payload, 156).await?;
 
         let json_response =
-            serde_json::from_str::<JsonRpcResponse<OptionalContext<u64>>>(&response)?;
+            serde_json::from_slice::<JsonRpcResponse<OptionalContext<u64>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -358,7 +353,7 @@ impl RpcClient {
         let response = self.call(&payload, 256).await?;
 
         let json_response =
-            serde_json::from_str::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
+            serde_json::from_slice::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -391,7 +386,7 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_str::<
+        let json_response = serde_json::from_slice::<
             JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>,
         >(&response)?;
 
@@ -426,7 +421,7 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_str::<
+        let json_response = serde_json::from_slice::<
             JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>,
         >(&response)?;
 
@@ -458,7 +453,7 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_str::<
+        let json_response = serde_json::from_slice::<
             JsonRpcResponse<OptionalContext<Vec<RpcTokenAccountBalance>>>,
         >(&response)?;
 
@@ -491,7 +486,7 @@ impl RpcClient {
             .await?;
 
         let json_response =
-            serde_json::from_str::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
+            serde_json::from_slice::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -523,7 +518,7 @@ impl RpcClient {
             .await?;
 
         let json_response =
-            serde_json::from_str::<JsonRpcResponse<Response<Option<UiAccount>>>>(&response)?;
+            serde_json::from_slice::<JsonRpcResponse<Response<Option<UiAccount>>>>(&response)?;
 
         if let Some(e) = json_response.error {
             return Err(e.into());
@@ -548,7 +543,7 @@ impl RpcClient {
 
         let response = self.call(&payload, 128).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<RpcVersionInfo>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<RpcVersionInfo>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -569,7 +564,7 @@ impl RpcClient {
 
         let response = self.call(&payload, 256).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<String>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<String>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -603,7 +598,7 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<UiConfirmedBlock>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<UiConfirmedBlock>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -634,7 +629,7 @@ impl RpcClient {
         let max_response_bytes = 36 + max_slot_str_len * slot_range + commas_size;
 
         let response = self.call(&payload, max_response_bytes).await?;
-        let json_response = serde_json::from_str::<JsonRpcResponse<Vec<u64>>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<Vec<u64>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -657,7 +652,7 @@ impl RpcClient {
 
         let response = self.call(&payload, 45).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<u64>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<u64>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -681,7 +676,7 @@ impl RpcClient {
 
         let response = self.call(&payload, 100_000).await?;
 
-        let json_response = serde_json::from_str::<
+        let json_response = serde_json::from_slice::<
             JsonRpcResponse<OptionalContext<RpcBlockProduction>>,
         >(&response)?;
 
@@ -703,7 +698,7 @@ impl RpcClient {
 
         let response = self.call(&payload, 128).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<Slot>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<Slot>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -724,7 +719,7 @@ impl RpcClient {
 
         let response = self.call(&payload, GET_SUPPLY_SIZE_ESTIMATE).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<RpcSupply>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<RpcSupply>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -745,7 +740,7 @@ impl RpcClient {
 
         let response = self.call(&payload, GET_EPOCH_INFO_SIZE_ESTIMATE).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<EpochInfo>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<EpochInfo>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -774,7 +769,7 @@ impl RpcClient {
         let response = self.call(&payload, max_response_bytes).await?;
 
         let json_response =
-            serde_json::from_str::<JsonRpcResponse<Vec<RpcKeyedAccount>>>(&response)?;
+            serde_json::from_slice::<JsonRpcResponse<Vec<RpcKeyedAccount>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -797,7 +792,7 @@ impl RpcClient {
 
         let response = self.call(&payload, 156).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<String>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<String>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -830,7 +825,7 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_str::<
+        let json_response = serde_json::from_slice::<
             JsonRpcResponse<Vec<RpcConfirmedTransactionStatusWithSignature>>,
         >(&response)?;
 
@@ -863,7 +858,7 @@ impl RpcClient {
 
         let response = self.call(&payload, max_response_bytes).await?;
 
-        let json_response = serde_json::from_str::<
+        let json_response = serde_json::from_slice::<
             JsonRpcResponse<OptionalContext<Vec<Option<TransactionStatus>>>>,
         >(&response)?;
 
@@ -898,7 +893,7 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_str::<
+        let json_response = serde_json::from_slice::<
             JsonRpcResponse<EncodedConfirmedTransactionWithStatusMeta>,
         >(&response)?;
 
@@ -943,7 +938,7 @@ impl RpcClient {
 
         let response = self.call(&payload, 156).await?;
 
-        let json_response = serde_json::from_str::<JsonRpcResponse<String>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<String>>(&response)?;
 
         match json_response.result {
             Some(result) => Signature::from_str(&result)
