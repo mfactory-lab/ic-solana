@@ -445,7 +445,7 @@ pub struct RpcTokenAccountBalance {
     pub amount: UiTokenAmount,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcConfirmedTransactionStatusWithSignature {
     pub signature: String, // base 58 encoded signature

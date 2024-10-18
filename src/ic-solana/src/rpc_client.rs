@@ -31,7 +31,7 @@ use {
     },
     serde::Deserialize,
     serde_json::{json, Value},
-    std::{cell::RefCell, str::FromStr},
+    std::{cell::RefCell, collections::HashMap, str::FromStr},
 };
 
 thread_local! {
@@ -881,10 +881,8 @@ impl RpcClient {
         config: RpcTransactionConfig,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
-        let payload = RpcRequest::GetTransaction.build_request_json(
-            self.next_request_id(),
-            json!([signature.to_string(), config]),
-        );
+        let payload = RpcRequest::GetTransaction
+            .build_request_json(self.next_request_id(), json!([signature.as_str(), config]));
 
         let response = self
             .call(
@@ -902,6 +900,65 @@ impl RpcClient {
         } else {
             Ok(json_response.result.unwrap())
         }
+    }
+
+    ///
+    /// Method relies on the `getTransaction` RPC call to get the transaction data:
+    /// https://solana.com/docs/rpc/http/gettransaction
+    /// It is using a batch request to get multiple transactions at once.
+    ///
+    /// cURL Example:
+    /// curl -X POST -H "Content-Type: application/json" -d '[
+    ///    {"jsonrpc":"2.0","id":1,"method":"getTransaction","params":["1"]}
+    ///    {"jsonrpc":"2.0","id":2,"method":"getTransaction","params":["2"]}
+    /// ]' http://localhost:8899
+    ///
+    pub async fn get_transactions(
+        &self,
+        signatures: Vec<&str>,
+        config: RpcTransactionConfig,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>>
+    {
+        let rpc_request = signatures
+            .iter()
+            .map(|signature| {
+                RpcRequest::GetTransaction
+                    .build_request_json(self.next_request_id(), json!([signature, config]))
+            })
+            .collect();
+
+        let response = self
+            .call(
+                &Value::Array(rpc_request),
+                max_response_bytes.unwrap_or_else(|| {
+                    signatures.len() as u64 * TRANSACTION_RESPONSE_SIZE_ESTIMATE
+                }),
+            )
+            .await?;
+
+        let json_response = serde_json::from_slice::<
+            Vec<JsonRpcResponse<EncodedConfirmedTransactionWithStatusMeta>>,
+        >(&response)?;
+
+        let result = json_response
+            .into_iter()
+            .enumerate()
+            .map(|(index, res)| {
+                let entity = if let Some(error) = res.error {
+                    Err(RpcError::RpcResponseError {
+                        code: error.code,
+                        message: error.message,
+                        data: None,
+                    })
+                } else {
+                    Ok(res.result)
+                };
+                (signatures[index].to_string(), entity)
+            })
+            .collect::<HashMap<_, _>>();
+
+        Ok(result)
     }
 
     ///

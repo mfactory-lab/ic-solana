@@ -20,6 +20,10 @@ impl Default for Signature {
 }
 
 impl Signature {
+    pub fn as_str(&self) -> &str {
+        std::str::from_utf8(&self.0).unwrap_or_default()
+    }
+
     // pub(self) fn verify_verbose(
     //     &self,
     //     pubkey_bytes: &[u8],

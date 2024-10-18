@@ -9,6 +9,7 @@ use {
             Epoch, Slot,
         },
     },
+    candid::CandidType,
     serde::{Deserialize, Serialize},
 };
 
@@ -218,7 +219,7 @@ pub struct RpcBlockSubscribeConfig {
     pub max_supported_transaction_version: Option<u8>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSignaturesForAddressConfig {
     pub before: Option<String>, // Signature as base-58 string
