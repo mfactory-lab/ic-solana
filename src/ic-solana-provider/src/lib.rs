@@ -21,12 +21,14 @@ use {
         query, update,
     },
     ic_solana::{
-        response::RpcBlockProduction,
+        response::{RpcBlockProduction, RpcConfirmedTransactionStatusWithSignature},
         rpc_client::{RpcError, RpcResult},
         types::{
-            Account, BlockHash, CandidValue, Instruction, Message, Pubkey, RpcAccountInfoConfig,
-            RpcContextConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
-            RpcTransactionConfig, Signature, TaggedEncodedConfirmedTransactionWithStatusMeta,
+            Account, BlockHash, CandidValue, CommitmentConfig,
+            EncodedConfirmedTransactionWithStatusMeta, Instruction, Message, Pubkey,
+            RpcAccountInfoConfig, RpcContextConfig, RpcSendTransactionConfig,
+            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcTransactionConfig,
+            Signature, Slot, TaggedEncodedConfirmedTransactionWithStatusMeta,
             TaggedRpcBlockProductionConfig, TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance,
             TaggedUiConfirmedBlock, TokenAccountsFilter, Transaction, TransactionDetails,
             TransactionStatus, UiAccountEncoding, UiTokenAmount, UiTransactionEncoding,
@@ -36,7 +38,7 @@ use {
     serde_bytes::ByteBuf,
     serde_json::json,
     state::{read_state, InitArgs},
-    std::str::FromStr,
+    std::{collections::HashMap, str::FromStr},
 };
 
 pub mod auth;
@@ -62,6 +64,69 @@ pub async fn sol_address() -> String {
     Pubkey::try_from(pk.as_slice())
         .expect("Invalid public key")
         .to_string()
+}
+
+///
+/// Retrieves transaction logs for a given public key.
+///
+/// This asynchronous function connects to the specified RPC `provider`, fetches transaction
+/// signatures associated with the provided `pubkey`, and then retrieves detailed transaction
+/// data based on those signatures.
+///
+#[update(name = "sol_getLogs")]
+#[candid_method(rename = "sol_getLogs")]
+pub async fn sol_get_logs(
+    provider: String,
+    pubkey: String,
+    config: Option<RpcSignaturesForAddressConfig>,
+    max_response_bytes: Option<u64>,
+) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>> {
+    let client = rpc_client(&provider);
+    let config = config.unwrap_or_default();
+    let commitment = config.commitment;
+
+    let signatures = client
+        .get_signatures_for_address(
+            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
+            config,
+        )
+        .await?;
+
+    client
+        .get_transactions(
+            signatures
+                .iter()
+                .map(|s| s.signature.as_str())
+                .collect::<Vec<_>>(),
+            RpcTransactionConfig {
+                encoding: None,
+                commitment,
+                max_supported_transaction_version: None,
+            },
+            max_response_bytes,
+        )
+        .await
+}
+
+///
+/// Returns signatures for confirmed transactions that
+/// include the given address in their accountKeys list.
+///
+#[update(name = "sol_getSignaturesForAddress")]
+#[candid_method(rename = "sol_getSignaturesForAddress")]
+pub async fn sol_get_signatures_for_address(
+    provider: String,
+    pubkey: String,
+    config: RpcSignaturesForAddressConfig,
+) -> RpcResult<Vec<RpcConfirmedTransactionStatusWithSignature>> {
+    let client = rpc_client(&provider);
+    let result = client
+        .get_signatures_for_address(
+            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
+            config,
+        )
+        .await?;
+    Ok(result)
 }
 
 ///
