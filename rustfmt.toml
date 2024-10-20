@@ -1,9 +1,8 @@
 edition = "2021"
+max_width = 120
 imports_indent = "Block"
-imports_layout = "Mixed"
 imports_granularity = "One"
-group_imports = "One"
-# group_imports = "StdExternalCrate"
+group_imports = "StdExternalCrate"
 reorder_imports = true
 reorder_modules = true
 reorder_impl_items = false
