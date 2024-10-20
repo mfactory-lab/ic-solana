@@ -13,10 +13,11 @@ use {
         response::RpcBlockProduction,
         rpc_client::RpcError,
         types::{
-            Account, CandidValue, CommitmentConfig,
+            Account, CandidValue, CommitmentConfig, EncodingConfig, RpcBlockConfig,
             TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedEncodedTransaction,
             TaggedRpcBlockProductionConfig, TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock,
             TaggedUiMessage, TransactionDetails, TransactionStatus, UiTokenAmount,
+            UiTransactionEncoding,
         },
     },
     ic_solana_provider::types::SendTransactionRequest,
@@ -82,7 +83,7 @@ async fn test_get_block() {
             encode_args((
                 MAINNET_PROVIDER_ID,
                 SLOT,
-                TransactionDetails::Signatures,
+                RpcBlockConfig::new_with_encoding(&Some(UiTransactionEncoding::Json)),
                 Some(MAX_RESPONSE_BYTES),
             ))
             .unwrap(),

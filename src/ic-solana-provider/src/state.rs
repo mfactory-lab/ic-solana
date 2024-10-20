@@ -1,21 +1,19 @@
-use {
-    crate::{
-        auth::{Auth, AuthSet},
-        eddsa_api::SchnorrKey,
-        memory::{init_auth_memory, init_providers_memory, AuthMemory, ProvidersMemory},
-        providers::{ProviderId, RpcProvider},
-        types::PrincipalStorable,
-    },
-    candid::{CandidType, Deserialize, Principal},
-    ic_solana::types::Cluster,
-    std::{cell::RefCell, str::FromStr},
+use std::{cell::RefCell, str::FromStr};
+
+use candid::{CandidType, Deserialize, Principal};
+use ic_solana::types::Cluster;
+
+use crate::{
+    auth::{Auth, AuthSet},
+    memory::{init_auth_memory, init_providers_memory, AuthMemory, ProvidersMemory},
+    providers::{ProviderId, RpcProvider},
+    types::PrincipalStorable,
 };
 
 thread_local! {
     pub static STATE: RefCell<Option<State>> = RefCell::new(Some(State {
         auth: init_auth_memory(),
         rpc_providers: init_providers_memory(),
-        schnorr_key: SchnorrKey::TestKeyLocal,
         is_demo_active: false,
     }));
 }
@@ -31,7 +29,6 @@ pub struct InitArgs {
 pub struct State {
     pub auth: AuthMemory,
     pub rpc_providers: ProvidersMemory,
-    pub schnorr_key: SchnorrKey,
     pub is_demo_active: bool,
     // pub hosts_blocklist: Vec<String>,
 }
@@ -67,10 +64,6 @@ impl From<InitArgs> for State {
             Self {
                 auth,
                 rpc_providers,
-                schnorr_key: value
-                    .schnorr_key
-                    .and_then(|s| SchnorrKey::from_str(&s).ok())
-                    .unwrap_or(s.schnorr_key),
                 is_demo_active: value.demo.unwrap_or(false),
                 // hosts_blocklist: value.hosts_blocklist.unwrap_or_default(),
             }
@@ -80,7 +73,6 @@ impl From<InitArgs> for State {
 
 impl std::fmt::Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Schnorr key name: {:?}", self.schnorr_key)?;
         writeln!(f, "Demo active: {:?}", self.is_demo_active)?;
         writeln!(f, "Auth:")?;
         for (principal, auth) in self.auth.iter() {

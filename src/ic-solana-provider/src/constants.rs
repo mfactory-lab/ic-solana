@@ -20,12 +20,9 @@ pub const RPC_URL_COST_BYTES: u32 = 256;
 
 // pub const MINIMUM_WITHDRAWAL_CYCLES: u128 = 1_000_000_000;
 
-pub const NODES_IN_SUBNET: u32 = 28;
+pub const NODES_IN_SUBNET: u32 = 34;
 
 pub const PROVIDER_ID_MAX_SIZE: u32 = 128;
 
 // List of hosts which are not allowed to be used as RPC providers
 pub const RPC_HOSTS_BLOCKLIST: &[&str] = &[];
-
-// https://internetcomputer.org/docs/current/references/t-sigs-how-it-works/#fees-for-the-t-schnorr-production-key
-pub const EDDSA_SIGN_COST: u128 = 26_153_846_153;

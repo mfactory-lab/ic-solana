@@ -1,14 +1,14 @@
-use {
-    crate::{
-        state::{mutate_state, read_state},
-        types::PrincipalStorable,
-    },
-    candid::{CandidType, Deserialize, Principal},
-    ic_canister_log::log,
-    ic_solana_common::{add_metric_entry, logs::INFO, metrics::MetricAuth, sub_metric_entry},
-    ic_stable_structures::{storable::Bound, Storable},
-    serde::Serialize,
-    std::{borrow::Cow, fmt::Display},
+use std::{borrow::Cow, fmt::Display};
+
+use candid::{CandidType, Deserialize, Principal};
+use ic_canister_log::log;
+use ic_solana_common::{add_metric_entry, logs::INFO, metrics::MetricAuth, sub_metric_entry};
+use ic_stable_structures::{storable::Bound, Storable};
+use serde::Serialize;
+
+use crate::{
+    state::{mutate_state, read_state},
+    types::PrincipalStorable,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, CandidType, Serialize, Deserialize)]
