@@ -221,8 +221,7 @@ impl TransactionStatus {
                 *status != TransactionConfirmationStatus::Processed
             } else {
                 // These fallback cases handle TransactionStatus RPC responses from older software
-                self.confirmations.is_some() && self.confirmations.unwrap() > 1
-                    || self.confirmations.is_none()
+                self.confirmations.is_some() && self.confirmations.unwrap() > 1 || self.confirmations.is_none()
             }
         } else {
             true
@@ -339,25 +338,22 @@ mod tests {
 
     fn create_sample_transaction() -> Transaction {
         let pk = PrivateKey::deserialize_raw(&[
-            255, 101, 36, 24, 124, 23, 167, 21, 132, 204, 155, 5, 185, 58, 121, 75, 156, 227, 116,
-            193, 215, 38, 142, 22, 8, 14, 229, 239, 119, 93, 5, 218,
+            255, 101, 36, 24, 124, 23, 167, 21, 132, 204, 155, 5, 185, 58, 121, 75, 156, 227, 116, 193, 215, 38, 142,
+            22, 8, 14, 229, 239, 119, 93, 5, 218,
         ])
         .unwrap();
 
         let pubkey = Pubkey::from(pk.public_key().serialize_raw());
 
         let to = Pubkey::from([
-            1, 1, 1, 4, 5, 6, 7, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 7, 6, 5, 4,
-            1, 1, 1,
+            1, 1, 1, 4, 5, 6, 7, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 7, 6, 5, 4, 1, 1, 1,
         ]);
 
         let program_id = Pubkey::from([
-            2, 2, 2, 4, 5, 6, 7, 8, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 8, 7, 6, 5, 4,
-            2, 2, 2,
+            2, 2, 2, 4, 5, 6, 7, 8, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 8, 7, 6, 5, 4, 2, 2, 2,
         ]);
         let account_metas = vec![AccountMeta::new(pubkey, true), AccountMeta::new(to, false)];
-        let instruction =
-            Instruction::new_with_bincode(program_id, &(1u8, 2u8, 3u8), account_metas);
+        let instruction = Instruction::new_with_bincode(program_id, &(1u8, 2u8, 3u8), account_metas);
 
         let message = Message::new_with_blockhash(&[instruction], None, &BlockHash::default());
 
@@ -400,15 +396,12 @@ mod tests {
 
         let test_json = serde_json::to_string(&test_tx).unwrap();
 
-        let test_tx_2: EncodedConfirmedTransactionWithStatusMeta =
-            serde_json::from_str(&test_json).unwrap();
+        let test_tx_2: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(&test_json).unwrap();
 
         assert_eq!(test_tx, test_tx_2); // This test fails because TransactionVersion is not serialized as a string, but as a null
 
-        let _: EncodedConfirmedTransactionWithStatusMeta =
-            serde_json::from_str(legacy_version_json).unwrap();
+        let _: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(legacy_version_json).unwrap();
 
-        let _: EncodedConfirmedTransactionWithStatusMeta =
-            serde_json::from_str(numbered_version_json).unwrap();
+        let _: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(numbered_version_json).unwrap();
     }
 }

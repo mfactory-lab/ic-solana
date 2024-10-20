@@ -1,7 +1,7 @@
 use {
     crate::types::{
-        EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot,
-        TransactionConfirmationStatus, TransactionError, UiAccount, UiTokenAmount, UnixTimestamp,
+        EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot, TransactionConfirmationStatus,
+        TransactionError, UiAccount, UiTokenAmount, UnixTimestamp,
     },
     candid::CandidType,
     serde::{Deserialize, Serialize},

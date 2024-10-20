@@ -1,15 +1,16 @@
-use candid::CandidType;
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    response::RpcBlockProductionRange,
-    types::{
-        account::UiAccountEncoding,
-        commitment::{CommitmentConfig, CommitmentLevel},
-        filter::RpcFilterType,
-        transaction::{TransactionDetails, UiTransactionEncoding},
-        Epoch, Slot,
+use {
+    crate::{
+        response::RpcBlockProductionRange,
+        types::{
+            account::UiAccountEncoding,
+            commitment::{CommitmentConfig, CommitmentLevel},
+            filter::RpcFilterType,
+            transaction::{TransactionDetails, UiTransactionEncoding},
+            Epoch, Slot,
+        },
     },
+    candid::CandidType,
+    serde::{Deserialize, Serialize},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

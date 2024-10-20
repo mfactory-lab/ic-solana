@@ -4,18 +4,16 @@ use {
         request::RpcRequest,
         response::{
             OptionalContext, Response, RpcBlockCommitment, RpcBlockProduction, RpcBlockhash,
-            RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply,
-            RpcTokenAccountBalance, RpcVersionInfo,
+            RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply, RpcTokenAccountBalance,
+            RpcVersionInfo,
         },
         types::{
-            Account, BlockHash, Cluster, CommitmentConfig,
-            EncodedConfirmedTransactionWithStatusMeta, EpochInfo, EpochSchedule, Pubkey,
-            RpcAccountInfoConfig, RpcBlockConfig, RpcBlockProductionConfig, RpcContextConfig,
+            Account, BlockHash, Cluster, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo,
+            EpochSchedule, Pubkey, RpcAccountInfoConfig, RpcBlockConfig, RpcBlockProductionConfig, RpcContextConfig,
             RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
-            RpcSignaturesForAddressConfig, RpcSupplyConfig, RpcTokenAccountsFilter,
-            RpcTransactionConfig, Signature, Slot, TokenAccountsFilter, Transaction,
-            TransactionDetails, TransactionStatus, UiAccount, UiConfirmedBlock, UiTokenAmount,
-            UiTransactionEncoding,
+            RpcSignaturesForAddressConfig, RpcSupplyConfig, RpcTokenAccountsFilter, RpcTransactionConfig, Signature,
+            Slot, TokenAccountsFilter, Transaction, TransactionDetails, TransactionStatus, UiAccount, UiConfirmedBlock,
+            UiTokenAmount, UiTransactionEncoding,
         },
     },
     anyhow::Result,
@@ -199,27 +197,21 @@ impl RpcClient {
         };
 
         // Calculate cycles if a calculator is provided
-        let (cycles_cost, cycles_cost_with_collateral) = self
-            .cost_calculator
-            .as_ref()
-            .map_or((0, 0), |calc| calc(&request));
+        let (cycles_cost, cycles_cost_with_collateral) =
+            self.cost_calculator.as_ref().map_or((0, 0), |calc| calc(&request));
 
-        let parsed_url = url::Url::parse(url)
-            .map_err(|_| RpcError::ParseError(format!("Invalid URL: {}", url)))?;
+        let parsed_url = url::Url::parse(url).map_err(|_| RpcError::ParseError(format!("Invalid URL: {}", url)))?;
 
-        let host = parsed_url.host_str().ok_or_else(|| {
-            RpcError::ParseError(format!("Error parsing hostname from URL: {}", url))
-        })?;
+        let host = parsed_url
+            .host_str()
+            .ok_or_else(|| RpcError::ParseError(format!("Error parsing hostname from URL: {}", url)))?;
 
         let rpc_host = MetricRpcHost(host.to_string());
         let rpc_method = MetricRpcMethod(payload["method"].to_string());
 
         if self.hosts_blocklist.contains(&host) {
             add_metric_entry!(err_host_not_allowed, rpc_host.clone(), 1);
-            return Err(RpcError::Text(format!(
-                "Disallowed RPC service host: {}",
-                host
-            )));
+            return Err(RpcError::Text(format!("Disallowed RPC service host: {}", host)));
         }
 
         // Handle cycle accounting if not in demo mode
@@ -232,11 +224,7 @@ impl RpcClient {
                 )));
             }
             ic_cdk::api::call::msg_cycles_accept128(cycles_cost);
-            add_metric_entry!(
-                cycles_charged,
-                (rpc_method.clone(), rpc_host.clone()),
-                cycles_cost
-            );
+            add_metric_entry!(cycles_charged, (rpc_method.clone(), rpc_host.clone()), cycles_cost);
         }
 
         log!(
@@ -249,8 +237,7 @@ impl RpcClient {
         match http_request(request, cycles_cost).await {
             Ok((response,)) => {
                 let body_len = response.body.len();
-                let body_str = std::str::from_utf8(&response.body)
-                    .map_err(|e| RpcError::ParseError(e.to_string()))?;
+                let body_str = std::str::from_utf8(&response.body).map_err(|e| RpcError::ParseError(e.to_string()))?;
 
                 log!(
                     DEBUG,
@@ -288,17 +275,12 @@ impl RpcClient {
     /// Method relies on the `getLatestBlockhash` RPC call to get the latest blockhash:
     ///   https://solana.com/docs/rpc/http/getLatestBlockhash
     ///
-    pub async fn get_latest_blockhash(
-        &self,
-        config: Option<RpcContextConfig>,
-    ) -> RpcResult<BlockHash> {
-        let payload = RpcRequest::GetLatestBlockhash
-            .build_request_json(self.next_request_id(), json!([config]));
+    pub async fn get_latest_blockhash(&self, config: Option<RpcContextConfig>) -> RpcResult<BlockHash> {
+        let payload = RpcRequest::GetLatestBlockhash.build_request_json(self.next_request_id(), json!([config]));
 
         let response = self.call(&payload, 156).await?;
 
-        let json_response =
-            serde_json::from_slice::<JsonRpcResponse<OptionalContext<RpcBlockhash>>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<OptionalContext<RpcBlockhash>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -323,13 +305,12 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getBalance
     ///
     pub async fn get_balance(&self, pubkey: &Pubkey, config: RpcContextConfig) -> RpcResult<u64> {
-        let payload = RpcRequest::GetBalance
-            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]));
+        let payload =
+            RpcRequest::GetBalance.build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]));
 
         let response = self.call(&payload, 156).await?;
 
-        let json_response =
-            serde_json::from_slice::<JsonRpcResponse<OptionalContext<u64>>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<OptionalContext<u64>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -349,15 +330,12 @@ impl RpcClient {
         pubkey: &Pubkey,
         commitment_config: Option<CommitmentConfig>,
     ) -> RpcResult<UiTokenAmount> {
-        let payload = RpcRequest::GetTokenAccountBalance.build_request_json(
-            self.next_request_id(),
-            json!([pubkey.to_string(), commitment_config]),
-        );
+        let payload = RpcRequest::GetTokenAccountBalance
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), commitment_config]));
 
         let response = self.call(&payload, 256).await?;
 
-        let json_response =
-            serde_json::from_slice::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -379,21 +357,15 @@ impl RpcClient {
         config: Option<RpcAccountInfoConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Vec<RpcKeyedAccount>> {
-        let payload = RpcRequest::GetTokenAccountsByDelegate.build_request_json(
-            self.next_request_id(),
-            json!([pubkey.to_string(), filter, config]),
-        );
+        let payload = RpcRequest::GetTokenAccountsByDelegate
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), filter, config]));
 
         let response = self
-            .call(
-                &payload,
-                max_response_bytes.unwrap_or(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE),
-            )
+            .call(&payload, max_response_bytes.unwrap_or(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE))
             .await?;
 
-        let json_response = serde_json::from_slice::<
-            JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>,
-        >(&response)?;
+        let json_response =
+            serde_json::from_slice::<JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -415,21 +387,15 @@ impl RpcClient {
         config: Option<RpcAccountInfoConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Vec<RpcKeyedAccount>> {
-        let payload = RpcRequest::GetTokenAccountsByOwner.build_request_json(
-            self.next_request_id(),
-            json!([pubkey.to_string(), filter, config]),
-        );
+        let payload = RpcRequest::GetTokenAccountsByOwner
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), filter, config]));
 
         let response = self
-            .call(
-                &payload,
-                max_response_bytes.unwrap_or(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE),
-            )
+            .call(&payload, max_response_bytes.unwrap_or(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE))
             .await?;
 
-        let json_response = serde_json::from_slice::<
-            JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>,
-        >(&response)?;
+        let json_response =
+            serde_json::from_slice::<JsonRpcResponse<OptionalContext<Vec<RpcKeyedAccount>>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -450,10 +416,8 @@ impl RpcClient {
         commitment_config: Option<CommitmentConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Vec<RpcTokenAccountBalance>> {
-        let payload = RpcRequest::GetTokenLargestAccounts.build_request_json(
-            self.next_request_id(),
-            json!([mint.to_string(), commitment_config]),
-        );
+        let payload = RpcRequest::GetTokenLargestAccounts
+            .build_request_json(self.next_request_id(), json!([mint.to_string(), commitment_config]));
 
         let response = self
             .call(
@@ -462,9 +426,8 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_slice::<
-            JsonRpcResponse<OptionalContext<Vec<RpcTokenAccountBalance>>>,
-        >(&response)?;
+        let json_response =
+            serde_json::from_slice::<JsonRpcResponse<OptionalContext<Vec<RpcTokenAccountBalance>>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -485,20 +448,14 @@ impl RpcClient {
         commitment_config: Option<CommitmentConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<UiTokenAmount> {
-        let payload = RpcRequest::GetTokenSupply.build_request_json(
-            self.next_request_id(),
-            json!([mint.to_string(), commitment_config]),
-        );
+        let payload = RpcRequest::GetTokenSupply
+            .build_request_json(self.next_request_id(), json!([mint.to_string(), commitment_config]));
 
         let response = self
-            .call(
-                &payload,
-                max_response_bytes.unwrap_or(GET_TOKEN_SUPPLY_SIZE_ESTIMATE),
-            )
+            .call(&payload, max_response_bytes.unwrap_or(GET_TOKEN_SUPPLY_SIZE_ESTIMATE))
             .await?;
 
-        let json_response =
-            serde_json::from_slice::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<OptionalContext<UiTokenAmount>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -519,18 +476,14 @@ impl RpcClient {
         config: RpcAccountInfoConfig,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Option<Account>> {
-        let payload = RpcRequest::GetAccountInfo
-            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]));
+        let payload =
+            RpcRequest::GetAccountInfo.build_request_json(self.next_request_id(), json!([pubkey.to_string(), config]));
 
         let response = self
-            .call(
-                &payload,
-                max_response_bytes.unwrap_or(MAX_PDA_ACCOUNT_DATA_LENGTH),
-            )
+            .call(&payload, max_response_bytes.unwrap_or(MAX_PDA_ACCOUNT_DATA_LENGTH))
             .await?;
 
-        let json_response =
-            serde_json::from_slice::<JsonRpcResponse<Response<Option<UiAccount>>>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<Response<Option<UiAccount>>>>(&response)?;
 
         if let Some(e) = json_response.error {
             return Err(e.into());
@@ -550,8 +503,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getVersion
     ///
     pub async fn get_version(&self) -> RpcResult<RpcVersionInfo> {
-        let payload =
-            RpcRequest::GetVersion.build_request_json(self.next_request_id(), Value::Null);
+        let payload = RpcRequest::GetVersion.build_request_json(self.next_request_id(), Value::Null);
 
         let response = self.call(&payload, 128).await?;
 
@@ -597,14 +549,10 @@ impl RpcClient {
         config: RpcBlockConfig,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<UiConfirmedBlock> {
-        let payload =
-            RpcRequest::GetBlock.build_request_json(self.next_request_id(), json!([slot, config]));
+        let payload = RpcRequest::GetBlock.build_request_json(self.next_request_id(), json!([slot, config]));
 
         let response = self
-            .call(
-                &payload,
-                max_response_bytes.unwrap_or(GET_BLOCK_RESPONSE_SIZE_ESTIMATE),
-            )
+            .call(&payload, max_response_bytes.unwrap_or(GET_BLOCK_RESPONSE_SIZE_ESTIMATE))
             .await?;
 
         let json_response = serde_json::from_slice::<JsonRpcResponse<UiConfirmedBlock>>(&response)?;
@@ -623,13 +571,11 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getBlockCommitment
     ///
     pub async fn get_block_commitment(&self, slot: Slot) -> RpcResult<RpcBlockCommitment> {
-        let payload = RpcRequest::GetBlockCommitment
-            .build_request_json(self.next_request_id(), json!([slot]));
+        let payload = RpcRequest::GetBlockCommitment.build_request_json(self.next_request_id(), json!([slot]));
 
         let response = self.call(&payload, 1024).await?;
 
-        let json_response =
-            serde_json::from_slice::<JsonRpcResponse<RpcBlockCommitment>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<RpcBlockCommitment>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -691,8 +637,8 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getBlockHeight
     ///
     pub async fn get_block_height(&self, config: Option<RpcContextConfig>) -> RpcResult<u64> {
-        let payload = RpcRequest::GetBlockHeight
-            .build_request_json(self.next_request_id(), json!([config.unwrap_or_default()]));
+        let payload =
+            RpcRequest::GetBlockHeight.build_request_json(self.next_request_id(), json!([config.unwrap_or_default()]));
 
         let response = self.call(&payload, 45).await?;
         let json_response = serde_json::from_slice::<JsonRpcResponse<u64>>(&response)?;
@@ -711,8 +657,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getBlockTime
     ///
     pub async fn get_block_time(&self, slot: Slot) -> RpcResult<i64> {
-        let payload =
-            RpcRequest::GetBlockTime.build_request_json(self.next_request_id(), json!([slot]));
+        let payload = RpcRequest::GetBlockTime.build_request_json(self.next_request_id(), json!([slot]));
 
         let response = self.call(&payload, 45).await?;
         let json_response = serde_json::from_slice::<JsonRpcResponse<i64>>(&response)?;
@@ -730,18 +675,12 @@ impl RpcClient {
     /// Method relies on the `getBlockProduction` RPC call to get the block production:
     ///   https://solana.com/docs/rpc/http/getBlockProduction
     ///
-    pub async fn get_block_production(
-        &self,
-        config: RpcBlockProductionConfig,
-    ) -> RpcResult<RpcBlockProduction> {
-        let payload = RpcRequest::GetBlockProduction
-            .build_request_json(self.next_request_id(), json!([config]));
+    pub async fn get_block_production(&self, config: RpcBlockProductionConfig) -> RpcResult<RpcBlockProduction> {
+        let payload = RpcRequest::GetBlockProduction.build_request_json(self.next_request_id(), json!([config]));
 
         let response = self.call(&payload, 100_000).await?;
 
-        let json_response = serde_json::from_slice::<
-            JsonRpcResponse<OptionalContext<RpcBlockProduction>>,
-        >(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<OptionalContext<RpcBlockProduction>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -777,8 +716,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getSupply
     ///
     pub async fn get_supply(&self, config: RpcSupplyConfig) -> RpcResult<RpcSupply> {
-        let payload =
-            RpcRequest::GetSupply.build_request_json(self.next_request_id(), json!([config]));
+        let payload = RpcRequest::GetSupply.build_request_json(self.next_request_id(), json!([config]));
 
         let response = self.call(&payload, GET_SUPPLY_SIZE_ESTIMATE).await?;
 
@@ -798,8 +736,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getEpochInfo
     ///
     pub async fn get_epoch_info(&self, config: Option<RpcContextConfig>) -> RpcResult<EpochInfo> {
-        let payload =
-            RpcRequest::GetEpochInfo.build_request_json(self.next_request_id(), json!([config]));
+        let payload = RpcRequest::GetEpochInfo.build_request_json(self.next_request_id(), json!([config]));
 
         let response = self.call(&payload, GET_EPOCH_INFO_SIZE_ESTIMATE).await?;
 
@@ -819,12 +756,9 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getEpochSchedule
     ///
     pub async fn get_epoch_schedule(&self) -> RpcResult<EpochSchedule> {
-        let payload =
-            RpcRequest::GetEpochSchedule.build_request_json(self.next_request_id(), Value::Null);
+        let payload = RpcRequest::GetEpochSchedule.build_request_json(self.next_request_id(), Value::Null);
 
-        let response = self
-            .call(&payload, GET_EPOCH_SCHEDULE_SIZE_ESTIMATE)
-            .await?;
+        let response = self.call(&payload, GET_EPOCH_SCHEDULE_SIZE_ESTIMATE).await?;
 
         let json_response = serde_json::from_slice::<JsonRpcResponse<EpochSchedule>>(&response)?;
 
@@ -847,15 +781,12 @@ impl RpcClient {
         config: RpcProgramAccountsConfig,
         max_response_bytes: u64,
     ) -> RpcResult<Vec<RpcKeyedAccount>> {
-        let payload = RpcRequest::GetProgramAccounts.build_request_json(
-            self.next_request_id(),
-            json!([program_id.to_string(), config]),
-        );
+        let payload = RpcRequest::GetProgramAccounts
+            .build_request_json(self.next_request_id(), json!([program_id.to_string(), config]));
 
         let response = self.call(&payload, max_response_bytes).await?;
 
-        let json_response =
-            serde_json::from_slice::<JsonRpcResponse<Vec<RpcKeyedAccount>>>(&response)?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<Vec<RpcKeyedAccount>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -871,10 +802,8 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/requestAirdrop
     ///
     pub async fn request_airdrop(&self, pubkey: &Pubkey, lamports: u64) -> RpcResult<String> {
-        let payload = RpcRequest::RequestAirdrop.build_request_json(
-            self.next_request_id(),
-            json!([pubkey.to_string(), lamports]),
-        );
+        let payload = RpcRequest::RequestAirdrop
+            .build_request_json(self.next_request_id(), json!([pubkey.to_string(), lamports]));
 
         let response = self.call(&payload, 156).await?;
 
@@ -911,9 +840,8 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_slice::<
-            JsonRpcResponse<Vec<RpcConfirmedTransactionStatusWithSignature>>,
-        >(&response)?;
+        let json_response =
+            serde_json::from_slice::<JsonRpcResponse<Vec<RpcConfirmedTransactionStatusWithSignature>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -941,18 +869,16 @@ impl RpcClient {
             ));
         }
 
-        let payload = RpcRequest::GetSignatureStatuses
-            .build_request_json(self.next_request_id(), json!([signatures, config]));
+        let payload =
+            RpcRequest::GetSignatureStatuses.build_request_json(self.next_request_id(), json!([signatures, config]));
 
         // Estimate 256 bytes per transaction status to account for errors and metadata
-        let max_response_bytes =
-            signatures.len() as u64 * TRANSACTION_STATUS_RESPONSE_SIZE_ESTIMATE;
+        let max_response_bytes = signatures.len() as u64 * TRANSACTION_STATUS_RESPONSE_SIZE_ESTIMATE;
 
         let response = self.call(&payload, max_response_bytes).await?;
 
-        let json_response = serde_json::from_slice::<
-            JsonRpcResponse<OptionalContext<Vec<Option<TransactionStatus>>>>,
-        >(&response)?;
+        let json_response =
+            serde_json::from_slice::<JsonRpcResponse<OptionalContext<Vec<Option<TransactionStatus>>>>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -973,8 +899,8 @@ impl RpcClient {
         config: Option<RpcTransactionConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
-        let payload = RpcRequest::GetTransaction
-            .build_request_json(self.next_request_id(), json!([signature.as_str(), config]));
+        let payload =
+            RpcRequest::GetTransaction.build_request_json(self.next_request_id(), json!([signature.as_str(), config]));
 
         let response = self
             .call(
@@ -983,9 +909,8 @@ impl RpcClient {
             )
             .await?;
 
-        let json_response = serde_json::from_slice::<
-            JsonRpcResponse<EncodedConfirmedTransactionWithStatusMeta>,
-        >(&response)?;
+        let json_response =
+            serde_json::from_slice::<JsonRpcResponse<EncodedConfirmedTransactionWithStatusMeta>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -1010,28 +935,23 @@ impl RpcClient {
         signatures: Vec<&str>,
         config: RpcTransactionConfig,
         max_response_bytes: Option<u64>,
-    ) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>>
-    {
+    ) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>> {
         let rpc_request = signatures
             .iter()
             .map(|signature| {
-                RpcRequest::GetTransaction
-                    .build_request_json(self.next_request_id(), json!([signature, config]))
+                RpcRequest::GetTransaction.build_request_json(self.next_request_id(), json!([signature, config]))
             })
             .collect();
 
         let response = self
             .call(
                 &Value::Array(rpc_request),
-                max_response_bytes.unwrap_or_else(|| {
-                    signatures.len() as u64 * TRANSACTION_RESPONSE_SIZE_ESTIMATE
-                }),
+                max_response_bytes.unwrap_or_else(|| signatures.len() as u64 * TRANSACTION_RESPONSE_SIZE_ESTIMATE),
             )
             .await?;
 
-        let json_response = serde_json::from_slice::<
-            Vec<JsonRpcResponse<EncodedConfirmedTransactionWithStatusMeta>>,
-        >(&response)?;
+        let json_response =
+            serde_json::from_slice::<Vec<JsonRpcResponse<EncodedConfirmedTransactionWithStatusMeta>>>(&response)?;
 
         let result = json_response
             .into_iter()
@@ -1065,11 +985,7 @@ impl RpcClient {
     /// Method relies on the `sendTransaction` RPC call to send the transaction:
     ///   https://solana.com/docs/rpc/http/sendTransaction
     ///
-    pub async fn send_transaction(
-        &self,
-        tx: Transaction,
-        config: RpcSendTransactionConfig,
-    ) -> RpcResult<Signature> {
+    pub async fn send_transaction(&self, tx: Transaction, config: RpcSendTransactionConfig) -> RpcResult<Signature> {
         let serialized = tx.serialize();
 
         let raw_tx = match config.encoding {
@@ -1082,16 +998,16 @@ impl RpcClient {
             }
         };
 
-        let payload = RpcRequest::SendTransaction
-            .build_request_json(self.next_request_id(), json!([raw_tx, config]));
+        let payload = RpcRequest::SendTransaction.build_request_json(self.next_request_id(), json!([raw_tx, config]));
 
         let response = self.call(&payload, 156).await?;
 
         let json_response = serde_json::from_slice::<JsonRpcResponse<String>>(&response)?;
 
         match json_response.result {
-            Some(result) => Signature::from_str(&result)
-                .map_err(|_| RpcError::Text("Failed to parse signature".to_string())),
+            Some(result) => {
+                Signature::from_str(&result).map_err(|_| RpcError::Text("Failed to parse signature".to_string()))
+            }
             None => Err(json_response
                 .error
                 .map(|e| e.into())
@@ -1119,9 +1035,7 @@ impl<T: Debug + PartialEq + Clone + Serialize> MultiCallResults<T> {
         let (base_node_provider, base_result) = results
             .next()
             .expect("BUG: MultiCallResults is guaranteed to be non-empty");
-        let mut inconsistent_results: Vec<_> = results
-            .filter(|(_provider, result)| result != &base_result)
-            .collect();
+        let mut inconsistent_results: Vec<_> = results.filter(|(_provider, result)| result != &base_result).collect();
         if !inconsistent_results.is_empty() {
             inconsistent_results.push((base_node_provider, base_result));
             let error = MultiCallError::InconsistentResults(MultiCallResults::from_non_empty_iter(
@@ -1129,10 +1043,7 @@ impl<T: Debug + PartialEq + Clone + Serialize> MultiCallResults<T> {
                     .into_iter()
                     .map(|(provider, result)| (provider, Ok(result))),
             ));
-            log!(
-                INFO,
-                "[reduce_with_equality]: inconsistent results {error:?}"
-            );
+            log!(INFO, "[reduce_with_equality]: inconsistent results {error:?}");
             return Err(error);
         }
         Ok(base_result)

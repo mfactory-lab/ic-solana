@@ -1,14 +1,15 @@
-use std::{
-    fmt::{self, Display},
-    str::FromStr,
+use {
+    candid::Principal,
+    ic_management_canister_types::{
+        DerivationPath, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgs, SchnorrPublicKeyResponse,
+        SignWithSchnorrArgs, SignWithSchnorrReply,
+    },
+    serde_bytes::ByteBuf,
+    std::{
+        fmt::{self, Display},
+        str::FromStr,
+    },
 };
-
-use candid::Principal;
-use ic_management_canister_types::{
-    DerivationPath, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgs, SchnorrPublicKeyResponse,
-    SignWithSchnorrArgs, SignWithSchnorrReply,
-};
-use serde_bytes::ByteBuf;
 
 // https://internetcomputer.org/docs/current/references/t-sigs-how-it-works/#fees-for-the-t-schnorr-production-key
 pub const EDDSA_SIGN_COST: u128 = 26_153_846_153;

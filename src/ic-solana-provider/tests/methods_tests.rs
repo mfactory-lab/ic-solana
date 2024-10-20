@@ -4,8 +4,7 @@ use {
     crate::common::init,
     candid::{encode_args, encode_one, Decode},
     common::{
-        BASIC_IDENTITY, DEVNET_PROVIDER_ID, MAINNET_PROVIDER_ID, PUBKEY1, SECRET1, SECRET2,
-        SOLANA_DEVNET_CLUSTER_URL,
+        BASIC_IDENTITY, DEVNET_PROVIDER_ID, MAINNET_PROVIDER_ID, PUBKEY1, SECRET1, SECRET2, SOLANA_DEVNET_CLUSTER_URL,
     },
     core::panic,
     ic_agent::Agent,
@@ -14,18 +13,14 @@ use {
         rpc_client::RpcError,
         types::{
             Account, CandidValue, CommitmentConfig, EncodingConfig, RpcBlockConfig,
-            TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedEncodedTransaction,
-            TaggedRpcBlockProductionConfig, TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock,
-            TaggedUiMessage, TransactionDetails, TransactionStatus, UiTokenAmount,
-            UiTransactionEncoding,
+            TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedEncodedTransaction, TaggedRpcBlockProductionConfig,
+            TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock, TaggedUiMessage, TransactionDetails,
+            TransactionStatus, UiTokenAmount, UiTransactionEncoding,
         },
     },
     ic_solana_provider::types::SendTransactionRequest,
     pocket_ic::PocketIcBuilder,
-    solana_sdk::{
-        bs58, native_token::sol_to_lamports, signature::Signature, signer::Signer,
-        system_instruction,
-    },
+    solana_sdk::{bs58, native_token::sol_to_lamports, signature::Signature, signer::Signer, system_instruction},
     std::str::FromStr,
 };
 
@@ -92,12 +87,9 @@ async fn test_get_block() {
         .await
         .unwrap();
 
-    let _ = Decode!(
-        &res,
-        ic_solana::rpc_client::RpcResult<TaggedUiConfirmedBlock>
-    )
-    .unwrap()
-    .unwrap();
+    let _ = Decode!(&res, ic_solana::rpc_client::RpcResult<TaggedUiConfirmedBlock>)
+        .unwrap()
+        .unwrap();
 }
 
 #[tokio::test]
@@ -198,10 +190,7 @@ async fn test_get_blocks() {
 
     assert_eq!(
         result.unwrap(),
-        vec![
-            5000000, 5000001, 5000002, 5000003, 5000004, 5000005, 5000006, 5000007, 5000008,
-            5000009, 5000010,
-        ]
+        vec![5000000, 5000001, 5000002, 5000003, 5000004, 5000005, 5000006, 5000007, 5000008, 5000009, 5000010,]
     );
 }
 
@@ -355,12 +344,9 @@ async fn test_get_account_info() {
         .await
         .unwrap();
 
-    let account = Decode!(
-        &existing_account_res,
-        ic_solana::rpc_client::RpcResult<Option<Account>>
-    )
-    .unwrap()
-    .unwrap();
+    let account = Decode!(&existing_account_res, ic_solana::rpc_client::RpcResult<Option<Account>>)
+        .unwrap()
+        .unwrap();
 
     assert!(account.is_some());
 
@@ -380,10 +366,7 @@ async fn test_get_account_info() {
     match account {
         Ok(_) => panic!("Expected an error"),
         Err(err) => match err {
-            RpcError::Text(msg) => assert_eq!(
-                msg,
-                format!("AccountNotFound: pubkey={}", NON_EXISTING_ACCOUNT)
-            ),
+            RpcError::Text(msg) => assert_eq!(msg, format!("AccountNotFound: pubkey={}", NON_EXISTING_ACCOUNT)),
             _ => panic!("Expected a text error"),
         },
     }
@@ -453,8 +436,7 @@ async fn test_send_raw_transaction() {
 
     let canister_id = init(&pic).await;
 
-    let solana_client =
-        solana_client::rpc_client::RpcClient::new(SOLANA_DEVNET_CLUSTER_URL.to_string());
+    let solana_client = solana_client::rpc_client::RpcClient::new(SOLANA_DEVNET_CLUSTER_URL.to_string());
 
     let mut keypair1 = solana_sdk::signer::keypair::Keypair::from_bytes(&SECRET1).unwrap();
     let mut keypair2 = solana_sdk::signer::keypair::Keypair::from_bytes(&SECRET2).unwrap();
@@ -468,28 +450,14 @@ async fn test_send_raw_transaction() {
     // NOTICE: If this test fails, it could potentially be due to lack of funds in the accounts.
     let _ = agent
         .update(&canister_id, "sol_requestAirdrop")
-        .with_arg(
-            encode_args((
-                DEVNET_PROVIDER_ID,
-                pubkey1.to_string(),
-                sol_to_lamports(1.0),
-            ))
-            .unwrap(),
-        )
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, pubkey1.to_string(), sol_to_lamports(1.0))).unwrap())
         .call_and_wait()
         .await
         .unwrap();
 
     let _ = agent
         .update(&canister_id, "sol_requestAirdrop")
-        .with_arg(
-            encode_args((
-                DEVNET_PROVIDER_ID,
-                pubkey2.to_string(),
-                sol_to_lamports(1.0),
-            ))
-            .unwrap(),
-        )
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, pubkey2.to_string(), sol_to_lamports(1.0))).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -528,12 +496,7 @@ async fn test_send_raw_transaction() {
     let latest_blockhash = solana_client.get_latest_blockhash().unwrap();
 
     // Creating a transaction to send 2 SOL from keypair1 to keypair2
-    let tx = solana_sdk::system_transaction::transfer(
-        &keypair1,
-        &pubkey2,
-        AMOUNT_TO_SEND,
-        latest_blockhash,
-    );
+    let tx = solana_sdk::system_transaction::transfer(&keypair1, &pubkey2, AMOUNT_TO_SEND, latest_blockhash);
     let serialized = bincode::serialize(&tx).unwrap();
     let raw_tx = bs58::encode(serialized).into_string();
 
@@ -573,24 +536,11 @@ async fn test_send_raw_transaction() {
     .unwrap()
     .unwrap();
 
-    let pre_balances = tx
-        .transaction
-        .meta
-        .as_ref()
-        .unwrap()
-        .pre_balances
-        .as_slice();
+    let pre_balances = tx.transaction.meta.as_ref().unwrap().pre_balances.as_slice();
 
-    let post_balances = tx
-        .transaction
-        .meta
-        .as_ref()
-        .unwrap()
-        .post_balances
-        .as_slice();
+    let post_balances = tx.transaction.meta.as_ref().unwrap().post_balances.as_slice();
 
-    let account_keys = if let TaggedEncodedTransaction::Json(ref json) = tx.transaction.transaction
-    {
+    let account_keys = if let TaggedEncodedTransaction::Json(ref json) = tx.transaction.transaction {
         if let TaggedUiMessage::Raw(ref message_raw) = json.message {
             &message_raw.account_keys
         } else {
@@ -665,14 +615,7 @@ async fn test_send_transaction() {
     // NOTICE: If this test fails, it could potentially be due to lack of funds in the accounts.
     let _ = agent
         .update(&canister_id, "sol_requestAirdrop")
-        .with_arg(
-            encode_args((
-                DEVNET_PROVIDER_ID,
-                canister_address.to_string(),
-                sol_to_lamports(1.0),
-            ))
-            .unwrap(),
-        )
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, canister_address.to_string(), sol_to_lamports(1.0))).unwrap())
         .call_and_wait()
         .await
         .unwrap();
@@ -721,9 +664,7 @@ async fn test_send_transaction() {
         let tx_status = res.first().unwrap();
 
         if let Some(tx_status) = tx_status {
-            if tx_status.status.is_ok()
-                && tx_status.satisfies_commitment(CommitmentConfig::finalized())
-            {
+            if tx_status.status.is_ok() && tx_status.satisfies_commitment(CommitmentConfig::finalized()) {
                 break;
             }
         }
@@ -749,24 +690,11 @@ async fn test_send_transaction() {
     .unwrap()
     .unwrap();
 
-    let pre_balances = tx
-        .transaction
-        .meta
-        .as_ref()
-        .unwrap()
-        .pre_balances
-        .as_slice();
+    let pre_balances = tx.transaction.meta.as_ref().unwrap().pre_balances.as_slice();
 
-    let post_balances = tx
-        .transaction
-        .meta
-        .as_ref()
-        .unwrap()
-        .post_balances
-        .as_slice();
+    let post_balances = tx.transaction.meta.as_ref().unwrap().post_balances.as_slice();
 
-    let account_keys = if let TaggedEncodedTransaction::Json(ref json) = tx.transaction.transaction
-    {
+    let account_keys = if let TaggedEncodedTransaction::Json(ref json) = tx.transaction.transaction {
         if let TaggedUiMessage::Raw(ref message_raw) = json.message {
             &message_raw.account_keys
         } else {
@@ -870,14 +798,7 @@ async fn test_request_airdrop() {
 
     let call_result = agent
         .update(&canister_id, "sol_requestAirdrop")
-        .with_arg(
-            encode_args((
-                DEVNET_PROVIDER_ID,
-                PUBKEY1.to_string(),
-                AIRDROP_AMOUNT_LAMPORTS,
-            ))
-            .unwrap(),
-        )
+        .with_arg(encode_args((DEVNET_PROVIDER_ID, PUBKEY1.to_string(), AIRDROP_AMOUNT_LAMPORTS)).unwrap())
         .call_and_wait()
         .await
         .unwrap();

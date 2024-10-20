@@ -67,9 +67,7 @@ impl UiAccountData {
             UiAccountData::Binary(blob, encoding) => match encoding {
                 UiAccountEncoding::Base58 => bs58::decode(blob).into_vec().ok(),
                 UiAccountEncoding::Base64 => BASE64_STANDARD.decode(blob).ok(),
-                UiAccountEncoding::Base64Zstd
-                | UiAccountEncoding::Binary
-                | UiAccountEncoding::JsonParsed => None,
+                UiAccountEncoding::Base64Zstd | UiAccountEncoding::Binary | UiAccountEncoding::JsonParsed => None,
             },
         }
     }

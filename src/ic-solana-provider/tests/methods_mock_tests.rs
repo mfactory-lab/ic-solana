@@ -5,9 +5,8 @@ use {
     candid::{encode_args, encode_one},
     common::{decode_raw_wasm_result, fast_forward, MAINNET_PROVIDER_ID, SECRET1, USER_PRINCIPAL},
     ic_solana::types::{
-        Account, EncodedConfirmedTransactionWithStatusMeta,
-        TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedRpcKeyedAccount,
-        TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock, TokenAccountsFilter,
+        Account, EncodedConfirmedTransactionWithStatusMeta, TaggedEncodedConfirmedTransactionWithStatusMeta,
+        TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock, TokenAccountsFilter,
         TransactionDetails, UiTokenAmount,
     },
     ic_solana_provider::types::SendTransactionRequest,
@@ -174,10 +173,7 @@ async fn test_get_blocks_mock() {
 
     assert_eq!(
         result.unwrap(),
-        vec![
-            5000000, 5000001, 5000002, 5000003, 5000004, 5000005, 5000006, 5000007, 5000008,
-            5000009, 5000010,
-        ]
+        vec![5000000, 5000001, 5000002, 5000003, 5000004, 5000005, 5000006, 5000007, 5000008, 5000009, 5000010,]
     );
 }
 
@@ -237,10 +233,7 @@ async fn test_get_token_accounts_by_delegate_mock() {
     assert_eq!(first.pubkey, "28YTZEwqtMHWrhWcvv34se7pjS7wctgqzCPB3gReCFKp");
     assert_eq!(first.account.executable, false);
     assert_eq!(first.account.lamports, 1726080);
-    assert_eq!(
-        first.account.owner,
-        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-    );
+    assert_eq!(first.account.owner, "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
     assert_eq!(first.account.rent_epoch, 4);
     assert_eq!(first.account.space, Some(165));
 }
@@ -301,10 +294,7 @@ async fn test_get_token_accounts_by_owner_mock() {
     assert_eq!(first.pubkey, "28YTZEwqtMHWrhWcvv34se7pjS7wctgqzCPB3gReCFKp");
     assert_eq!(first.account.executable, false);
     assert_eq!(first.account.lamports, 1726080);
-    assert_eq!(
-        first.account.owner,
-        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-    );
+    assert_eq!(first.account.owner, "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
     assert_eq!(first.account.rent_epoch, 4);
     assert_eq!(first.account.space, Some(165));
 }
@@ -411,17 +401,11 @@ async fn test_get_token_largest_accounts_mock() {
 
     let first = result.first().unwrap();
 
-    assert_eq!(
-        first.address,
-        "BUvduFTd2sWFagCunBPLupG8fBTJqweLw9DuhruNFSCm"
-    );
+    assert_eq!(first.address, "BUvduFTd2sWFagCunBPLupG8fBTJqweLw9DuhruNFSCm");
     assert_eq!(first.amount.amount, "2291416519000987");
     assert_eq!(first.amount.decimals, 9);
     assert_eq!(first.amount.ui_amount, Some(2291416.519000987));
-    assert_eq!(
-        first.amount.ui_amount_string,
-        "2291416.519000987".to_string()
-    );
+    assert_eq!(first.amount.ui_amount_string, "2291416.519000987".to_string());
 }
 
 #[tokio::test]
@@ -584,16 +568,13 @@ async fn test_get_account_info_mock() {
     let expected: Option<Account> = Some(Account {
         lamports: 87918840915,
         data: vec![
-            0x01, 0x00, 0x00, 0x00, 0x05, 0xea, 0x9c, 0xf1, 0x6c, 0xe4, 0x11, 0x98, 0xf1, 0xa4,
-            0x99, 0x37, 0xc8, 0x8c, 0x37, 0x0a, 0x94, 0xd4, 0xaf, 0xff, 0x89, 0xb5, 0xba, 0xcb,
-            0x8e, 0xf4, 0x5e, 0x63, 0x24, 0xbb, 0x78, 0xf7, 0x7a, 0x9f, 0x13, 0x85, 0xe3, 0xb6,
-            0x06, 0x00, 0x06, 0x01, 0x01, 0x00, 0x00, 0x00, 0x05, 0xea, 0x9c, 0xf1, 0x6c, 0xe4,
-            0x11, 0x98, 0xf1, 0xa4, 0x99, 0x37, 0xc8, 0x8c, 0x37, 0x0a, 0x94, 0xd4, 0xaf, 0xff,
-            0x89, 0xb5, 0xba, 0xcb, 0x8e, 0xf4, 0x5e, 0x63, 0x24, 0xbb, 0x78, 0xf7,
+            0x01, 0x00, 0x00, 0x00, 0x05, 0xea, 0x9c, 0xf1, 0x6c, 0xe4, 0x11, 0x98, 0xf1, 0xa4, 0x99, 0x37, 0xc8, 0x8c,
+            0x37, 0x0a, 0x94, 0xd4, 0xaf, 0xff, 0x89, 0xb5, 0xba, 0xcb, 0x8e, 0xf4, 0x5e, 0x63, 0x24, 0xbb, 0x78, 0xf7,
+            0x7a, 0x9f, 0x13, 0x85, 0xe3, 0xb6, 0x06, 0x00, 0x06, 0x01, 0x01, 0x00, 0x00, 0x00, 0x05, 0xea, 0x9c, 0xf1,
+            0x6c, 0xe4, 0x11, 0x98, 0xf1, 0xa4, 0x99, 0x37, 0xc8, 0x8c, 0x37, 0x0a, 0x94, 0xd4, 0xaf, 0xff, 0x89, 0xb5,
+            0xba, 0xcb, 0x8e, 0xf4, 0x5e, 0x63, 0x24, 0xbb, 0x78, 0xf7,
         ],
-        owner: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-            .parse()
-            .unwrap(),
+        owner: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA".parse().unwrap(),
         executable: false,
         rent_epoch: 18446744073709551615,
     });
@@ -644,8 +625,7 @@ async fn test_get_account_info_mock() {
 
 #[tokio::test]
 async fn test_get_transaction_mock() {
-    const SIGNATURE: &str =
-        "3kxL8Qvp16kmVNiUkQSJ3zLvCJDK4qPZZ1ZL8W2VHeYoJUJnQ4VqMHFMNSmsGBq7rTfpe8cTzCopMSNRen6vGFt1";
+    const SIGNATURE: &str = "3kxL8Qvp16kmVNiUkQSJ3zLvCJDK4qPZZ1ZL8W2VHeYoJUJnQ4VqMHFMNSmsGBq7rTfpe8cTzCopMSNRen6vGFt1";
 
     const RESPONSE_STR: &str = r###"
 {
@@ -1154,9 +1134,8 @@ async fn test_get_transaction_mock() {
 
     pic.mock_canister_http_response(mock).await;
 
-    let (result,): (
-        ic_solana::rpc_client::RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta>,
-    ) = decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
+    let (result,): (ic_solana::rpc_client::RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta>,) =
+        decode_raw_wasm_result(&pic.await_call(call).await.unwrap()).unwrap();
 
     let tx = result.expect("RPC error occurred");
 
@@ -1167,8 +1146,7 @@ async fn test_get_transaction_mock() {
 async fn test_send_raw_transaction_mock() {
     const SEND_RAW_TRANSACTION_REQUEST: &str = r###"5Pqoict6REKLCaPAWadjLm2Vj5JKwvEVwJFfxYP8JiuC8FDUdxVhWUebF4gEcCR5mao8WizwGEKYRTC5X47TEN4HqUqJjcqSx1FMtyjvF37rXGqqUWm69GwxCTuzuEEFvZcguoBLemroUSmZimkPiE33J7i6RpRmZzLNJ2owzsSYHKZr5NHXaBN5hHiyzuDAakVqK1VRdyTKsVrA53xuLom7uHb7oMvYKPPWpuEaMxigWHcjfq3782no5gK1csSMEdaQavh4vU6CCr4kroM4X5KHd5qmz3TXGEEum"###;
     const SEND_RAW_TRANSACTION_RESPONSE: &[u8] = br###"{"jsonrpc":"2.0","result":"418jqKR8c5pFDNo7h9vdyFaCdhQKr9z3rmEvkaz8Fcd34eSsAhsvsHkpffYmu5YfsvHWu1uFGo48Dbm3no8cFobM","id":0}"###;
-    const EXPECTED: &str =
-        "418jqKR8c5pFDNo7h9vdyFaCdhQKr9z3rmEvkaz8Fcd34eSsAhsvsHkpffYmu5YfsvHWu1uFGo48Dbm3no8cFobM";
+    const EXPECTED: &str = "418jqKR8c5pFDNo7h9vdyFaCdhQKr9z3rmEvkaz8Fcd34eSsAhsvsHkpffYmu5YfsvHWu1uFGo48Dbm3no8cFobM";
 
     let pic = PocketIcBuilder::new()
         .with_application_subnet()
@@ -1219,8 +1197,7 @@ async fn test_send_transaction_mock() {
     const AMOUNT_TO_SEND: u64 = 1;
     const SEND_TRANSACTION_RESPONSE: &[u8] = br###"{"jsonrpc":"2.0","result":"2EanSSkn5cjv9DVKik5gtBkN1wwbV1TAXQQ5yu2RTPGwgrhEywVAQR2veu895uCDzvYwWZe6vD1Bcn8s7r22W17w","id":0}"###;
     const LATEST_BLOCKHASH_RESPONSE: &[u8] = br###"{ "jsonrpc": "2.0", "result": { "context": { "slot": 2792 }, "value": { "blockhash": "EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N", "lastValidBlockHeight": 3090 } }, "id": 1 }"###;
-    const EXPECTED: &str =
-        "2EanSSkn5cjv9DVKik5gtBkN1wwbV1TAXQQ5yu2RTPGwgrhEywVAQR2veu895uCDzvYwWZe6vD1Bcn8s7r22W17w";
+    const EXPECTED: &str = "2EanSSkn5cjv9DVKik5gtBkN1wwbV1TAXQQ5yu2RTPGwgrhEywVAQR2veu895uCDzvYwWZe6vD1Bcn8s7r22W17w";
 
     let pic = PocketIcBuilder::new()
         .with_application_subnet()
@@ -1232,12 +1209,7 @@ async fn test_send_transaction_mock() {
     let canister_id = init(&pic).await;
 
     let call_result = pic
-        .update_call(
-            canister_id,
-            *USER_PRINCIPAL,
-            "sol_address",
-            encode_one(()).unwrap(),
-        )
+        .update_call(canister_id, *USER_PRINCIPAL, "sol_address", encode_one(()).unwrap())
         .await
         .unwrap();
 

@@ -1,8 +1,8 @@
-use std::{cell::RefCell, str::FromStr};
-
-use candid::{CandidType, Deserialize, Principal};
-
-use crate::eddsa::SchnorrKey;
+use {
+    crate::eddsa::SchnorrKey,
+    candid::{CandidType, Deserialize, Principal},
+    std::{cell::RefCell, str::FromStr},
+};
 
 thread_local! {
     pub static STATE: RefCell<Option<State>> = RefCell::new(None);

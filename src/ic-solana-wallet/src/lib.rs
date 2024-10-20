@@ -1,17 +1,17 @@
-use std::str::FromStr;
-
-use candid::candid_method;
-use ic_cdk::update;
-use ic_solana::{
-    rpc_client::RpcResult,
-    types::{BlockHash, Pubkey, RpcSendTransactionConfig, Transaction},
-};
-use serde_bytes::ByteBuf;
-
-use crate::{
-    eddsa::{eddsa_public_key, sign_with_eddsa},
-    state::{read_state, InitArgs, STATE},
-    utils::validate_caller_not_anonymous,
+use {
+    crate::{
+        eddsa::{eddsa_public_key, sign_with_eddsa},
+        state::{read_state, InitArgs, STATE},
+        utils::validate_caller_not_anonymous,
+    },
+    candid::candid_method,
+    ic_cdk::update,
+    ic_solana::{
+        rpc_client::RpcResult,
+        types::{BlockHash, Pubkey, RpcSendTransactionConfig, Transaction},
+    },
+    serde_bytes::ByteBuf,
+    std::str::FromStr,
 };
 
 mod eddsa;

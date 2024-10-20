@@ -1,9 +1,9 @@
-use std::{fmt, fmt::Display, str::FromStr};
-
-use candid::CandidType;
-use serde::{de::Error, Deserialize, Serialize};
-
-use crate::{types::pubkey::Pubkey, utils::short_vec};
+use {
+    crate::{types::pubkey::Pubkey, utils::short_vec},
+    candid::CandidType,
+    serde::{de::Error, Deserialize, Serialize},
+    std::{fmt, fmt::Display, str::FromStr},
+};
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, CandidType)]
 pub struct Instruction {

@@ -138,9 +138,7 @@ pub enum TransactionError {
     DuplicateInstruction(u8),
 
     /// Transaction results in an account with insufficient funds for rent
-    #[error(
-        "Transaction results in an account ({account_index}) with insufficient funds for rent"
-    )]
+    #[error("Transaction results in an account ({account_index}) with insufficient funds for rent")]
     InsufficientFundsForRent { account_index: u8 },
 
     /// Transaction exceeded max loaded accounts data size cap

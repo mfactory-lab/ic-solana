@@ -34,9 +34,7 @@ impl RpcFilterType {
                                 if bytes.len() > MAX_DATA_BASE58_SIZE {
                                     return Err(RpcFilterError::Base58DataTooLarge);
                                 }
-                                let bytes = bs58::decode(&bytes)
-                                    .into_vec()
-                                    .map_err(RpcFilterError::DecodeError)?;
+                                let bytes = bs58::decode(&bytes).into_vec().map_err(RpcFilterError::DecodeError)?;
                                 if bytes.len() > MAX_DATA_SIZE {
                                     Err(RpcFilterError::Base58DataTooLarge)
                                 } else {
@@ -92,16 +90,10 @@ impl RpcFilterType {
 pub enum RpcFilterError {
     #[error("encoded binary data should be less than 129 bytes")]
     DataTooLarge,
-    #[deprecated(
-        since = "1.8.1",
-        note = "Error for MemcmpEncodedBytes::Binary which is deprecated"
-    )]
+    #[deprecated(since = "1.8.1", note = "Error for MemcmpEncodedBytes::Binary which is deprecated")]
     #[error("encoded binary (base 58) data should be less than 129 bytes")]
     Base58DataTooLarge,
-    #[deprecated(
-        since = "1.8.1",
-        note = "Error for MemcmpEncodedBytes::Binary which is deprecated"
-    )]
+    #[deprecated(since = "1.8.1", note = "Error for MemcmpEncodedBytes::Binary which is deprecated")]
     #[error("bs58 decode error")]
     DecodeError(bs58::decode::Error),
     #[error("base58 decode error")]
@@ -119,10 +111,7 @@ pub enum MemcmpEncoding {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum MemcmpEncodedBytes {
-    #[deprecated(
-        since = "1.8.1",
-        note = "Please use MemcmpEncodedBytes::Base58 instead"
-    )]
+    #[deprecated(since = "1.8.1", note = "Please use MemcmpEncodedBytes::Base58 instead")]
     Binary(String),
     Base58(String),
     Base64(String),
@@ -259,15 +248,9 @@ struct RpcMemcmp {
 impl From<Memcmp> for RpcMemcmp {
     fn from(memcmp: Memcmp) -> RpcMemcmp {
         let (bytes, encoding) = match memcmp.bytes {
-            MemcmpEncodedBytes::Binary(string) => {
-                (DataType::Encoded(string), Some(RpcMemcmpEncoding::Binary))
-            }
-            MemcmpEncodedBytes::Base58(string) => {
-                (DataType::Encoded(string), Some(RpcMemcmpEncoding::Base58))
-            }
-            MemcmpEncodedBytes::Base64(string) => {
-                (DataType::Encoded(string), Some(RpcMemcmpEncoding::Base64))
-            }
+            MemcmpEncodedBytes::Binary(string) => (DataType::Encoded(string), Some(RpcMemcmpEncoding::Binary)),
+            MemcmpEncodedBytes::Base58(string) => (DataType::Encoded(string), Some(RpcMemcmpEncoding::Base58)),
+            MemcmpEncodedBytes::Base64(string) => (DataType::Encoded(string), Some(RpcMemcmpEncoding::Base64)),
             MemcmpEncodedBytes::Bytes(vector) => (DataType::Raw(vector), None),
         };
         RpcMemcmp {
@@ -283,13 +266,9 @@ impl From<RpcMemcmp> for Memcmp {
         let encoding = memcmp.encoding.unwrap_or(RpcMemcmpEncoding::Binary);
         let bytes = match (encoding, memcmp.bytes) {
             (RpcMemcmpEncoding::Binary, DataType::Encoded(string))
-            | (RpcMemcmpEncoding::Base58, DataType::Encoded(string)) => {
-                MemcmpEncodedBytes::Base58(string)
-            }
+            | (RpcMemcmpEncoding::Base58, DataType::Encoded(string)) => MemcmpEncodedBytes::Base58(string),
             (RpcMemcmpEncoding::Binary, DataType::Raw(vector)) => MemcmpEncodedBytes::Bytes(vector),
-            (RpcMemcmpEncoding::Base64, DataType::Encoded(string)) => {
-                MemcmpEncodedBytes::Base64(string)
-            }
+            (RpcMemcmpEncoding::Base64, DataType::Encoded(string)) => MemcmpEncodedBytes::Base64(string),
             _ => unreachable!(),
         };
         Memcmp {

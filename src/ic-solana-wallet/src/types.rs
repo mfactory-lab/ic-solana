@@ -1,2 +1,4 @@
-use candid::CandidType;
-use serde::{Deserialize, Serialize};
+use {
+    candid::CandidType,
+    serde::{Deserialize, Serialize},
+};

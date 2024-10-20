@@ -33,11 +33,10 @@ pub fn encode_metrics(w: &mut ic_metrics_encoder::MetricsEncoder<Vec<u8>>) -> st
     METRICS.with(|m| {
         let m = m.borrow();
 
-        w.gauge_vec("cycle_balance", "Cycle balance of this canister")?
-            .value(
-                &[("canister", "sol")],
-                ic_cdk::api::canister_balance128().metric_value(),
-            )?;
+        w.gauge_vec("cycle_balance", "Cycle balance of this canister")?.value(
+            &[("canister", "sol")],
+            ic_cdk::api::canister_balance128().metric_value(),
+        )?;
         w.encode_gauge(
             "sol_canister_version",
             ic_cdk::api::canister_version().metric_value(),
@@ -64,11 +63,7 @@ pub fn encode_metrics(w: &mut ic_metrics_encoder::MetricsEncoder<Vec<u8>>) -> st
             "Number of active authorizations for canister methods",
         );
         w.counter_entries("sol_requests", &m.requests, "Number of JSON-RPC requests");
-        w.counter_entries(
-            "sol_responses",
-            &m.responses,
-            "Number of JSON-RPC responses",
-        );
+        w.counter_entries("sol_responses", &m.responses, "Number of JSON-RPC responses");
         w.counter_entries(
             "sol_inconsistent_responses",
             &m.inconsistent_responses,
@@ -137,12 +132,7 @@ impl<A: MetricLabels, B: MetricLabels> MetricLabels for (A, B) {
 
 impl<A: MetricLabels, B: MetricLabels, C: MetricLabels> MetricLabels for (A, B, C) {
     fn metric_labels(&self) -> Vec<(&str, &str)> {
-        [
-            self.0.metric_labels(),
-            self.1.metric_labels(),
-            self.2.metric_labels(),
-        ]
-        .concat()
+        [self.0.metric_labels(), self.1.metric_labels(), self.2.metric_labels()].concat()
     }
 }
 
@@ -204,28 +194,13 @@ impl MetricLabels for MetricHttpStatusCode {
 }
 
 trait EncoderExtensions {
-    fn counter_entries<K: MetricLabels, V: MetricValue>(
-        &mut self,
-        name: &str,
-        map: &HashMap<K, V>,
-        help: &str,
-    );
+    fn counter_entries<K: MetricLabels, V: MetricValue>(&mut self, name: &str, map: &HashMap<K, V>, help: &str);
 
-    fn gauge_entries<K: MetricLabels, V: MetricValue>(
-        &mut self,
-        name: &str,
-        map: &HashMap<K, V>,
-        help: &str,
-    );
+    fn gauge_entries<K: MetricLabels, V: MetricValue>(&mut self, name: &str, map: &HashMap<K, V>, help: &str);
 }
 
 impl EncoderExtensions for ic_metrics_encoder::MetricsEncoder<Vec<u8>> {
-    fn counter_entries<K: MetricLabels, V: MetricValue>(
-        &mut self,
-        name: &str,
-        map: &HashMap<K, V>,
-        help: &str,
-    ) {
+    fn counter_entries<K: MetricLabels, V: MetricValue>(&mut self, name: &str, map: &HashMap<K, V>, help: &str) {
         map.iter().for_each(|(k, v)| {
             self.counter_vec(name, help)
                 .and_then(|m| {
@@ -236,12 +211,7 @@ impl EncoderExtensions for ic_metrics_encoder::MetricsEncoder<Vec<u8>> {
         })
     }
 
-    fn gauge_entries<K: MetricLabels, V: MetricValue>(
-        &mut self,
-        name: &str,
-        map: &HashMap<K, V>,
-        help: &str,
-    ) {
+    fn gauge_entries<K: MetricLabels, V: MetricValue>(&mut self, name: &str, map: &HashMap<K, V>, help: &str) {
         map.iter().for_each(|(k, v)| {
             self.gauge_vec(name, help)
                 .and_then(|m| {

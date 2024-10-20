@@ -285,13 +285,10 @@ mod tests {
                 entries
             },
         };
-        let log_with_3_entries = Log {
-            entries: log_entries,
-        };
+        let log_with_3_entries = Log { entries: log_entries };
 
         let serialized_log_with_2_entries = log_with_2_entries.serialize_logs(usize::MAX);
-        let serialized_log_with_3_entries =
-            log_with_3_entries.serialize_logs(serialized_log_with_2_entries.len());
+        let serialized_log_with_3_entries = log_with_3_entries.serialize_logs(serialized_log_with_2_entries.len());
 
         assert_eq!(serialized_log_with_3_entries, serialized_log_with_2_entries);
     }
