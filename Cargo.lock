@@ -2486,6 +2486,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ic-solana-wallet"
+version = "0.2.0"
+dependencies = [
+ "candid",
+ "hex",
+ "ic-canister-log",
+ "ic-canisters-http-types",
+ "ic-cdk 0.16.0",
+ "ic-management-canister-types",
+ "ic-metrics-encoder",
+ "ic-solana",
+ "ic-solana-common",
+ "ic-stable-structures",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "url",
+]
+
+[[package]]
 name = "ic-stable-structures"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
