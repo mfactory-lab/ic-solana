@@ -241,9 +241,7 @@ enum RpcMemcmpEncoding {
 
 #[derive(Serialize, Deserialize, CandidType)]
 pub enum TokenAccountsFilter {
-    #[serde(rename = "mint")]
     Mint(String),
-    #[serde(rename = "owner")]
     ProgramId(String),
 }
 

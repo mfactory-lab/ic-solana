@@ -74,16 +74,13 @@ impl UiAccountData {
         }
     }
 }
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum UiAccountEncoding {
-    #[serde(rename = "bianry")]
     Binary, // Legacy. Retained for RPC backwards compatibility
-    #[serde(rename = "base58")]
     Base58,
-    #[serde(rename = "base64")]
     Base64,
-    #[serde(rename = "jsonParsed")]
     JsonParsed,
     #[serde(rename = "base64+zstd")]
     Base64Zstd,

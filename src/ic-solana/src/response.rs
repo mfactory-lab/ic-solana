@@ -52,7 +52,7 @@ pub struct Response<T> {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct RpcBlockCommitment<T> {
+pub struct RpcBlockCommitment<T = [u64; 32]> {
     pub commitment: Option<T>,
     pub total_stake: u64,
 }

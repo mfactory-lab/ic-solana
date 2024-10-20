@@ -160,23 +160,14 @@ impl Display for UiTransactionEncoding {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
+#[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionDetails {
-    #[serde(rename = "full")]
+    #[default]
     Full,
-    #[serde(rename = "signatures")]
     Signatures,
-    #[serde(rename = "none")]
     None,
-    #[serde(rename = "accounts")]
     Accounts,
-}
-
-impl Default for TransactionDetails {
-    fn default() -> Self {
-        Self::Full
-    }
 }
 
 /// A duplicate representation of a Transaction for pretty JSON serialization
@@ -263,60 +254,29 @@ pub struct UiTransactionStatusMeta {
     pub err: Option<TransactionError>,
     pub status: TransactionResult<()>, // This field is deprecated.  See https://github.com/solana-labs/solana/issues/9302
     pub fee: u64,
-    #[serde(rename = "preBalances")]
     pub pre_balances: Vec<u64>,
-    #[serde(rename = "postBalances")]
     pub post_balances: Vec<u64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "innerInstructions"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inner_instructions: Option<Vec<UiInnerInstructions>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "logMessages"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub log_messages: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "preTokenBalances"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pre_token_balances: Option<Vec<UiTransactionTokenBalance>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "postTokenBalances"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub post_token_balances: Option<Vec<UiTransactionTokenBalance>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rewards: Option<Rewards>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "loadedAddresses"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub loaded_addresses: Option<UiLoadedAddresses>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "returnData"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub return_data: Option<UiTransactionReturnData>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "computeUnitsConsumed"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compute_units_consumed: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTransactionReturnData {
-    #[serde(rename = "programId")]
     pub program_id: String,
     pub data: (String, UiReturnDataEncoding),
 }
@@ -324,7 +284,6 @@ pub struct UiTransactionReturnData {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum UiReturnDataEncoding {
-    #[serde(rename = "base64")]
     Base64,
 }
 
@@ -339,14 +298,12 @@ pub struct UiLoadedAddresses {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTransactionTokenBalance {
-    #[serde(rename = "accountIndex")]
     pub account_index: u8,
     pub mint: String,
-    #[serde(rename = "uiTokenAmount")]
     pub ui_token_amount: UiTokenAmount,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub owner: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "programId")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub program_id: Option<String>,
 }
 
@@ -365,7 +322,6 @@ pub struct EncodedConfirmedTransactionWithStatusMeta {
     pub slot: Slot,
     #[serde(flatten)]
     pub transaction: EncodedTransactionWithStatusMeta,
-    #[serde(rename = "blockTime")]
     pub block_time: Option<UnixTimestamp>,
 }
 

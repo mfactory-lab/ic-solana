@@ -1,7 +1,6 @@
-use {
-    serde_json::{json, Value},
-    std::fmt,
-};
+use std::fmt;
+
+use serde_json::{json, Value};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum RpcRequest {
@@ -10,11 +9,12 @@ pub enum RpcRequest {
     GetAccountInfo,
     GetBalance,
     GetBlock,
+    GetBlockCommitment,
     GetBlockHeight,
     GetBlockProduction,
+    GetBlockTime,
     GetBlocks,
     GetBlocksWithLimit,
-    GetBlockTime,
     GetClusterNodes,
     GetEpochInfo,
     GetEpochSchedule,
@@ -67,7 +67,6 @@ pub enum RpcRequest {
     SignVote,
 }
 
-#[allow(deprecated)]
 impl fmt::Display for RpcRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let method = match self {
@@ -76,11 +75,12 @@ impl fmt::Display for RpcRequest {
             RpcRequest::GetAccountInfo => "getAccountInfo",
             RpcRequest::GetBalance => "getBalance",
             RpcRequest::GetBlock => "getBlock",
+            RpcRequest::GetBlockCommitment => "getBlockCommitment",
             RpcRequest::GetBlockHeight => "getBlockHeight",
             RpcRequest::GetBlockProduction => "getBlockProduction",
+            RpcRequest::GetBlockTime => "getBlockTime",
             RpcRequest::GetBlocks => "getBlocks",
             RpcRequest::GetBlocksWithLimit => "getBlocksWithLimit",
-            RpcRequest::GetBlockTime => "getBlockTime",
             RpcRequest::GetClusterNodes => "getClusterNodes",
             RpcRequest::GetEpochInfo => "getEpochInfo",
             RpcRequest::GetEpochSchedule => "getEpochSchedule",

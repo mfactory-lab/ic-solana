@@ -3,18 +3,19 @@ use {
         constants::*,
         request::RpcRequest,
         response::{
-            OptionalContext, Response, RpcBlockProduction, RpcBlockhash,
+            OptionalContext, Response, RpcBlockCommitment, RpcBlockProduction, RpcBlockhash,
             RpcConfirmedTransactionStatusWithSignature, RpcKeyedAccount, RpcSupply,
             RpcTokenAccountBalance, RpcVersionInfo,
         },
         types::{
             Account, BlockHash, Cluster, CommitmentConfig,
-            EncodedConfirmedTransactionWithStatusMeta, EpochInfo, Pubkey, RpcAccountInfoConfig,
-            RpcBlockProductionConfig, RpcContextConfig, RpcProgramAccountsConfig,
-            RpcSendTransactionConfig, RpcSignatureStatusConfig, RpcSignaturesForAddressConfig,
-            RpcSupplyConfig, RpcTransactionConfig, Signature, Slot, TokenAccountsFilter,
-            Transaction, TransactionDetails, TransactionStatus, UiAccount, UiConfirmedBlock,
-            UiTokenAmount, UiTransactionEncoding,
+            EncodedConfirmedTransactionWithStatusMeta, EpochInfo, EpochSchedule, Pubkey,
+            RpcAccountInfoConfig, RpcBlockConfig, RpcBlockProductionConfig, RpcContextConfig,
+            RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
+            RpcSignaturesForAddressConfig, RpcSupplyConfig, RpcTokenAccountsFilter,
+            RpcTransactionConfig, Signature, Slot, TokenAccountsFilter, Transaction,
+            TransactionDetails, TransactionStatus, UiAccount, UiConfirmedBlock, UiTokenAmount,
+            UiTransactionEncoding,
         },
     },
     anyhow::Result,
@@ -287,7 +288,10 @@ impl RpcClient {
     /// Method relies on the `getLatestBlockhash` RPC call to get the latest blockhash:
     ///   https://solana.com/docs/rpc/http/getLatestBlockhash
     ///
-    pub async fn get_latest_blockhash(&self, config: RpcContextConfig) -> RpcResult<BlockHash> {
+    pub async fn get_latest_blockhash(
+        &self,
+        config: Option<RpcContextConfig>,
+    ) -> RpcResult<BlockHash> {
         let payload = RpcRequest::GetLatestBlockhash
             .build_request_json(self.next_request_id(), json!([config]));
 
@@ -343,11 +347,11 @@ impl RpcClient {
     pub async fn get_token_account_balance(
         &self,
         pubkey: &Pubkey,
-        commitment: Option<CommitmentConfig>,
+        commitment_config: Option<CommitmentConfig>,
     ) -> RpcResult<UiTokenAmount> {
         let payload = RpcRequest::GetTokenAccountBalance.build_request_json(
             self.next_request_id(),
-            json!([pubkey.to_string(), commitment]),
+            json!([pubkey.to_string(), commitment_config]),
         );
 
         let response = self.call(&payload, 256).await?;
@@ -366,17 +370,18 @@ impl RpcClient {
     /// Returns all SPL Token accounts by approved Delegate.
     ///
     /// Method relies on the `getTokenAccountsByDelegate` RPC call to get the token balance:
-    ///   https://solana.com/docs/rpc/http/gettokenaccountsbydelegate
+    ///   https://solana.com/docs/rpc/http/getTokenAccountsByDelegate
     ///
     pub async fn get_token_accounts_by_delegate(
         &self,
         pubkey: &Pubkey,
-        token_accounts_filter: TokenAccountsFilter,
+        filter: RpcTokenAccountsFilter,
+        config: Option<RpcAccountInfoConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Vec<RpcKeyedAccount>> {
         let payload = RpcRequest::GetTokenAccountsByDelegate.build_request_json(
             self.next_request_id(),
-            json!([pubkey.to_string(), token_accounts_filter]),
+            json!([pubkey.to_string(), filter, config]),
         );
 
         let response = self
@@ -398,20 +403,21 @@ impl RpcClient {
     }
 
     ///
-    /// Returns all SPL Token accounts by token owner
+    /// Returns all SPL Token accounts by token owner.
     ///
     /// Method relies on the `getTokenAccountsByOwner` RPC call to get the token balance:
-    ///   https://solana.com/docs/rpc/http/gettokenaccountsbyowner
+    ///   https://solana.com/docs/rpc/http/getTokenAccountsByOwner
     ///
     pub async fn get_token_accounts_by_owner(
         &self,
         pubkey: &Pubkey,
-        token_accounts_filter: TokenAccountsFilter,
+        filter: RpcTokenAccountsFilter,
+        config: Option<RpcAccountInfoConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Vec<RpcKeyedAccount>> {
         let payload = RpcRequest::GetTokenAccountsByOwner.build_request_json(
             self.next_request_id(),
-            json!([pubkey.to_string(), token_accounts_filter]),
+            json!([pubkey.to_string(), filter, config]),
         );
 
         let response = self
@@ -436,15 +442,18 @@ impl RpcClient {
     /// Returns the 20 largest accounts of a particular SPL Token type.
     ///
     /// Method relies on the `getTokenLargestAccounts` RPC call to get the token balance:
-    ///   https://solana.com/docs/rpc/http/gettokenlargestaccounts
+    ///   https://solana.com/docs/rpc/http/getTokenLargestAccounts
     ///
     pub async fn get_token_largest_accounts(
         &self,
         mint: &Pubkey,
+        commitment_config: Option<CommitmentConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<Vec<RpcTokenAccountBalance>> {
-        let payload = RpcRequest::GetTokenLargestAccounts
-            .build_request_json(self.next_request_id(), json!([mint.to_string()]));
+        let payload = RpcRequest::GetTokenLargestAccounts.build_request_json(
+            self.next_request_id(),
+            json!([mint.to_string(), commitment_config]),
+        );
 
         let response = self
             .call(
@@ -468,15 +477,18 @@ impl RpcClient {
     /// Returns the total supply of an SPL Token type.
     ///
     /// Method relies on the `getTokenSupply` RPC call to get the token balance:
-    ///   https://solana.com/docs/rpc/http/gettokensupply
+    ///   https://solana.com/docs/rpc/http/getTokenSupply
     ///
     pub async fn get_token_supply(
         &self,
         mint: &Pubkey,
+        commitment_config: Option<CommitmentConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<UiTokenAmount> {
-        let payload = RpcRequest::GetTokenSupply
-            .build_request_json(self.next_request_id(), json!([mint.to_string()]));
+        let payload = RpcRequest::GetTokenSupply.build_request_json(
+            self.next_request_id(),
+            json!([mint.to_string(), commitment_config]),
+        );
 
         let response = self
             .call(
@@ -582,14 +594,11 @@ impl RpcClient {
     pub async fn get_block(
         &self,
         slot: Slot,
-        encoding: UiTransactionEncoding,
-        transaction_details: TransactionDetails,
+        config: RpcBlockConfig,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<UiConfirmedBlock> {
-        let payload = RpcRequest::GetBlock.build_request_json(
-            self.next_request_id(),
-            json!([slot, { "encoding": encoding, "maxSupportedTransactionVersion": 0, "transactionDetails": transaction_details }]),
-        );
+        let payload =
+            RpcRequest::GetBlock.build_request_json(self.next_request_id(), json!([slot, config]));
 
         let response = self
             .call(
@@ -608,6 +617,28 @@ impl RpcClient {
     }
 
     ///
+    /// Returns commitment for particular block.
+    ///
+    /// Method relies on the `getBlockCommitment` RPC call to get the block commitment:
+    ///   https://solana.com/docs/rpc/http/getBlockCommitment
+    ///
+    pub async fn get_block_commitment(&self, slot: Slot) -> RpcResult<RpcBlockCommitment> {
+        let payload = RpcRequest::GetBlockCommitment
+            .build_request_json(self.next_request_id(), json!([slot]));
+
+        let response = self.call(&payload, 1024).await?;
+
+        let json_response =
+            serde_json::from_slice::<JsonRpcResponse<RpcBlockCommitment>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap())
+        }
+    }
+
+    ///
     /// Returns a list of confirmed blocks between two slots.
     ///
     /// Method relies on the `getBlocks` RPC call to get the blocks:
@@ -617,12 +648,27 @@ impl RpcClient {
         &self,
         start_slot: Slot,
         end_slot: Option<Slot>,
+        commitment_config: Option<CommitmentConfig>,
     ) -> RpcResult<Vec<u64>> {
-        let payload = RpcRequest::GetBlocks
-            .build_request_json(self.next_request_id(), json!([start_slot, end_slot]));
+        let payload = RpcRequest::GetBlocks.build_request_json(
+            self.next_request_id(),
+            if end_slot.is_some() {
+                json!([start_slot, end_slot, commitment_config])
+            } else {
+                json!([start_slot, commitment_config])
+            },
+        );
 
         // Total response size estimation
         let end_slot = end_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE);
+
+        if end_slot - start_slot > MAX_GET_BLOCKS_RANGE {
+            return Err(RpcError::RpcRequestError(format!(
+                "Slot range too large; must be less or equal than {}",
+                MAX_GET_BLOCKS_RANGE
+            )));
+        }
+
         let max_slot_str_len = end_slot.to_string().len() as u64;
         let slot_range = end_slot.saturating_sub(start_slot);
         let commas_size = if slot_range > 0 { slot_range - 1 } else { 0 };
@@ -639,20 +685,37 @@ impl RpcClient {
     }
 
     ///
-    /// Returns the current block height of the node
+    /// Returns the current block height of the node.
     ///
     /// Method relies on the `getBlockHeight` RPC call to get the block height:
     ///   https://solana.com/docs/rpc/http/getBlockHeight
     ///
-    pub async fn get_block_height(&self, commitment: Option<CommitmentConfig>) -> RpcResult<u64> {
-        let payload = RpcRequest::GetBlockHeight.build_request_json(
-            self.next_request_id(),
-            json!([commitment.unwrap_or_default()]),
-        );
+    pub async fn get_block_height(&self, config: Option<RpcContextConfig>) -> RpcResult<u64> {
+        let payload = RpcRequest::GetBlockHeight
+            .build_request_json(self.next_request_id(), json!([config.unwrap_or_default()]));
 
         let response = self.call(&payload, 45).await?;
-
         let json_response = serde_json::from_slice::<JsonRpcResponse<u64>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap())
+        }
+    }
+
+    ///
+    /// Returns the estimated production time of a block.
+    ///
+    /// Method relies on the `getBlockTime` RPC call to get the block time:
+    ///   https://solana.com/docs/rpc/http/getBlockTime
+    ///
+    pub async fn get_block_time(&self, slot: Slot) -> RpcResult<i64> {
+        let payload =
+            RpcRequest::GetBlockTime.build_request_json(self.next_request_id(), json!([slot]));
+
+        let response = self.call(&payload, 45).await?;
+        let json_response = serde_json::from_slice::<JsonRpcResponse<i64>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -734,13 +797,36 @@ impl RpcClient {
     /// Method relies on the `getEpochInfo` RPC call to get the epoch info:
     ///   https://solana.com/docs/rpc/http/getEpochInfo
     ///
-    pub async fn get_epoch_info(&self, config: RpcContextConfig) -> RpcResult<EpochInfo> {
+    pub async fn get_epoch_info(&self, config: Option<RpcContextConfig>) -> RpcResult<EpochInfo> {
         let payload =
             RpcRequest::GetEpochInfo.build_request_json(self.next_request_id(), json!([config]));
 
         let response = self.call(&payload, GET_EPOCH_INFO_SIZE_ESTIMATE).await?;
 
         let json_response = serde_json::from_slice::<JsonRpcResponse<EpochInfo>>(&response)?;
+
+        if let Some(e) = json_response.error {
+            Err(e.into())
+        } else {
+            Ok(json_response.result.unwrap())
+        }
+    }
+
+    ///
+    /// Returns the epoch schedules information from this cluster's genesis config.
+    ///
+    /// Method relies on the `getEpochSchedule` RPC call to get the epoch schedule:
+    ///   https://solana.com/docs/rpc/http/getEpochSchedule
+    ///
+    pub async fn get_epoch_schedule(&self) -> RpcResult<EpochSchedule> {
+        let payload =
+            RpcRequest::GetEpochSchedule.build_request_json(self.next_request_id(), Value::Null);
+
+        let response = self
+            .call(&payload, GET_EPOCH_SCHEDULE_SIZE_ESTIMATE)
+            .await?;
+
+        let json_response = serde_json::from_slice::<JsonRpcResponse<EpochSchedule>>(&response)?;
 
         if let Some(e) = json_response.error {
             Err(e.into())
@@ -845,9 +931,15 @@ impl RpcClient {
     pub async fn get_signature_statuses(
         &self,
         signatures: &[Signature],
-        config: RpcSignatureStatusConfig,
+        config: Option<RpcSignatureStatusConfig>,
     ) -> RpcResult<Vec<Option<TransactionStatus>>> {
         let signatures = signatures.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+        if signatures.len() > 256 {
+            return Err(RpcError::RpcRequestError(
+                "Exceeded maximum signature limit of 256".to_string(),
+            ));
+        }
 
         let payload = RpcRequest::GetSignatureStatuses
             .build_request_json(self.next_request_id(), json!([signatures, config]));
@@ -878,7 +970,7 @@ impl RpcClient {
     pub async fn get_transaction(
         &self,
         signature: &Signature,
-        config: RpcTransactionConfig,
+        config: Option<RpcTransactionConfig>,
         max_response_bytes: Option<u64>,
     ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
         let payload = RpcRequest::GetTransaction
@@ -1004,6 +1096,67 @@ impl RpcClient {
                 .error
                 .map(|e| e.into())
                 .unwrap_or_else(|| RpcError::Text("Unknown error".to_string()))),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum MultiCallError<T> {
+    ConsistentError(RpcError),
+    InconsistentResults(MultiCallResults<T>),
+}
+
+impl<T: Debug + PartialEq + Clone + Serialize> MultiCallResults<T> {
+    pub fn reduce(self, strategy: ConsensusStrategy) -> Result<T, MultiCallError<T>> {
+        match strategy {
+            ConsensusStrategy::Equality => self.reduce_with_equality(),
+            ConsensusStrategy::Threshold { total: _, min } => self.reduce_with_threshold(min),
+        }
+    }
+
+    fn reduce_with_equality(self) -> Result<T, MultiCallError<T>> {
+        let mut results = self.all_ok()?.into_iter();
+        let (base_node_provider, base_result) = results
+            .next()
+            .expect("BUG: MultiCallResults is guaranteed to be non-empty");
+        let mut inconsistent_results: Vec<_> = results
+            .filter(|(_provider, result)| result != &base_result)
+            .collect();
+        if !inconsistent_results.is_empty() {
+            inconsistent_results.push((base_node_provider, base_result));
+            let error = MultiCallError::InconsistentResults(MultiCallResults::from_non_empty_iter(
+                inconsistent_results
+                    .into_iter()
+                    .map(|(provider, result)| (provider, Ok(result))),
+            ));
+            log!(
+                INFO,
+                "[reduce_with_equality]: inconsistent results {error:?}"
+            );
+            return Err(error);
+        }
+        Ok(base_result)
+    }
+
+    fn reduce_with_threshold(self, min: u8) -> Result<T, MultiCallError<T>> {
+        assert!(min > 0, "BUG: min must be greater than 0");
+        if self.ok_results.len() < min as usize {
+            // At least total >= min were queried,
+            // so there is at least one error
+            return Err(self.expect_error());
+        }
+        let distribution = ResponseDistribution::from_non_empty_iter(self.ok_results.clone());
+        let (most_likely_response, providers) = distribution
+            .most_frequent()
+            .expect("BUG: distribution should be non-empty");
+        if providers.len() >= min as usize {
+            Ok(most_likely_response.clone())
+        } else {
+            log!(
+                INFO,
+                "[reduce_with_threshold]: too many inconsistent ok responses to reach threshold of {min}, results: {self:?}"
+            );
+            Err(MultiCallError::InconsistentResults(self))
         }
     }
 }

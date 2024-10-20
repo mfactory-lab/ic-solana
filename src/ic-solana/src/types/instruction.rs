@@ -1,10 +1,9 @@
-use {
-    crate::{types::pubkey::Pubkey, utils::short_vec},
-    bincode::serialize,
-    candid::CandidType,
-    serde::{de::Error, Deserialize, Serialize},
-    std::{fmt, fmt::Display, str::FromStr},
-};
+use std::{fmt, fmt::Display, str::FromStr};
+
+use candid::CandidType;
+use serde::{de::Error, Deserialize, Serialize};
+
+use crate::{types::pubkey::Pubkey, utils::short_vec};
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, CandidType)]
 pub struct Instruction {
@@ -18,12 +17,8 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    pub fn new_with_bincode<T: Serialize>(
-        program_id: Pubkey,
-        data: &T,
-        accounts: Vec<AccountMeta>,
-    ) -> Self {
-        let data = serialize(data).unwrap();
+    pub fn new_with_bincode<T: Serialize>(program_id: Pubkey, data: &T, accounts: Vec<AccountMeta>) -> Self {
+        let data = bincode::serialize(data).unwrap();
         Self {
             program_id,
             accounts,
@@ -45,7 +40,7 @@ impl Display for Instruction {
         write!(
             f,
             "{}",
-            bs58::encode(serialize(self).expect("Instruction serialization failed")).into_string()
+            bs58::encode(bincode::serialize(self).expect("Instruction serialization failed")).into_string()
         )
     }
 }
@@ -110,7 +105,7 @@ pub struct CompiledInstruction {
 
 impl CompiledInstruction {
     pub fn new<T: Serialize>(program_ids_index: u8, data: &T, accounts: Vec<u8>) -> Self {
-        let data = serialize(data).unwrap();
+        let data = bincode::serialize(data).unwrap();
         Self {
             program_id_index: program_ids_index,
             accounts,
