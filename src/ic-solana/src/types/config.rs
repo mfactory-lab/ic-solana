@@ -95,7 +95,7 @@ pub struct RpcBlockProductionConfig {
     pub commitment: Option<CommitmentConfig>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcGetVoteAccountsConfig {
     pub vote_pubkey: Option<String>, // validator vote address, as a base-58 encoded string
@@ -136,7 +136,7 @@ pub struct RpcLargestAccountsConfig {
     pub filter: Option<RpcLargestAccountsFilter>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSupplyConfig {
     #[serde(flatten)]
@@ -145,7 +145,7 @@ pub struct RpcSupplyConfig {
     pub exclude_non_circulating_accounts_list: bool,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcEpochConfig {
     pub epoch: Option<Epoch>,

@@ -1,7 +1,7 @@
 //! This module contains tagged types for the types in the `super` module.
-//! Default implementations work with json serialization and deserialization, but
-//! the `CandidType` trait doesn't support flattened or untagged enums, so we have to copy paste
-//! the "tagged" versions of structs in order to send them as candid types.
+//! Default implementations work with JSON serialization and deserialization, but
+//! the `CandidType` trait doesn't support flattened or untagged enums, so we have to copy and paste
+//! the "tagged" versions of structs to send them as candid types.
 use {
     super::{
         CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EncodedTransaction,

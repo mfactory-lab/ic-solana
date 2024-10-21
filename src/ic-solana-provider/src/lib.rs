@@ -17,13 +17,18 @@ use {
     },
     ic_solana::{
         request::RpcRequest,
-        response::{RpcBlockCommitment, RpcBlockProduction, RpcConfirmedTransactionStatusWithSignature},
+        response::{
+            RpcBlockCommitment, RpcBlockProduction, RpcConfirmedTransactionStatusWithSignature, RpcContactInfo,
+            RpcIdentity, RpcInflationGovernor, RpcInflationRate, RpcInflationReward, RpcSnapshotSlotInfo, RpcSupply,
+            RpcVersionInfo, RpcVoteAccountStatus,
+        },
         rpc_client::{RpcError, RpcResult},
         types::{
             Account, CandidValue, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo,
-            EpochSchedule, Pubkey, RpcAccountInfoConfig, RpcBlockConfig, RpcContextConfig, RpcSendTransactionConfig,
-            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcTokenAccountsFilter, RpcTransactionConfig,
-            Signature, Slot, TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedRpcBlockProductionConfig,
+            EpochSchedule, Pubkey, RpcAccountInfoConfig, RpcBlockConfig, RpcContextConfig, RpcEpochConfig,
+            RpcGetVoteAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
+            RpcSignaturesForAddressConfig, RpcSupplyConfig, RpcTokenAccountsFilter, RpcTransactionConfig, Signature,
+            Slot, TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedRpcBlockProductionConfig,
             TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock, Transaction,
             TransactionStatus, UiTokenAmount,
         },
@@ -134,7 +139,7 @@ pub async fn sol_get_block_time(provider: String, slot: Slot) -> RpcResult<i64> 
 }
 
 ///
-/// Returns a list of confirmed blocks between two slots
+/// Returns a list of confirmed blocks between two slots.
 ///
 #[update(name = "sol_getBlocks")]
 #[candid_method(rename = "sol_getBlocks")]
@@ -146,6 +151,31 @@ pub async fn sol_get_blocks(
 ) -> RpcResult<Vec<u64>> {
     let client = rpc_client(&provider);
     client.get_blocks(start_slot, last_slot, config).await
+}
+
+///
+/// Returns a list of confirmed blocks starting at the given slot.
+///
+#[update(name = "sol_getBlocksWithLimit")]
+#[candid_method(rename = "sol_getBlocksWithLimit")]
+pub async fn sol_get_blocks_with_limit(
+    provider: String,
+    start_slot: Slot,
+    limit: u64,
+    config: Option<CommitmentConfig>,
+) -> RpcResult<Vec<u64>> {
+    let client = rpc_client(&provider);
+    client.get_blocks_with_limit(start_slot, limit, config).await
+}
+
+///
+/// Returns information about all the nodes participating in the cluster.
+///
+#[update(name = "sol_getClusterNodes")]
+#[candid_method(rename = "sol_getClusterNodes")]
+pub async fn sol_get_cluster_nodes(provider: String) -> RpcResult<Vec<RpcContactInfo>> {
+    let client = rpc_client(&provider);
+    client.get_cluster_nodes().await
 }
 
 ///
@@ -169,6 +199,112 @@ pub async fn sol_get_epoch_schedule(provider: String) -> RpcResult<EpochSchedule
 }
 
 ///
+/// Get the fee the network will charge for a particular Message.
+///
+#[update(name = "sol_getFeeForMessage")]
+#[candid_method(rename = "sol_getFeeForMessage")]
+pub async fn sol_get_fee_for_message(
+    provider: String,
+    message: String,
+    config: Option<RpcContextConfig>,
+) -> RpcResult<u64> {
+    let client = rpc_client(&provider);
+    client.get_fee_for_message(message, config).await
+}
+
+///
+/// Returns the slot of the lowest confirmed block that has not been purged from the ledger.
+///
+#[update(name = "sol_getFirstAvailableBlock")]
+#[candid_method(rename = "sol_getFirstAvailableBlock")]
+pub async fn sol_get_first_available_block(provider: String) -> RpcResult<Slot> {
+    let client = rpc_client(&provider);
+    client.get_first_available_block().await
+}
+
+///
+/// Returns the genesis hash.
+///
+#[update(name = "sol_getGenesisHash")]
+#[candid_method(rename = "sol_getGenesisHash")]
+pub async fn sol_get_genesis_hash(provider: String) -> RpcResult<String> {
+    let client = rpc_client(&provider);
+    client.get_genesis_hash().await
+}
+
+///
+/// Returns the current health of the node.
+/// A healthy node is one that is within HEALTH_CHECK_SLOT_DISTANCE slots of
+/// the latest cluster-confirmed slot.
+///
+#[update(name = "sol_getHealth")]
+#[candid_method(rename = "sol_getHealth")]
+pub async fn sol_get_health(provider: String) -> RpcResult<String> {
+    let client = rpc_client(&provider);
+    client.get_health().await
+}
+
+///
+/// Returns the highest slot information that the node has snapshots for.
+/// This will find the highest full snapshot slot and the highest incremental
+/// snapshot slot based on the full snapshot slot, if there is one.
+///
+#[update(name = "sol_getHighestSnapshotSlot")]
+#[candid_method(rename = "sol_getHighestSnapshotSlot")]
+pub async fn sol_get_highest_snapshot_slot(provider: String) -> RpcResult<RpcSnapshotSlotInfo> {
+    let client = rpc_client(&provider);
+    client.get_highest_snapshot_slot().await
+}
+
+///
+/// Returns the identity pubkey for the current node.
+///
+#[update(name = "sol_getIdentity")]
+#[candid_method(rename = "sol_getIdentity")]
+pub async fn sol_get_identity(provider: String) -> RpcResult<RpcIdentity> {
+    let client = rpc_client(&provider);
+    client.get_identity().await
+}
+
+///
+/// Returns the current inflation governor.
+///
+#[update(name = "sol_getInflationGovernor")]
+#[candid_method(rename = "sol_getInflationGovernor")]
+pub async fn sol_get_inflation_governor(provider: String) -> RpcResult<RpcInflationGovernor> {
+    let client = rpc_client(&provider);
+    client.get_inflation_governor().await
+}
+
+///
+/// Returns the specific inflation values for the current epoch.
+///
+#[update(name = "sol_getInflationRate")]
+#[candid_method(rename = "sol_getInflationRate")]
+pub async fn sol_get_inflation_rate(provider: String) -> RpcResult<RpcInflationRate> {
+    let client = rpc_client(&provider);
+    client.get_inflation_rate().await
+}
+
+///
+/// Returns the inflation / staking reward for a list of addresses for an epoch.
+///
+#[update(name = "sol_getInflationReward")]
+#[candid_method(rename = "sol_getInflationReward")]
+pub async fn sol_get_inflation_reward(
+    provider: String,
+    addresses: Vec<String>,
+    config: RpcEpochConfig,
+) -> RpcResult<Vec<Option<RpcInflationReward>>> {
+    let client = rpc_client(&provider);
+    let pubkeys = addresses
+        .iter()
+        .map(|x| Pubkey::from_str(x).map_err(|e| RpcError::ParseError(e.to_string())))
+        .collect::<Result<Vec<_>, _>>()?;
+    client.get_inflation_reward(&pubkeys, config).await
+}
+
+///
 /// Returns signatures for confirmed transactions that
 /// include the given address in their accountKeys list.
 ///
@@ -183,6 +319,56 @@ pub async fn sol_get_signatures_for_address(
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
     let result = client.get_signatures_for_address(&pubkey, config).await?;
     Ok(result)
+}
+
+///
+/// Returns the slot that has reached the given or default commitment level.
+///
+#[update(name = "sol_getSlot")]
+#[candid_method(rename = "sol_getSlot")]
+pub async fn sol_get_slot(provider: String, config: Option<RpcContextConfig>) -> RpcResult<Slot> {
+    let client = rpc_client(&provider);
+    client.get_slot(config).await
+}
+
+///
+/// Returns the current slot leader.
+///
+#[update(name = "sol_getSlotLeader")]
+#[candid_method(rename = "sol_getSlotLeader")]
+pub async fn sol_get_slot_leader(provider: String, config: Option<RpcContextConfig>) -> RpcResult<String> {
+    let client = rpc_client(&provider);
+    client.get_slot_leader(config).await
+}
+
+///
+/// Returns the slot leaders for a given slot range.
+///
+#[update(name = "sol_getSlotLeaders")]
+#[candid_method(rename = "sol_getSlotLeaders")]
+pub async fn sol_get_slot_leaders(provider: String, start_slot: u64, limit: Option<u64>) -> RpcResult<String> {
+    let client = rpc_client(&provider);
+    client.get_slot_leaders(start_slot, limit).await
+}
+
+///
+/// Returns the stake minimum delegation, in lamports.
+///
+#[update(name = "sol_getStakeMinimumDelegation")]
+#[candid_method(rename = "sol_getStakeMinimumDelegation")]
+pub async fn sol_get_stake_minimum_delegation(provider: String, config: Option<CommitmentConfig>) -> RpcResult<u64> {
+    let client = rpc_client(&provider);
+    client.get_stake_minimum_delegation(config).await.map(|c| c.value)
+}
+
+///
+/// Returns information about the current supply.
+///
+#[update(name = "sol_getSupply")]
+#[candid_method(rename = "sol_getSupply")]
+pub async fn sol_get_supply(provider: String, config: RpcSupplyConfig) -> RpcResult<RpcSupply> {
+    let client = rpc_client(&provider);
+    client.get_supply(config).await
 }
 
 ///
@@ -329,6 +515,39 @@ pub async fn sol_get_transaction(
 }
 
 ///
+/// Returns the current Transaction count from the ledger.
+///
+#[update(name = "sol_getTransactionCount")]
+#[candid_method(rename = "sol_getTransactionCount")]
+pub async fn sol_get_transaction_count(provider: String, config: Option<RpcContextConfig>) -> RpcResult<u64> {
+    let client = rpc_client(&provider);
+    client.get_transaction_count(config).await
+}
+
+///
+/// Returns the current Solana version running on the node.
+///
+#[update(name = "sol_getVersion")]
+#[candid_method(rename = "sol_getVersion")]
+pub async fn sol_get_version(provider: String) -> RpcResult<RpcVersionInfo> {
+    let client = rpc_client(&provider);
+    client.get_version().await
+}
+
+///
+/// Returns the account info and associated stake for all the voting accounts in the current bank.
+///
+#[update(name = "sol_getVoteAccounts")]
+#[candid_method(rename = "sol_getVoteAccounts")]
+pub async fn sol_get_vote_accounts(
+    provider: String,
+    config: RpcGetVoteAccountsConfig,
+) -> RpcResult<RpcVoteAccountStatus> {
+    let client = rpc_client(&provider);
+    client.get_vote_accounts(config).await
+}
+
+///
 /// Requests an airdrop of lamports to a Pubkey.
 ///
 #[update(name = "sol_requestAirdrop")]
@@ -401,7 +620,7 @@ pub async fn request(
     provider: String,
     method: String,
     params: CandidValue,
-    max_response_bytes: u64,
+    max_response_bytes: Option<u64>,
 ) -> RpcResult<String> {
     let client = rpc_client(&provider);
     let res = client

@@ -1,6 +1,6 @@
 use {
     crate::types::{
-        EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot, TransactionConfirmationStatus,
+        EncodedTransactionWithStatusMeta, Epoch, FeeCalculator, Rewards, Slot, TransactionConfirmationStatus,
         TransactionError, UiAccount, UiTokenAmount, UnixTimestamp,
     },
     candid::CandidType,
@@ -8,8 +8,8 @@ use {
     std::{collections::HashMap, fmt},
 };
 
-/// Wrapper for rpc return types of methods that provide responses both with and without context.
-/// The Main purpose of this is to fix methods that lack context information in their return type,
+/// Wrapper for rpc returns types of methods that provide responses both with and without context.
+/// The Main purpose of this is to fix methods that lack context information in their return type 
 /// without breaking backwards compatibility.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -57,21 +57,21 @@ pub struct RpcBlockCommitment<T = [u64; 32]> {
     pub total_stake: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockhashFeeCalculator {
     pub blockhash: String,
     pub fee_calculator: FeeCalculator,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockhash {
     pub blockhash: String,
     pub last_valid_block_height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcFees {
     pub blockhash: String,
@@ -80,7 +80,7 @@ pub struct RpcFees {
     pub last_valid_block_height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Fees {
     pub blockhash: [u8; 32],
@@ -88,7 +88,7 @@ pub struct Fees {
     pub last_valid_block_height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcFeeCalculator {
     pub fee_calculator: FeeCalculator,
@@ -99,17 +99,17 @@ pub struct RpcFeeCalculator {
 // pub struct RpcFeeRateGovernor {
 //     pub fee_rate_governor: FeeRateGovernor,
 // }
-//
-// #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcInflationGovernor {
-//     pub initial: f64,
-//     pub terminal: f64,
-//     pub taper: f64,
-//     pub foundation: f64,
-//     pub foundation_term: f64,
-// }
-//
+
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcInflationGovernor {
+    pub initial: f64,
+    pub terminal: f64,
+    pub taper: f64,
+    pub foundation: f64,
+    pub foundation_term: f64,
+}
+
 // impl From<Inflation> for RpcInflationGovernor {
 //     fn from(inflation: Inflation) -> Self {
 //         Self {
@@ -121,17 +121,17 @@ pub struct RpcFeeCalculator {
 //         }
 //     }
 // }
-//
-// #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcInflationRate {
-//     pub total: f64,
-//     pub validator: f64,
-//     pub foundation: f64,
-//     pub epoch: Epoch,
-// }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcInflationRate {
+    pub total: f64,
+    pub validator: f64,
+    pub foundation: f64,
+    pub epoch: Epoch,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcKeyedAccount {
     pub pubkey: String,
@@ -230,30 +230,30 @@ pub struct RpcKeyedAccount {
 // pub enum ReceivedSignatureResult {
 //     ReceivedSignature,
 // }
-//
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcContactInfo {
-//     /// Pubkey of the node as a base-58 string
-//     pub pubkey: String,
-//     /// Gossip port
-//     pub gossip: Option<SocketAddr>,
-//     /// Tpu UDP port
-//     pub tpu: Option<SocketAddr>,
-//     /// Tpu QUIC port
-//     pub tpu_quic: Option<SocketAddr>,
-//     /// JSON RPC port
-//     pub rpc: Option<SocketAddr>,
-//     /// WebSocket PubSub port
-//     pub pubsub: Option<SocketAddr>,
-//     /// Software version
-//     pub version: Option<String>,
-//     /// First 4 bytes of the FeatureSet identifier
-//     pub feature_set: Option<u32>,
-//     /// Shred version
-//     pub shred_version: Option<u16>,
-// }
-//
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcContactInfo {
+    /// Pubkey of the node as a base-58 string
+    pub pubkey: String,
+    /// Gossip port
+    pub gossip: Option<String>, // Option<SocketAddr>,
+    /// Tpu UDP port
+    pub tpu: Option<String>,
+    /// Tpu QUIC port
+    pub tpu_quic: Option<String>,
+    /// JSON RPC port
+    pub rpc: Option<String>,
+    /// WebSocket PubSub port
+    pub pubsub: Option<String>,
+    /// Software version
+    pub version: Option<String>,
+    /// First 4 bytes of the FeatureSet identifier
+    pub feature_set: Option<u32>,
+    /// Shred version
+    pub shred_version: Option<u16>,
+}
+
 // /// Map of leader base58 identity pubkeys to the slot indices relative to the first epoch slot
 // pub type RpcLeaderSchedule = HashMap<String, Vec<usize>>;
 //
@@ -266,7 +266,7 @@ pub struct RpcBlockProductionRange {
     pub last_slot: Option<Slot>,
 }
 //
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockProduction {
     /// Map of leader base58 identity pubkeys to a tuple of `(number of leader slots, number of blocks produced)`
@@ -275,7 +275,7 @@ pub struct RpcBlockProduction {
     pub range: RpcBlockProductionRange,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "kebab-case")]
 pub struct RpcVersionInfo {
     /// The current version of solana-core
@@ -301,13 +301,13 @@ impl fmt::Display for RpcVersionInfo {
     }
 }
 
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "kebab-case")]
-// pub struct RpcIdentity {
-//     /// The current node identity pubkey
-//     pub identity: String,
-// }
-//
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "kebab-case")]
+pub struct RpcIdentity {
+    /// The current node identity pubkey
+    pub identity: String,
+}
+
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 // #[serde(rename_all = "camelCase")]
 // pub struct RpcVote {
@@ -318,43 +318,43 @@ impl fmt::Display for RpcVersionInfo {
 //     pub timestamp: Option<UnixTimestamp>,
 //     pub signature: String,
 // }
-//
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcVoteAccountStatus {
-//     pub current: Vec<RpcVoteAccountInfo>,
-//     pub delinquent: Vec<RpcVoteAccountInfo>,
-// }
-//
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcVoteAccountInfo {
-//     /// Vote account address, as base-58 encoded string
-//     pub vote_pubkey: String,
-//
-//     /// The validator identity, as base-58 encoded string
-//     pub node_pubkey: String,
-//
-//     /// The current stake, in lamports, delegated to this vote account
-//     pub activated_stake: u64,
-//
-//     /// An 8-bit integer used as a fraction (commission/MAX_U8) for rewards payout
-//     pub commission: u8,
-//
-//     /// Whether this account is staked for the current epoch
-//     pub epoch_vote_account: bool,
-//
-//     /// Latest history of earned credits for up to `MAX_RPC_VOTE_ACCOUNT_INFO_EPOCH_CREDITS_HISTORY` epochs
-//     ///   each tuple is (Epoch, credits, prev_credits)
-//     pub epoch_credits: Vec<(Epoch, u64, u64)>,
-//
-//     /// Most recent slot voted on by this vote account (0 if no votes exist)
-//     pub last_vote: u64,
-//
-//     /// Current root slot for this vote account (0 if no root slot exists)
-//     pub root_slot: Slot,
-// }
-//
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcVoteAccountStatus {
+    pub current: Vec<RpcVoteAccountInfo>,
+    pub delinquent: Vec<RpcVoteAccountInfo>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcVoteAccountInfo {
+    /// Vote account address, as base-58 encoded string
+    pub vote_pubkey: String,
+
+    /// The validator identity, as base-58 encoded string
+    pub node_pubkey: String,
+
+    /// The current stake, in lamports, delegated to this vote account
+    pub activated_stake: u64,
+
+    /// An 8-bit integer used as a fraction (commission/MAX_U8) for rewards payout
+    pub commission: u8,
+
+    /// Whether this account is staked for the current epoch
+    pub epoch_vote_account: bool,
+
+    /// Latest history of earned credits for up to `MAX_RPC_VOTE_ACCOUNT_INFO_EPOCH_CREDITS_HISTORY` epochs
+    ///   each tuple is (Epoch, credits, prev_credits)
+    pub epoch_credits: Vec<(Epoch, u64, u64)>,
+
+    /// The most recent slot voted on by this vote account (0 if no votes exist)
+    pub last_vote: u64,
+
+    /// Current root slot for this vote account (0 if no root slot exists)
+    pub root_slot: Slot,
+}
+
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 // #[serde(rename_all = "camelCase")]
 // pub struct RpcSignatureConfirmation {
@@ -387,7 +387,7 @@ pub struct RpcAccountBalance {
     pub lamports: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSupply {
     pub total: u64,
@@ -465,17 +465,17 @@ pub struct RpcConfirmedTransactionStatusWithSignature {
 //     pub num_slots: u64,
 //     pub sample_period_secs: u16,
 // }
-//
-// #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcInflationReward {
-//     pub epoch: Epoch,
-//     pub effective_slot: Slot,
-//     pub amount: u64,            // lamports
-//     pub post_balance: u64,      // lamports
-//     pub commission: Option<u8>, // Vote account commission when the reward was credited
-// }
-//
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcInflationReward {
+    pub epoch: Epoch,
+    pub effective_slot: Slot,
+    pub amount: u64,            // lamports
+    pub post_balance: u64,      // lamports
+    pub commission: Option<u8>, // Vote an account commission when the reward was credited
+}
+
 // #[derive(Clone, Deserialize, Serialize, Debug, Error, Eq, PartialEq)]
 // pub enum RpcBlockUpdateError {
 //     #[error("block store error")]
@@ -492,13 +492,13 @@ pub struct RpcConfirmedTransactionStatusWithSignature {
 //     pub block: Option<UiConfirmedBlock>,
 //     pub err: Option<RpcBlockUpdateError>,
 // }
-//
-// #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-// pub struct RpcSnapshotSlotInfo {
-//     pub full: Slot,
-//     pub incremental: Option<Slot>,
-// }
-//
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+pub struct RpcSnapshotSlotInfo {
+    pub full: Slot,
+    pub incremental: Option<Slot>,
+}
+
 // #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 // #[serde(rename_all = "camelCase")]
 // pub struct RpcPrioritizationFee {
