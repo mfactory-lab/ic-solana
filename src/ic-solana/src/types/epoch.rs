@@ -4,7 +4,7 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct EpochInfo {
     /// The current epoch
@@ -26,7 +26,7 @@ pub struct EpochInfo {
     pub transaction_count: Option<u64>,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize, CandidType)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct EpochSchedule {
     /// The maximum number of slots in each epoch.

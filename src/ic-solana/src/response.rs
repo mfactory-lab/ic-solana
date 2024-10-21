@@ -50,7 +50,7 @@ pub struct Response<T> {
     pub value: T,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockCommitment<T = [u64; 32]> {
     pub commitment: Option<T>,

@@ -16,6 +16,7 @@ use {
         query, update,
     },
     ic_solana::{
+        request::RpcRequest,
         response::{RpcBlockCommitment, RpcBlockProduction, RpcConfirmedTransactionStatusWithSignature},
         rpc_client::{RpcError, RpcResult},
         types::{
@@ -28,7 +29,6 @@ use {
         },
     },
     ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
-    serde_json::json,
     state::{read_state, InitArgs},
     std::{collections::HashMap, str::FromStr},
 };
@@ -382,11 +382,10 @@ pub async fn sol_get_logs(
     client
         .get_transactions(
             signatures.iter().map(|s| s.signature.as_str()).collect::<Vec<_>>(),
-            RpcTransactionConfig {
-                encoding: None,
+            Some(RpcTransactionConfig {
                 commitment,
-                max_supported_transaction_version: None,
-            },
+                ..RpcTransactionConfig::default()
+            }),
             max_response_bytes,
         )
         .await
@@ -405,14 +404,10 @@ pub async fn request(
     max_response_bytes: u64,
 ) -> RpcResult<String> {
     let client = rpc_client(&provider);
-    let payload = json!({
-        "jsonrpc": "2.0",
-        "id": client.next_request_id(),
-        "method": &method,
-        "params": params
-    });
-    let res = client.call(&payload, max_response_bytes).await?;
-    String::from_utf8(res).map_err(|e| RpcError::ParseError(e.to_string()))
+    let res = client
+        .call::<_, serde_json::Value>(RpcRequest::Custom { method }, params, max_response_bytes)
+        .await?;
+    Ok(serde_json::to_string(&res)?)
 }
 
 ///
