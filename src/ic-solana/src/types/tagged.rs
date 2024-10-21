@@ -6,16 +6,13 @@ use {
     super::{
         CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EncodedTransaction,
         EncodedTransactionWithStatusMeta, Epoch, Legacy, ParsedAccount, ParsedInstruction, Rewards,
-        RpcBlockProductionConfig, Slot, TransactionBinaryEncoding, TransactionError,
-        TransactionResult, TransactionVersion, UiAccount, UiAccountData, UiAccountEncoding,
-        UiAccountsList, UiCompiledInstruction, UiConfirmedBlock, UiInnerInstructions,
-        UiInstruction, UiLoadedAddresses, UiMessage, UiParsedInstruction, UiParsedMessage,
-        UiPartiallyDecodedInstruction, UiRawMessage, UiTokenAmount, UiTransaction,
+        RpcBlockProductionConfig, Slot, TransactionBinaryEncoding, TransactionError, TransactionResult,
+        TransactionVersion, UiAccount, UiAccountData, UiAccountEncoding, UiAccountsList, UiCompiledInstruction,
+        UiConfirmedBlock, UiInnerInstructions, UiInstruction, UiLoadedAddresses, UiMessage, UiParsedInstruction,
+        UiParsedMessage, UiPartiallyDecodedInstruction, UiRawMessage, UiTokenAmount, UiTransaction,
         UiTransactionReturnData, UiTransactionStatusMeta, UiTransactionTokenBalance, UnixTimestamp,
     },
-    crate::response::{
-        EncodedConfirmedBlock, RpcBlockProductionRange, RpcKeyedAccount, RpcTokenAccountBalance,
-    },
+    crate::response::{EncodedConfirmedBlock, RpcBlockProductionRange, RpcKeyedAccount, RpcTokenAccountBalance},
     candid::CandidType,
     serde::{Deserialize, Serialize},
 };
@@ -85,11 +82,7 @@ pub struct TaggedUiConfirmedBlock {
     pub signatures: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rewards: Option<Rewards>,
-    #[serde(
-        default,
-        rename = "numRewardPartitions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "numRewardPartitions", skip_serializing_if = "Option::is_none")]
     pub num_reward_partitions: Option<u64>,
     #[serde(rename = "blockTime")]
     pub block_time: Option<UnixTimestamp>,
@@ -297,9 +290,7 @@ pub struct TaggedEncodedConfirmedTransactionWithStatusMeta {
     pub block_time: Option<UnixTimestamp>,
 }
 
-impl From<EncodedConfirmedTransactionWithStatusMeta>
-    for TaggedEncodedConfirmedTransactionWithStatusMeta
-{
+impl From<EncodedConfirmedTransactionWithStatusMeta> for TaggedEncodedConfirmedTransactionWithStatusMeta {
     fn from(encoded_confirmed_transaction: EncodedConfirmedTransactionWithStatusMeta) -> Self {
         let EncodedConfirmedTransactionWithStatusMeta {
             slot,
@@ -314,12 +305,8 @@ impl From<EncodedConfirmedTransactionWithStatusMeta>
     }
 }
 
-impl From<TaggedEncodedConfirmedTransactionWithStatusMeta>
-    for EncodedConfirmedTransactionWithStatusMeta
-{
-    fn from(
-        tagged_encoded_confirmed_transaction: TaggedEncodedConfirmedTransactionWithStatusMeta,
-    ) -> Self {
+impl From<TaggedEncodedConfirmedTransactionWithStatusMeta> for EncodedConfirmedTransactionWithStatusMeta {
+    fn from(tagged_encoded_confirmed_transaction: TaggedEncodedConfirmedTransactionWithStatusMeta) -> Self {
         let TaggedEncodedConfirmedTransactionWithStatusMeta {
             slot,
             transaction,
@@ -412,49 +399,21 @@ pub struct TaggedUiTransactionStatusMeta {
     pub pre_balances: Vec<u64>,
     #[serde(rename = "postBalances")]
     pub post_balances: Vec<u64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "innerInstructions"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "innerInstructions")]
     pub inner_instructions: Option<Vec<TaggedUiInnerInstructions>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "logMessages"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "logMessages")]
     pub log_messages: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "preTokenBalances"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "preTokenBalances")]
     pub pre_token_balances: Option<Vec<UiTransactionTokenBalance>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "postTokenBalances"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "postTokenBalances")]
     pub post_token_balances: Option<Vec<UiTransactionTokenBalance>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rewards: Option<Rewards>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "loadedAddresses"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "loadedAddresses")]
     pub loaded_addresses: Option<UiLoadedAddresses>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "returnData"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "returnData")]
     pub return_data: Option<UiTransactionReturnData>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "computeUnitsConsumed"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "computeUnitsConsumed")]
     pub compute_units_consumed: Option<u64>,
 }
 
@@ -548,15 +507,9 @@ impl From<EncodedTransaction> for TaggedEncodedTransaction {
     fn from(encoded_transaction: EncodedTransaction) -> Self {
         match encoded_transaction {
             EncodedTransaction::LegacyBinary(blob) => TaggedEncodedTransaction::LegacyBinary(blob),
-            EncodedTransaction::Binary(blob, encoding) => {
-                TaggedEncodedTransaction::Binary(blob, encoding)
-            }
-            EncodedTransaction::Json(ui_transaction) => {
-                TaggedEncodedTransaction::Json(ui_transaction.into())
-            }
-            EncodedTransaction::Accounts(ui_accounts_list) => {
-                TaggedEncodedTransaction::Accounts(ui_accounts_list)
-            }
+            EncodedTransaction::Binary(blob, encoding) => TaggedEncodedTransaction::Binary(blob, encoding),
+            EncodedTransaction::Json(ui_transaction) => TaggedEncodedTransaction::Json(ui_transaction.into()),
+            EncodedTransaction::Accounts(ui_accounts_list) => TaggedEncodedTransaction::Accounts(ui_accounts_list),
         }
     }
 }
@@ -565,15 +518,9 @@ impl From<TaggedEncodedTransaction> for EncodedTransaction {
     fn from(tagged_encoded_transaction: TaggedEncodedTransaction) -> Self {
         match tagged_encoded_transaction {
             TaggedEncodedTransaction::LegacyBinary(blob) => EncodedTransaction::LegacyBinary(blob),
-            TaggedEncodedTransaction::Binary(blob, encoding) => {
-                EncodedTransaction::Binary(blob, encoding)
-            }
-            TaggedEncodedTransaction::Json(ui_transaction) => {
-                EncodedTransaction::Json(ui_transaction.into())
-            }
-            TaggedEncodedTransaction::Accounts(ui_accounts_list) => {
-                EncodedTransaction::Accounts(ui_accounts_list)
-            }
+            TaggedEncodedTransaction::Binary(blob, encoding) => EncodedTransaction::Binary(blob, encoding),
+            TaggedEncodedTransaction::Json(ui_transaction) => EncodedTransaction::Json(ui_transaction.into()),
+            TaggedEncodedTransaction::Accounts(ui_accounts_list) => EncodedTransaction::Accounts(ui_accounts_list),
         }
     }
 }
@@ -588,10 +535,7 @@ pub struct TaggedUiTransaction {
 
 impl From<UiTransaction> for TaggedUiTransaction {
     fn from(ui_transaction: UiTransaction) -> Self {
-        let UiTransaction {
-            signatures,
-            message,
-        } = ui_transaction;
+        let UiTransaction { signatures, message } = ui_transaction;
         TaggedUiTransaction {
             signatures,
             message: message.into(),
@@ -601,10 +545,7 @@ impl From<UiTransaction> for TaggedUiTransaction {
 
 impl From<TaggedUiTransaction> for UiTransaction {
     fn from(tagged_ui_transaction: TaggedUiTransaction) -> Self {
-        let TaggedUiTransaction {
-            signatures,
-            message,
-        } = tagged_ui_transaction;
+        let TaggedUiTransaction { signatures, message } = tagged_ui_transaction;
         UiTransaction {
             signatures,
             message: message.into(),
@@ -662,11 +603,7 @@ impl From<UiInnerInstructions> for TaggedUiInnerInstructions {
     fn from(ui_inner_instructions: UiInnerInstructions) -> Self {
         Self {
             index: ui_inner_instructions.index,
-            instructions: ui_inner_instructions
-                .instructions
-                .into_iter()
-                .map(Into::into)
-                .collect(),
+            instructions: ui_inner_instructions.instructions.into_iter().map(Into::into).collect(),
         }
     }
 }

@@ -1,7 +1,7 @@
 use {
     crate::types::{
-        EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot,
-        TransactionConfirmationStatus, TransactionError, UiAccount, UiTokenAmount, UnixTimestamp,
+        EncodedTransactionWithStatusMeta, FeeCalculator, Rewards, Slot, TransactionConfirmationStatus,
+        TransactionError, UiAccount, UiTokenAmount, UnixTimestamp,
     },
     candid::CandidType,
     serde::{Deserialize, Serialize},
@@ -50,9 +50,9 @@ pub struct Response<T> {
     pub value: T,
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
-pub struct RpcBlockCommitment<T> {
+pub struct RpcBlockCommitment<T = [u64; 32]> {
     pub commitment: Option<T>,
     pub total_stake: u64,
 }
@@ -445,7 +445,7 @@ pub struct RpcTokenAccountBalance {
     pub amount: UiTokenAmount,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcConfirmedTransactionStatusWithSignature {
     pub signature: String, // base 58 encoded signature

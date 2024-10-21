@@ -1,18 +1,13 @@
 use {
     crate::{
-        auth::{
-            do_authorize, do_deauthorize, require_manage_or_controller, require_register_provider,
-            Auth,
-        },
+        auth::{do_authorize, do_deauthorize, require_manage_or_controller, require_register_provider, Auth},
         constants::NODES_IN_SUBNET,
         http::{get_http_request_cost, rpc_client, serve_logs, serve_metrics},
         providers::{do_register_provider, do_unregister_provider, do_update_provider},
         state::STATE,
-        types::{RegisterProviderArgs, SendTransactionRequest, UpdateProviderArgs},
-        utils::validate_caller_not_anonymous,
+        types::{RegisterProviderArgs, UpdateProviderArgs},
     },
     candid::{candid_method, Principal},
-    eddsa_api::{eddsa_public_key, sign_with_eddsa},
     ic_canisters_http_types::{
         HttpRequest as AssetHttpRequest, HttpResponse as AssetHttpResponse, HttpResponseBuilder,
     },
@@ -21,27 +16,25 @@ use {
         query, update,
     },
     ic_solana::{
-        response::RpcBlockProduction,
+        request::RpcRequest,
+        response::{RpcBlockCommitment, RpcBlockProduction, RpcConfirmedTransactionStatusWithSignature},
         rpc_client::{RpcError, RpcResult},
         types::{
-            Account, BlockHash, CandidValue, Instruction, Message, Pubkey, RpcAccountInfoConfig,
-            RpcContextConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
-            RpcTransactionConfig, Signature, TaggedEncodedConfirmedTransactionWithStatusMeta,
-            TaggedRpcBlockProductionConfig, TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance,
-            TaggedUiConfirmedBlock, TokenAccountsFilter, Transaction, TransactionDetails,
-            TransactionStatus, UiAccountEncoding, UiTokenAmount, UiTransactionEncoding,
+            Account, CandidValue, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo,
+            EpochSchedule, Pubkey, RpcAccountInfoConfig, RpcBlockConfig, RpcContextConfig, RpcSendTransactionConfig,
+            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcTokenAccountsFilter, RpcTransactionConfig,
+            Signature, Slot, TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedRpcBlockProductionConfig,
+            TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock, Transaction,
+            TransactionStatus, UiTokenAmount,
         },
     },
     ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
-    serde_bytes::ByteBuf,
-    serde_json::json,
     state::{read_state, InitArgs},
-    std::str::FromStr,
+    std::{collections::HashMap, str::FromStr},
 };
 
 pub mod auth;
 mod constants;
-pub mod eddsa_api;
 mod http;
 mod memory;
 mod providers;
@@ -50,38 +43,21 @@ pub mod types;
 mod utils;
 
 ///
-/// Returns the public key of the Solana wallet for the caller.
+/// Returns all information associated with the account of the provided Pubkey.
 ///
-#[update]
-#[candid_method]
-pub async fn sol_address() -> String {
-    let caller = validate_caller_not_anonymous();
-    let key_name = read_state(|s| s.schnorr_key.clone());
-    let derived_path = vec![ByteBuf::from(caller.as_slice())];
-    let pk = eddsa_public_key(key_name, derived_path).await;
-    Pubkey::try_from(pk.as_slice())
-        .expect("Invalid public key")
-        .to_string()
-}
-
-///
-/// Requests an airdrop of lamports to a Pubkey.
-///
-#[update(name = "sol_requestAirdrop")]
-#[candid_method(rename = "sol_requestAirdrop")]
-pub async fn sol_request_airdrop(
+#[update(name = "sol_getAccountInfo")]
+#[candid_method(rename = "sol_getAccountInfo")]
+pub async fn sol_get_account_info(
     provider: String,
     pubkey: String,
-    lamports: u64,
-) -> RpcResult<String> {
+    config: Option<RpcAccountInfoConfig>,
+) -> RpcResult<Option<Account>> {
     let client = rpc_client(&provider);
-    let signature = client
-        .request_airdrop(
-            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
-            lamports,
-        )
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let account_info = client
+        .get_account_info(&pubkey, config.unwrap_or_default(), None)
         .await?;
-    Ok(signature)
+    Ok(account_info)
 }
 
 ///
@@ -89,67 +65,49 @@ pub async fn sol_request_airdrop(
 ///
 #[update(name = "sol_getBalance")]
 #[candid_method(rename = "sol_getBalance")]
-pub async fn sol_get_balance(provider: String, pubkey: String) -> RpcResult<u64> {
+pub async fn sol_get_balance(provider: String, pubkey: String, config: Option<RpcContextConfig>) -> RpcResult<u64> {
     let client = rpc_client(&provider);
-    let balance = client
-        .get_balance(
-            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
-            RpcContextConfig::default(),
-        )
-        .await?;
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let balance = client.get_balance(&pubkey, config.unwrap_or_default()).await?;
     Ok(balance)
 }
 
 ///
-/// Returns identity and transaction information about a confirmed block in the ledger
+/// Returns identity and transaction information about a confirmed block in the ledger.
 ///
 #[update(name = "sol_getBlock")]
 #[candid_method(rename = "sol_getBlock")]
 pub async fn sol_get_block(
     provider: String,
-    slot: u64,
-    transaction_details: TransactionDetails,
+    slot: Slot,
+    config: Option<RpcBlockConfig>,
     max_response_bytes: Option<u64>,
 ) -> RpcResult<TaggedUiConfirmedBlock> {
     let client = rpc_client(&provider);
     let block = client
-        .get_block(
-            slot,
-            UiTransactionEncoding::Json,
-            transaction_details,
-            max_response_bytes,
-        )
+        .get_block(slot, config.unwrap_or_default(), max_response_bytes)
         .await?;
     Ok(block.into())
 }
 
 ///
-/// Returns a list of confirmed blocks between two slots
+/// Returns commitment for a particular block.
 ///
-#[update(name = "sol_getBlocks")]
-#[candid_method(rename = "sol_getBlocks")]
-pub async fn sol_get_blocks(
-    provider: String,
-    start_slot: u64,
-    last_slot: Option<u64>,
-) -> RpcResult<Vec<u64>> {
+#[update(name = "sol_getBlockCommitment")]
+#[candid_method(rename = "sol_getBlockCommitment")]
+pub async fn sol_get_block_commitment(provider: String, slot: Slot) -> RpcResult<RpcBlockCommitment> {
     let client = rpc_client(&provider);
-    let blocks = client.get_blocks(start_slot, last_slot).await?;
-
-    Ok(blocks)
+    client.get_block_commitment(slot).await
 }
 
 ///
-/// Returns the current block height of the node
+/// Returns the current block height of the node.
 ///
 #[update(name = "sol_getBlockHeight")]
 #[candid_method(rename = "sol_getBlockHeight")]
-pub async fn sol_get_block_height(provider: String) -> RpcResult<u64> {
+pub async fn sol_get_block_height(provider: String, config: Option<RpcContextConfig>) -> RpcResult<u64> {
     let client = rpc_client(&provider);
-    let commitment = None;
-
-    let height = client.get_block_height(commitment).await?;
-    Ok(height)
+    client.get_block_height(config).await
 }
 
 ///
@@ -162,26 +120,105 @@ pub async fn sol_get_block_production(
     config: TaggedRpcBlockProductionConfig,
 ) -> RpcResult<RpcBlockProduction> {
     let client = rpc_client(&provider);
-    let block_production = client.get_block_production(config.into()).await?;
+    client.get_block_production(config.into()).await
+}
 
-    Ok(block_production)
+///
+/// Returns the estimated production time of a block.
+///
+#[update(name = "sol_getBlockTime")]
+#[candid_method(rename = "sol_getBlockTime")]
+pub async fn sol_get_block_time(provider: String, slot: Slot) -> RpcResult<i64> {
+    let client = rpc_client(&provider);
+    client.get_block_time(slot).await
+}
+
+///
+/// Returns a list of confirmed blocks between two slots
+///
+#[update(name = "sol_getBlocks")]
+#[candid_method(rename = "sol_getBlocks")]
+pub async fn sol_get_blocks(
+    provider: String,
+    start_slot: Slot,
+    last_slot: Option<Slot>,
+    config: Option<CommitmentConfig>,
+) -> RpcResult<Vec<u64>> {
+    let client = rpc_client(&provider);
+    client.get_blocks(start_slot, last_slot, config).await
+}
+
+///
+/// Returns information about the current epoch.
+///
+#[update(name = "sol_getEpochInfo")]
+#[candid_method(rename = "sol_getEpochInfo")]
+pub async fn sol_get_epoch_info(provider: String, config: Option<RpcContextConfig>) -> RpcResult<EpochInfo> {
+    let client = rpc_client(&provider);
+    client.get_epoch_info(config).await
+}
+
+///
+/// Returns the epoch schedule information from this cluster's genesis config.
+///
+#[update(name = "sol_getEpochSchedule")]
+#[candid_method(rename = "sol_getEpochSchedule")]
+pub async fn sol_get_epoch_schedule(provider: String) -> RpcResult<EpochSchedule> {
+    let client = rpc_client(&provider);
+    client.get_epoch_schedule().await
+}
+
+///
+/// Returns signatures for confirmed transactions that
+/// include the given address in their accountKeys list.
+///
+#[update(name = "sol_getSignaturesForAddress")]
+#[candid_method(rename = "sol_getSignaturesForAddress")]
+pub async fn sol_get_signatures_for_address(
+    provider: String,
+    pubkey: String,
+    config: RpcSignaturesForAddressConfig,
+) -> RpcResult<Vec<RpcConfirmedTransactionStatusWithSignature>> {
+    let client = rpc_client(&provider);
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let result = client.get_signatures_for_address(&pubkey, config).await?;
+    Ok(result)
 }
 
 ///
 /// Returns the token balance of an SPL Token account.
 ///
-#[update(name = "sol_getTokenBalance")]
-#[candid_method(rename = "sol_getTokenBalance")]
-pub async fn sol_get_token_balance(provider: String, pubkey: String) -> RpcResult<UiTokenAmount> {
+#[update(name = "sol_getTokenAccountBalance")]
+#[candid_method(rename = "sol_getTokenAccountBalance")]
+pub async fn sol_get_token_account_balance(
+    provider: String,
+    pubkey: String,
+    config: Option<CommitmentConfig>,
+) -> RpcResult<UiTokenAmount> {
     let client = rpc_client(&provider);
-    let commitment = None;
-    let balance = client
-        .get_token_account_balance(
-            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
-            commitment,
-        )
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    client.get_token_account_balance(&pubkey, config).await
+}
+
+///
+/// Returns all SPL Token accounts by approved Delegate.
+///
+#[update(name = "sol_getTokenAccountsByDelegate")]
+#[candid_method(rename = "sol_getTokenAccountsByDelegate")]
+pub async fn sol_get_token_accounts_by_delegate(
+    provider: String,
+    pubkey: String,
+    filter: RpcTokenAccountsFilter,
+    config: Option<RpcAccountInfoConfig>,
+    max_response_bytes: Option<u64>,
+) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
+    let client = rpc_client(&provider);
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let accounts = client
+        .get_token_accounts_by_delegate(&pubkey, filter, config, max_response_bytes)
         .await?;
-    Ok(balance)
+
+    Ok(accounts.into_iter().map(Into::into).collect())
 }
 
 ///
@@ -192,16 +229,14 @@ pub async fn sol_get_token_balance(provider: String, pubkey: String) -> RpcResul
 pub async fn sol_get_token_accounts_by_owner(
     provider: String,
     pubkey: String,
-    token_accounts_filter: TokenAccountsFilter,
+    filter: RpcTokenAccountsFilter,
+    config: Option<RpcAccountInfoConfig>,
     max_response_bytes: Option<u64>,
 ) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
     let client = rpc_client(&provider);
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
     let accounts = client
-        .get_token_accounts_by_owner(
-            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
-            token_accounts_filter,
-            max_response_bytes,
-        )
+        .get_token_accounts_by_owner(&pubkey, filter, config, max_response_bytes)
         .await?;
 
     Ok(accounts.into_iter().map(Into::into).collect())
@@ -215,14 +250,13 @@ pub async fn sol_get_token_accounts_by_owner(
 pub async fn sol_get_token_largest_accounts(
     provider: String,
     mint: String,
+    config: Option<CommitmentConfig>,
     max_response_bytes: Option<u64>,
 ) -> RpcResult<Vec<TaggedRpcTokenAccountBalance>> {
     let client = rpc_client(&provider);
+    let mint = Pubkey::from_str(&mint).map_err(|e| RpcError::ParseError(e.to_string()))?;
     let accounts = client
-        .get_token_largest_accounts(
-            &Pubkey::from_str(&mint).expect("Invalid public key"),
-            max_response_bytes,
-        )
+        .get_token_largest_accounts(&mint, config, max_response_bytes)
         .await?;
 
     Ok(accounts.into_iter().map(Into::into).collect())
@@ -236,40 +270,12 @@ pub async fn sol_get_token_largest_accounts(
 pub async fn sol_get_token_supply(
     provider: String,
     mint: String,
+    config: Option<CommitmentConfig>,
     max_response_bytes: Option<u64>,
 ) -> RpcResult<UiTokenAmount> {
     let client = rpc_client(&provider);
-    let supply = client
-        .get_token_supply(
-            &Pubkey::from_str(&mint).expect("Invalid public key"),
-            max_response_bytes,
-        )
-        .await?;
-
-    Ok(supply)
-}
-
-///
-/// Returns all SPL Token accounts by approved Delegate.
-///
-#[update(name = "sol_getTokenAccountsByDelegate")]
-#[candid_method(rename = "sol_getTokenAccountsByDelegate")]
-pub async fn sol_get_token_accounts_by_delegate(
-    provider: String,
-    pubkey: String,
-    token_accounts_filter: TokenAccountsFilter,
-    max_response_bytes: Option<u64>,
-) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
-    let client = rpc_client(&provider);
-    let accounts = client
-        .get_token_accounts_by_delegate(
-            &Pubkey::from_str(&pubkey).expect("Invalid public key"),
-            token_accounts_filter,
-            max_response_bytes,
-        )
-        .await?;
-
-    Ok(accounts.into_iter().map(Into::into).collect())
+    let mint = Pubkey::from_str(&mint).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    client.get_token_supply(&mint, config, max_response_bytes).await
 }
 
 ///
@@ -277,36 +283,10 @@ pub async fn sol_get_token_accounts_by_delegate(
 ///
 #[update(name = "sol_getLatestBlockhash")]
 #[candid_method(rename = "sol_getLatestBlockhash")]
-pub async fn sol_get_latest_blockhash(provider: String) -> RpcResult<String> {
+pub async fn sol_get_latest_blockhash(provider: String, config: Option<RpcContextConfig>) -> RpcResult<String> {
     let client = rpc_client(&provider);
-    let blockhash = client
-        .get_latest_blockhash(RpcContextConfig::default())
-        .await?;
+    let blockhash = client.get_latest_blockhash(config).await?;
     Ok(blockhash.to_string())
-}
-
-///
-/// Returns all information associated with the account of the provided Pubkey.
-///
-#[update(name = "sol_getAccountInfo")]
-#[candid_method(rename = "sol_getAccountInfo")]
-pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult<Option<Account>> {
-    let client = rpc_client(&provider);
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let account_info = client
-        .get_account_info(
-            &pubkey,
-            RpcAccountInfoConfig {
-                // Encoded binary (base58) data should be less than 128 bytes, so use base64 encoding.
-                encoding: Some(UiAccountEncoding::Base64),
-                data_slice: None,
-                commitment: None,
-                min_context_slot: None,
-            },
-            None,
-        )
-        .await?;
-    Ok(account_info)
 }
 
 ///
@@ -318,6 +298,7 @@ pub async fn sol_get_account_info(provider: String, pubkey: String) -> RpcResult
 pub async fn sol_get_signature_statuses(
     provider: String,
     signatures: Vec<String>,
+    config: Option<RpcSignatureStatusConfig>,
 ) -> RpcResult<Vec<Option<TransactionStatus>>> {
     let client = rpc_client(&provider);
 
@@ -327,16 +308,7 @@ pub async fn sol_get_signature_statuses(
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| RpcError::ParseError(e.to_string()))?;
 
-    let response = client
-        .get_signature_statuses(
-            &signatures,
-            RpcSignatureStatusConfig {
-                search_transaction_history: false,
-            },
-        )
-        .await?;
-
-    Ok(response)
+    client.get_signature_statuses(&signatures, config).await
 }
 
 ///
@@ -347,94 +319,81 @@ pub async fn sol_get_signature_statuses(
 pub async fn sol_get_transaction(
     provider: String,
     signature: String,
+    config: Option<RpcTransactionConfig>,
     max_response_bytes: Option<u64>,
 ) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
     let client = rpc_client(&provider);
-    let signature =
-        Signature::from_str(&signature).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let response = client
-        .get_transaction(
-            &signature,
-            RpcTransactionConfig {
-                max_supported_transaction_version: Some(0),
-                ..RpcTransactionConfig::default()
-            },
-            max_response_bytes,
-        )
-        .await?;
+    let signature = Signature::from_str(&signature).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let response = client.get_transaction(&signature, config, max_response_bytes).await?;
     Ok(response.into())
 }
 
 ///
-/// Send a transaction to the network.
+/// Requests an airdrop of lamports to a Pubkey.
 ///
-#[update(name = "sol_sendTransaction")]
-#[candid_method(rename = "sol_sendTransaction")]
-pub async fn sol_send_transaction(
-    provider: String,
-    req: SendTransactionRequest,
-) -> RpcResult<String> {
-    let caller = validate_caller_not_anonymous();
+#[update(name = "sol_requestAirdrop")]
+#[candid_method(rename = "sol_requestAirdrop")]
+pub async fn sol_request_airdrop(provider: String, pubkey: String, lamports: u64) -> RpcResult<String> {
     let client = rpc_client(&provider);
-
-    let recent_blockhash = match req.recent_blockhash {
-        Some(r) => BlockHash::from_str(&r).expect("Invalid recent blockhash"),
-        None => {
-            client
-                .get_latest_blockhash(RpcContextConfig::default())
-                .await?
-        }
-    };
-
-    let ixs = &req
-        .instructions
-        .iter()
-        .map(|s| Instruction::from_str(s).unwrap())
-        .collect::<Vec<_>>();
-
-    let message = Message::new_with_blockhash(ixs, None, &recent_blockhash);
-
-    let mut tx = Transaction::new_unsigned(message);
-
-    let key_name = read_state(|s| s.schnorr_key.clone());
-    let derived_path = vec![ByteBuf::from(caller.as_slice())];
-
-    let signature = sign_with_eddsa(key_name, derived_path, tx.message_data())
-        .await
-        .try_into()
-        .expect("Invalid signature");
-
-    tx.add_signature(0, signature);
-
-    let signature = client
-        .send_transaction(tx, RpcSendTransactionConfig::default())
-        .await?;
-
-    Ok(signature.to_string())
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let signature = client.request_airdrop(&pubkey, lamports).await?;
+    Ok(signature)
 }
 
 ///
 /// Submits a signed transaction to the cluster for processing.
+/// Use `sol_getSignatureStatuses` to ensure a transaction is processed and confirmed.
 ///
-#[update(name = "sol_sendRawTransaction")]
-#[candid_method(rename = "sol_sendRawTransaction")]
-pub async fn send_raw_transaction(
+#[update(name = "sol_sendTransaction")]
+#[candid_method(rename = "sol_sendTransaction")]
+pub async fn send_transaction(
     provider: String,
     raw_signed_transaction: String,
+    config: Option<RpcSendTransactionConfig>,
 ) -> RpcResult<String> {
     let client = rpc_client(&provider);
-
     let tx = Transaction::from_str(&raw_signed_transaction).expect("Invalid transaction");
-
-    let signature = client
-        .send_transaction(tx, RpcSendTransactionConfig::default())
-        .await?;
-
+    let signature = client.send_transaction(tx, config.unwrap_or_default()).await?;
     Ok(signature.to_string())
 }
 
 ///
-/// Calls a JSON-RPC method on a Solana node at the specified URL.
+/// Retrieves transaction logs for a given public key.
+///
+/// This asynchronous function connects to the specified RPC `provider`, fetches transaction
+/// signatures associated with the provided `pubkey`, and then retrieves detailed transaction
+/// data based on those signatures.
+///
+#[update(name = "sol_getLogs")]
+#[candid_method(rename = "sol_getLogs")]
+pub async fn sol_get_logs(
+    provider: String,
+    pubkey: String,
+    config: Option<RpcSignaturesForAddressConfig>,
+    max_response_bytes: Option<u64>,
+) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>> {
+    let client = rpc_client(&provider);
+    let config = config.unwrap_or_default();
+    let commitment = config.commitment;
+
+    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let signatures = client.get_signatures_for_address(&pubkey, config).await?;
+
+    client
+        .get_transactions(
+            signatures.iter().map(|s| s.signature.as_str()).collect::<Vec<_>>(),
+            Some(RpcTransactionConfig {
+                commitment,
+                ..RpcTransactionConfig::default()
+            }),
+            max_response_bytes,
+        )
+        .await
+}
+
+///
+/// Sends a JSON-RPC request to a specified Solana node provider,
+/// supporting custom RPC methods.
 ///
 #[update]
 #[candid_method]
@@ -445,14 +404,10 @@ pub async fn request(
     max_response_bytes: u64,
 ) -> RpcResult<String> {
     let client = rpc_client(&provider);
-    let payload = json!({
-        "jsonrpc": "2.0",
-        "id": client.next_request_id(),
-        "method": &method,
-        "params": params
-    });
-
-    client.call(&payload, max_response_bytes).await
+    let res = client
+        .call::<_, serde_json::Value>(RpcRequest::Custom { method }, params, max_response_bytes)
+        .await?;
+    Ok(serde_json::to_string(&res)?)
 }
 
 ///
