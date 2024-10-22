@@ -9,7 +9,7 @@ use {
 };
 
 /// Wrapper for rpc returns types of methods that provide responses both with and without context.
-/// The Main purpose of this is to fix methods that lack context information in their return type 
+/// The Main purpose of this is to fix methods that lack context information in their return type
 /// without breaking backwards compatibility.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]

@@ -64,6 +64,12 @@ impl std::fmt::Display for Cluster {
 }
 
 impl Cluster {
+    pub fn host_str(&self) -> Option<String> {
+        Url::parse(&self.url())
+            .ok()
+            .and_then(|u| u.host_str().map(|host| host.to_string()))
+    }
+
     pub fn url(&self) -> &str {
         match self {
             Cluster::Devnet => "https://api.devnet.solana.com",

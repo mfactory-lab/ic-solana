@@ -11,37 +11,8 @@ use {
     },
     ic_canisters_http_types::{HttpRequest, HttpResponse, HttpResponseBuilder},
     ic_cdk::api::management_canister::http_request::TransformContext,
-    ic_solana::{
-        rpc_client::{MultiCallError, RpcClient},
-        types::result::MultiRpcResult,
-    },
-    ic_solana_common::{add_metric_entry, metrics::MetricRpcHost},
+    ic_solana::rpc_client::{RpcClient, RpcClientConfig},
 };
-
-fn process_result<T>(method: RpcMethod, result: Result<T, MultiCallError<T>>) -> MultiRpcResult<T> {
-    match result {
-        Ok(value) => MultiRpcResult::Consistent(Ok(value)),
-        Err(err) => match err {
-            MultiCallError::ConsistentError(err) => MultiRpcResult::Consistent(Err(err)),
-            MultiCallError::InconsistentResults(multi_call_results) => {
-                let results = multi_call_results.into_vec();
-                results.iter().for_each(|(service, _service_result)| {
-                    if let Ok(ResolvedRpcService::Provider(provider)) = resolve_rpc_service(service.clone()) {
-                        add_metric_entry!(
-                            inconsistent_responses,
-                            (
-                                method.into(),
-                                MetricRpcHost(provider.hostname().unwrap_or_else(|| "(unknown)".to_string()))
-                            ),
-                            1
-                        )
-                    }
-                });
-                MultiRpcResult::Inconsistent(results)
-            }
-        },
-    }
-}
 
 pub fn rpc_client(provider_id: &str) -> RpcClient {
     let provider =
@@ -49,54 +20,25 @@ pub fn rpc_client(provider_id: &str) -> RpcClient {
 
     let api = provider.api();
 
-    let client = read_state(|s| {
-        RpcClient::new(&api.url)
-            .with_demo(s.is_demo_active)
-            .with_hosts_blocklist(RPC_HOSTS_BLOCKLIST)
-            .with_request_cost_calculator(|s| {
+    read_state(|s| {
+        let config = RpcClientConfig {
+            response_consensus: None,
+            cost_calculator: Some(|s| {
                 let cycles_cost = get_http_request_cost(
                     s.body.as_ref().map_or(0, |b| b.len() as u64),
                     s.max_response_bytes.unwrap_or(2 * 1024 * 1024),
                 );
                 (cycles_cost, get_cost_with_collateral(cycles_cost))
-            })
-            .with_transform_context(TransformContext::from_name("__transform_json_rpc".to_owned(), vec![]))
-    });
+            }),
+            transform_context: Some(TransformContext::from_name("__transform_json_rpc".to_owned(), vec![])),
+            is_demo_active: s.is_demo_active,
+            hosts_blocklist: RPC_HOSTS_BLOCKLIST,
+            extra_response_bytes: 0,
+        };
 
-    if let Some(headers) = api.headers {
-        client.with_headers(headers)
-    } else {
-        client
-    }
+        RpcClient::new(&api.url, Some(config))
+    })
 }
-
-// pub fn rpc_client(provider_id: &str) -> RpcClient {
-//     if let Some(provider) = find_provider(provider_id) {
-//         let api = provider.api();
-//
-//         let client = read_state(|s| {
-//             RpcClient::new(&api.url)
-//                 .with_demo(s.is_demo_active)
-//                 .with_hosts_blocklist(RPC_HOSTS_BLOCKLIST)
-//                 .with_request_cost_calculator(|s| {
-//                     let cycles_cost = get_http_request_cost(
-//                         s.body.as_ref().map_or(0, |b| b.len() as u64),
-//                         s.max_response_bytes.unwrap_or(2 * 1024 * 1024), // default 2Mb
-//                     );
-//                     (cycles_cost, get_cost_with_collateral(cycles_cost))
-//                 })
-//                 .with_transform_context(TransformContext::from_name("__transform_json_rpc".to_owned(), vec![]))
-//         });
-//
-//         if let Some(headers) = api.headers {
-//             client.with_headers(headers)
-//         } else {
-//             client
-//         }
-//     } else {
-//         ic_cdk::trap(&format!("Provider {} not found", provider_id));
-//     }
-// }
 
 /// Calculates the cost of sending a JSON-RPC request using HTTP outcalls.
 pub fn get_http_request_cost(payload_size_bytes: u64, max_response_bytes: u64) -> u128 {

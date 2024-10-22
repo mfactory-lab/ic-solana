@@ -1,12 +1,11 @@
 use {
     candid::{CandidType, Deserialize, Principal},
-    ic_cdk::api::management_canister::http_request::HttpHeader,
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
     std::borrow::Cow,
 };
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PrincipalStorable(pub Principal);
 
 impl Storable for PrincipalStorable {
@@ -24,19 +23,13 @@ impl Storable for PrincipalStorable {
     };
 }
 
-#[derive(CandidType, Deserialize, Serialize, Debug)]
+#[derive(Debug, CandidType, Deserialize, Serialize)]
 pub struct SendTransactionRequest {
     pub instructions: Vec<String>,
     pub recent_blockhash: Option<String>,
 }
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, CandidType, Deserialize, Serialize)]
-pub struct RpcApi {
-    pub url: String,
-    pub headers: Option<Vec<HttpHeader>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, CandidType, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Serialize, Deserialize)]
 pub enum RpcAuth {
     BearerToken { token: String },
     PathSegment { segment: String },
@@ -44,7 +37,7 @@ pub enum RpcAuth {
     QueryParam { name: String, value: String },
 }
 
-#[derive(Clone, CandidType, Deserialize, Debug)]
+#[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct RegisterProviderArgs {
     /// Unique identifier for the provider
     pub id: String,

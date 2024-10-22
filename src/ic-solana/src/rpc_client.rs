@@ -9,12 +9,12 @@ use {
             RpcTokenAccountBalance, RpcVersionInfo, RpcVoteAccountStatus,
         },
         types::{
-            Account, BlockHash, Cluster, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo,
-            EpochSchedule, Pubkey, RpcAccountInfoConfig, RpcBlockConfig, RpcBlockProductionConfig, RpcContextConfig,
-            RpcEpochConfig, RpcGetVoteAccountsConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSupplyConfig, RpcTokenAccountsFilter,
-            RpcTransactionConfig, Signature, Slot, Transaction, TransactionStatus, UiAccount, UiConfirmedBlock,
-            UiTokenAmount, UiTransactionEncoding,
+            result::MultiRpcResult, Account, BlockHash, Cluster, CommitmentConfig,
+            EncodedConfirmedTransactionWithStatusMeta, EpochInfo, EpochSchedule, Pubkey, RpcAccountInfoConfig,
+            RpcBlockConfig, RpcBlockProductionConfig, RpcContextConfig, RpcEpochConfig, RpcGetVoteAccountsConfig,
+            RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
+            RpcSignaturesForAddressConfig, RpcSupplyConfig, RpcTokenAccountsFilter, RpcTransactionConfig, Signature,
+            Slot, Transaction, TransactionStatus, UiAccount, UiConfirmedBlock, UiTokenAmount, UiTransactionEncoding,
         },
     },
     anyhow::Result,
@@ -26,12 +26,17 @@ use {
     },
     ic_solana_common::{
         add_metric_entry,
-        logs::DEBUG,
+        logs::{DEBUG, INFO},
         metrics::{MetricRpcHost, MetricRpcMethod},
     },
     serde::{de::DeserializeOwned, Deserialize, Serialize},
     serde_json::{json, Value},
-    std::{cell::RefCell, collections::HashMap, str::FromStr},
+    std::{
+        cell::RefCell,
+        collections::{BTreeMap, BTreeSet, HashMap},
+        fmt::Debug,
+        str::FromStr,
+    },
 };
 
 thread_local! {
@@ -62,7 +67,7 @@ impl<T> JsonRpcResponse<T> {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, thiserror::Error, Deserialize, CandidType)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, thiserror::Error, Deserialize, CandidType)]
 pub enum RpcError {
     #[error("RPC request error: {0}")]
     RpcRequestError(String),
@@ -99,11 +104,21 @@ pub type RpcResult<T> = Result<T, RpcError>;
 
 pub type RequestCostCalculator = fn(&CanisterHttpRequestArgument) -> (u128, u128);
 
-#[derive(Clone, Debug)]
-pub struct RpcClient {
-    pub cluster: Cluster,
-    pub commitment_config: CommitmentConfig,
+#[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Debug, CandidType, Deserialize, Serialize)]
+pub struct RpcApiProvider {
+    pub network: String,
     pub headers: Option<Vec<HttpHeader>>,
+}
+
+impl RpcApiProvider {
+    pub fn cluster(&self) -> Cluster {
+        Cluster::from_str(&self.network).expect("Failed to parse cluster url")
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RpcClientConfig {
+    pub response_consensus: Option<ConsensusStrategy>,
     pub cost_calculator: Option<RequestCostCalculator>,
     pub transform_context: Option<TransformContext>,
     pub is_demo_active: bool,
@@ -111,53 +126,54 @@ pub struct RpcClient {
     pub extra_response_bytes: u64,
 }
 
-impl RpcClient {
-    pub fn new(network: &str) -> Self {
+impl Default for RpcClientConfig {
+    fn default() -> Self {
         Self {
-            cluster: Cluster::from_str(network).expect("Failed to parse the network"),
-            commitment_config: CommitmentConfig::confirmed(),
+            response_consensus: None,
             cost_calculator: None,
-            headers: None,
             transform_context: None,
             is_demo_active: false,
             hosts_blocklist: &[],
             extra_response_bytes: 2 * 1024, // 2KB
         }
     }
+}
 
-    pub fn with_headers(mut self, headers: impl Into<Vec<HttpHeader>>) -> Self {
-        self.headers = Some(headers.into());
-        self
+#[derive(Clone, Debug, PartialEq, Eq, Default, CandidType, Deserialize)]
+pub enum ConsensusStrategy {
+    /// All providers must return the same non-error result.
+    #[default]
+    Equality,
+
+    /// A subset of providers must return the same non-error result.
+    Threshold {
+        /// Total number of providers to be queried:
+        /// * If `None` will be set to the number of providers manually specified in `RpcServices`.
+        /// * If `Some` must correspond to the number of manually specified providers in `RpcServices`;
+        ///   or if they are none indicating that default providers should be used, select the corresponding number of providers.
+        total: Option<u8>,
+
+        /// Minimum number of providers that must return the same (non-error) result.
+        min: u8,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub struct RpcClient {
+    pub providers: BTreeSet<RpcApiProvider>,
+    pub config: RpcClientConfig,
+}
+
+impl RpcClient {
+    pub fn new<T: Into<Vec<RpcApiProvider>>>(providers: T, config: Option<RpcClientConfig>) -> Self {
+        Self {
+            providers: providers.into().into_iter().collect(),
+            config: config.unwrap_or_default(),
+        }
     }
 
-    pub fn with_commitment(mut self, commitment_config: CommitmentConfig) -> Self {
-        self.commitment_config = commitment_config;
-        self
-    }
-
-    pub fn with_request_cost_calculator(mut self, cost_calculator: RequestCostCalculator) -> Self {
-        self.cost_calculator = Some(cost_calculator);
-        self
-    }
-
-    pub fn with_transform_context(mut self, transform_context: TransformContext) -> Self {
-        self.transform_context = Some(transform_context);
-        self
-    }
-
-    pub fn with_demo(mut self, is_demo_active: bool) -> Self {
-        self.is_demo_active = is_demo_active;
-        self
-    }
-
-    pub fn with_hosts_blocklist(mut self, hosts_blocklist: &'static [&'static str]) -> Self {
-        self.hosts_blocklist = hosts_blocklist;
-        self
-    }
-
-    pub fn with_response_extra_size(mut self, size: u64) -> Self {
-        self.extra_response_bytes = size;
-        self
+    fn consensus_strategy(&self) -> ConsensusStrategy {
+        self.config.response_consensus.as_ref().cloned().unwrap_or_default()
     }
 
     ///
@@ -195,10 +211,16 @@ impl RpcClient {
     /// * If the response body cannot be parsed as a UTF-8 string, a `ParseError` is returned.
     /// * If the HTTP request fails, an `RpcRequestError` is returned with the error details.
     ///
-    async fn call_internal(&self, payload: Value, max_response_bytes: Option<u64>) -> RpcResult<Vec<u8>> {
-        let url = self.cluster.url();
+    async fn call_internal(
+        &self,
+        provider: RpcApiProvider,
+        payload: Value,
+        max_response_bytes: Option<u64>,
+    ) -> RpcResult<Vec<u8>> {
+        let cluster = provider.cluster();
+        let url = cluster.url();
 
-        let mut headers = self.headers.clone().unwrap_or_default();
+        let mut headers = provider.headers.unwrap_or_default();
         if !headers
             .iter()
             .any(|header| header.name.to_lowercase() == "content-type")
@@ -213,16 +235,19 @@ impl RpcClient {
 
         let request = CanisterHttpRequestArgument {
             url: url.to_string(),
-            max_response_bytes: max_response_bytes.map(|n| n + self.extra_response_bytes),
+            max_response_bytes: max_response_bytes.map(|n| n + self.config.extra_response_bytes),
             method: HttpMethod::POST,
             headers,
             body: Some(body),
-            transform: self.transform_context.clone(),
+            transform: self.config.transform_context.clone(),
         };
 
         // Calculate cycles if a calculator is provided
-        let (cycles_cost, cycles_cost_with_collateral) =
-            self.cost_calculator.as_ref().map_or((0, 0), |calc| calc(&request));
+        let (cycles_cost, cycles_cost_with_collateral) = self
+            .config
+            .cost_calculator
+            .as_ref()
+            .map_or((0, 0), |calc| calc(&request));
 
         let parsed_url = url::Url::parse(url).map_err(|_| RpcError::ParseError(format!("Invalid URL: {}", url)))?;
 
@@ -241,13 +266,13 @@ impl RpcClient {
 
         let rpc_method = MetricRpcMethod(method_name.to_string());
 
-        if self.hosts_blocklist.contains(&host) {
+        if self.config.hosts_blocklist.contains(&host) {
             add_metric_entry!(err_host_not_allowed, rpc_host.clone(), 1);
             return Err(RpcError::Text(format!("Disallowed RPC service host: {}", host)));
         }
 
         // Handle cycle accounting if not in demo mode
-        if !self.is_demo_active {
+        if !self.config.is_demo_active {
             let cycles_available = ic_cdk::api::call::msg_cycles_available128();
             if cycles_available < cycles_cost_with_collateral {
                 return Err(RpcError::RpcRequestError(format!(
@@ -303,7 +328,22 @@ impl RpcClient {
         max_response_bytes: Option<u64>,
     ) -> RpcResult<JsonRpcResponse<R>> {
         let payload = method.build_json(self.next_request_id(), params);
-        let bytes = self.call_internal(payload, max_response_bytes).await?;
+
+        let results = {
+            let mut fut = Vec::with_capacity(self.providers.len());
+            for provider in self.providers.iter() {
+                log!(DEBUG, "[parallel_call]: will call provider: {:?}", provider);
+                fut.push(async {
+                    self.call_internal(provider.clone(), payload.clone(), max_response_bytes)
+                        .await
+                });
+            }
+            futures::future::join_all(fut).await
+        };
+
+        let bytes = MultiCallResults::from_non_empty_iter(self.providers.iter().cloned().zip(results.into_iter()))
+            .reduce(self.consensus_strategy())?;
+
         Ok(serde_json::from_slice::<JsonRpcResponse<R>>(&bytes)?)
     }
 
@@ -1135,5 +1175,242 @@ impl RpcClient {
         let max_slot_str_len = end_slot.to_string().len() as u64;
         let commas_size = if limit > 0 { limit - 1 } else { 0 };
         36 + (max_slot_str_len * limit) + commas_size
+    }
+
+    fn process_result<T>(method: RpcRequest, result: Result<T, MultiCallError<T>>) -> MultiRpcResult<T> {
+        match result {
+            Ok(value) => MultiRpcResult::Consistent(Ok(value)),
+            Err(err) => match err {
+                MultiCallError::ConsistentError(err) => MultiRpcResult::Consistent(Err(err)),
+                MultiCallError::InconsistentResults(multi_call_results) => {
+                    let results = multi_call_results.into_vec();
+                    results.iter().for_each(|(provider, _service_result)| {
+                        let cluster = provider.cluster();
+                        add_metric_entry!(
+                            inconsistent_responses,
+                            (
+                                MetricRpcMethod(method.to_string()),
+                                MetricRpcHost(cluster.host_str().unwrap_or_else(|| "(unknown)".to_string()))
+                            ),
+                            1
+                        )
+                    });
+                    MultiRpcResult::Inconsistent(results)
+                }
+            },
+        }
+    }
+}
+
+/// Aggregates responses of different providers to the same query.
+/// Guaranteed to be non-empty.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MultiCallResults<T> {
+    ok_results: BTreeMap<RpcApiProvider, T>,
+    errors: BTreeMap<RpcApiProvider, RpcError>,
+}
+
+impl<T> Default for MultiCallResults<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> MultiCallResults<T> {
+    pub fn new() -> Self {
+        Self {
+            ok_results: BTreeMap::new(),
+            errors: BTreeMap::new(),
+        }
+    }
+
+    pub fn from_non_empty_iter<I: IntoIterator<Item = (RpcApiProvider, RpcResult<T>)>>(iter: I) -> Self {
+        let mut results = Self::new();
+        for (provider, result) in iter {
+            results.insert_once(provider, result);
+        }
+        if results.is_empty() {
+            panic!("BUG: MultiCallResults cannot be empty!")
+        }
+        results
+    }
+
+    fn is_empty(&self) -> bool {
+        self.ok_results.is_empty() && self.errors.is_empty()
+    }
+
+    fn insert_once(&mut self, provider: RpcApiProvider, result: RpcResult<T>) {
+        match result {
+            Ok(value) => {
+                assert!(!self.errors.contains_key(&provider));
+                assert!(self.ok_results.insert(provider, value).is_none());
+            }
+            Err(error) => {
+                assert!(!self.ok_results.contains_key(&provider));
+                assert!(self.errors.insert(provider, error).is_none());
+            }
+        }
+    }
+
+    pub fn into_vec(self) -> Vec<(RpcApiProvider, RpcResult<T>)> {
+        self.ok_results
+            .into_iter()
+            .map(|(provider, result)| (provider, Ok(result)))
+            .chain(self.errors.into_iter().map(|(provider, error)| (provider, Err(error))))
+            .collect()
+    }
+
+    fn group_errors(&self) -> BTreeMap<&RpcError, BTreeSet<&RpcApiProvider>> {
+        let mut errors: BTreeMap<_, _> = BTreeMap::new();
+        for (provider, error) in self.errors.iter() {
+            errors.entry(error).or_insert_with(BTreeSet::new).insert(provider);
+        }
+        errors
+    }
+}
+
+impl<T: PartialEq> MultiCallResults<T> {
+    /// Expects all results to be ok or return the following error:
+    /// * MultiCallError::ConsistentError: all errors are the same, and there are no ok results.
+    /// * MultiCallError::InconsistentResults: in all other cases.
+    fn all_ok(self) -> Result<BTreeMap<RpcApiProvider, T>, MultiCallError<T>> {
+        if self.errors.is_empty() {
+            return Ok(self.ok_results);
+        }
+        Err(self.expect_error())
+    }
+
+    fn expect_error(self) -> MultiCallError<T> {
+        let errors = self.group_errors();
+        match errors.len() {
+            0 => {
+                panic!("BUG: errors should be non-empty")
+            }
+            1 if self.ok_results.is_empty() => {
+                MultiCallError::ConsistentError(errors.into_keys().next().unwrap().clone())
+            }
+            _ => MultiCallError::InconsistentResults(self),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum MultiCallError<T> {
+    ConsistentError(RpcError),
+    InconsistentResults(MultiCallResults<T>),
+}
+
+impl<T: Debug + PartialEq + Clone + Serialize> MultiCallResults<T> {
+    pub fn reduce(self, strategy: ConsensusStrategy) -> Result<T, MultiCallError<T>> {
+        match strategy {
+            ConsensusStrategy::Equality => self.reduce_with_equality(),
+            ConsensusStrategy::Threshold { total: _, min } => self.reduce_with_threshold(min),
+        }
+    }
+
+    fn reduce_with_equality(self) -> Result<T, MultiCallError<T>> {
+        let mut results = self.all_ok()?.into_iter();
+        let (base_node_provider, base_result) = results
+            .next()
+            .expect("BUG: MultiCallResults is guaranteed to be non-empty");
+        let mut inconsistent_results: Vec<_> = results.filter(|(_provider, result)| result != &base_result).collect();
+        if !inconsistent_results.is_empty() {
+            inconsistent_results.push((base_node_provider, base_result));
+            let error = MultiCallError::InconsistentResults(MultiCallResults::from_non_empty_iter(
+                inconsistent_results
+                    .into_iter()
+                    .map(|(provider, result)| (provider, Ok(result))),
+            ));
+            log!(INFO, "[reduce_with_equality]: inconsistent results {error:?}");
+            return Err(error);
+        }
+        Ok(base_result)
+    }
+
+    fn reduce_with_threshold(self, min: u8) -> Result<T, MultiCallError<T>> {
+        assert!(min > 0, "BUG: min must be greater than 0");
+        if self.ok_results.len() < min as usize {
+            // At least total >= min was queried,
+            // so there is at least one error
+            return Err(self.expect_error());
+        }
+        let distribution = ResponseDistribution::from_non_empty_iter(self.ok_results.clone());
+        let (most_likely_response, providers) = distribution
+            .most_frequent()
+            .expect("BUG: distribution should be non-empty");
+        if providers.len() >= min as usize {
+            Ok(most_likely_response.clone())
+        } else {
+            log!(
+                INFO,
+                "[reduce_with_threshold]: too many inconsistent ok responses to reach threshold of {min}, results: {self:?}"
+            );
+            Err(MultiCallError::InconsistentResults(self))
+        }
+    }
+}
+
+/// Distribution of responses observed from different providers.
+///
+/// From the API point of view, it emulates a map from a response instance to a set of providers that returned it.
+/// At the implementation level, to avoid requiring `T` to have a total order (i.e., must implements `Ord` if it were to be used as keys in a `BTreeMap`) which might not always be meaningful,
+/// we use as a key the hash of the serialized response instance.
+struct ResponseDistribution<T> {
+    hashes: BTreeMap<[u8; 32], T>,
+    responses: BTreeMap<[u8; 32], BTreeSet<RpcApiProvider>>,
+}
+
+impl<T> Default for ResponseDistribution<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> ResponseDistribution<T> {
+    pub fn new() -> Self {
+        Self {
+            hashes: BTreeMap::new(),
+            responses: BTreeMap::new(),
+        }
+    }
+
+    /// Returns the most frequent response and the set of providers that returned it.
+    pub fn most_frequent(&self) -> Option<(&T, &BTreeSet<RpcApiProvider>)> {
+        self.responses
+            .iter()
+            .max_by_key(|(_hash, providers)| providers.len())
+            .map(|(hash, providers)| (self.hashes.get(hash).expect("BUG: hash should be present"), providers))
+    }
+}
+
+impl<T: Debug + PartialEq + Serialize> ResponseDistribution<T> {
+    pub fn from_non_empty_iter<I: IntoIterator<Item = (RpcApiProvider, T)>>(iter: I) -> Self {
+        let mut distribution = Self::new();
+        for (provider, result) in iter {
+            distribution.insert_once(provider, result);
+        }
+        distribution
+    }
+
+    pub fn insert_once(&mut self, provider: RpcApiProvider, result: T) {
+        let hash = ic_sha3::Keccak256::hash(serde_json::to_vec(&result).expect("BUG: failed to serialize"));
+        match self.hashes.get(&hash) {
+            Some(existing_result) => {
+                assert_eq!(
+                    existing_result, &result,
+                    "BUG: different results once serialized have the same hash"
+                );
+                let providers = self
+                    .responses
+                    .get_mut(&hash)
+                    .expect("BUG: hash is guaranteed to be present");
+                assert!(providers.insert(provider), "BUG: provider is already present");
+            }
+            None => {
+                assert_eq!(self.hashes.insert(hash, result), None);
+                let providers = BTreeSet::from_iter(std::iter::once(provider));
+                assert_eq!(self.responses.insert(hash, providers), None);
+            }
+        }
     }
 }
