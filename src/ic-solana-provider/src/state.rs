@@ -7,7 +7,7 @@ use {
     },
     candid::{CandidType, Deserialize, Principal},
     ic_solana::types::Cluster,
-    std::{cell::RefCell, str::FromStr},
+    std::cell::RefCell,
 };
 
 thread_local! {

@@ -1,4 +1,4 @@
-use {crate::constants::RPC_HOSTS_BLOCKLIST, candid::Principal, url::Host};
+use {crate::constants::RPC_HOSTS_BLOCKLIST, url::Host};
 
 pub fn hostname_from_url(url: &str) -> Option<String> {
     url::Url::parse(url).ok().and_then(|url| match url.host() {
@@ -11,14 +11,6 @@ pub fn hostname_from_url(url: &str) -> Option<String> {
         }
         _ => None,
     })
-}
-
-pub fn validate_caller_not_anonymous() -> Principal {
-    let caller = ic_cdk::caller();
-    if caller == Principal::anonymous() {
-        panic!("Anonymous principal not allowed to make calls.")
-    }
-    caller
 }
 
 pub fn validate_hostname(hostname: &str) -> Result<(), &'static str> {

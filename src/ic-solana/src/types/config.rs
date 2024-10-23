@@ -269,7 +269,7 @@ pub trait EncodingConfig {
     fn new_with_encoding(encoding: &Option<UiTransactionEncoding>) -> Self;
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockConfig {
     pub encoding: Option<UiTransactionEncoding>,
@@ -278,6 +278,15 @@ pub struct RpcBlockConfig {
     #[serde(flatten)]
     pub commitment: Option<CommitmentConfig>,
     pub max_supported_transaction_version: Option<u8>,
+}
+
+impl Default for RpcBlockConfig {
+    fn default() -> Self {
+        Self {
+            max_supported_transaction_version: Some(0),
+            ..Default::default()
+        }
+    }
 }
 
 impl EncodingConfig for RpcBlockConfig {

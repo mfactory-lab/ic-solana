@@ -3,12 +3,13 @@ use {
         auth::{do_deauthorize, is_authorized, Auth},
         constants::PROVIDER_ID_MAX_SIZE,
         state::{mutate_state, read_state},
-        types::{RegisterProviderArgs, RpcApi, RpcAuth, UpdateProviderArgs},
+        types::{RegisterProviderArgs, RpcAuth, UpdateProviderArgs},
         utils::{hostname_from_url, validate_hostname},
     },
     candid::{CandidType, Decode, Deserialize, Encode, Principal},
     ic_canister_log::log,
     ic_cdk::api::{is_controller, management_canister::http_request::HttpHeader},
+    ic_solana::rpc_client::RpcApi,
     ic_solana_common::logs::INFO,
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
@@ -59,7 +60,7 @@ impl RpcProvider {
             }
         }
 
-        RpcApi { url, headers }
+        RpcApi { network: url, headers }
     }
 
     pub fn validate(&self) {

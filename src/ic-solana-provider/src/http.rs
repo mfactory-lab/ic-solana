@@ -8,21 +8,35 @@ use {
         },
         providers::find_provider,
         state::read_state,
+        types::{RpcConfig, RpcServices},
     },
     ic_canisters_http_types::{HttpRequest, HttpResponse, HttpResponseBuilder},
     ic_cdk::api::management_canister::http_request::TransformContext,
     ic_solana::rpc_client::{RpcClient, RpcClientConfig},
 };
 
-pub fn rpc_client(provider_id: &str) -> RpcClient {
-    let provider =
-        find_provider(provider_id).unwrap_or_else(|| ic_cdk::trap(&format!("Provider {} not found", provider_id)));
+///
+/// Create an [RpcClient] based on the provided configuration.
+///
+pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
+    let providers = match source {
+        RpcServices::Provider(providers) => providers
+            .iter()
+            .map(|pid| {
+                let provider =
+                    find_provider(pid).unwrap_or_else(|| ic_cdk::trap(&format!("Provider {} not found", pid)));
+                provider.api()
+            })
+            .collect(),
+        RpcServices::Custom(apis) => apis,
+    };
 
-    let api = provider.api();
+    let config = config.unwrap_or_default();
 
     read_state(|s| {
         let config = RpcClientConfig {
-            response_consensus: None,
+            response_consensus: config.response_consensus,
+            response_size_estimate: config.response_size_estimate,
             cost_calculator: Some(|s| {
                 let cycles_cost = get_http_request_cost(
                     s.body.as_ref().map_or(0, |b| b.len() as u64),
@@ -36,7 +50,7 @@ pub fn rpc_client(provider_id: &str) -> RpcClient {
             extra_response_bytes: 0,
         };
 
-        RpcClient::new(&api.url, Some(config))
+        RpcClient::new(providers, Some(config))
     })
 }
 

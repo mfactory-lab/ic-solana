@@ -12,7 +12,6 @@ pub mod filter;
 pub mod instruction;
 pub mod message;
 pub mod pubkey;
-pub mod result;
 pub mod reward;
 pub mod signature;
 pub mod tagged;

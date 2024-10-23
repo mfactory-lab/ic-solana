@@ -5,7 +5,7 @@ use {
         http::{get_http_request_cost, rpc_client, serve_logs, serve_metrics},
         providers::{do_register_provider, do_unregister_provider, do_update_provider},
         state::STATE,
-        types::{RegisterProviderArgs, UpdateProviderArgs},
+        types::{RegisterProviderArgs, RpcConfig, RpcServices, UpdateProviderArgs},
     },
     candid::{candid_method, Principal},
     ic_canisters_http_types::{
@@ -53,15 +53,14 @@ mod utils;
 #[update(name = "sol_getAccountInfo")]
 #[candid_method(rename = "sol_getAccountInfo")]
 pub async fn sol_get_account_info(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     pubkey: String,
-    config: Option<RpcAccountInfoConfig>,
+    params: Option<RpcAccountInfoConfig>,
 ) -> RpcResult<Option<Account>> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let account_info = client
-        .get_account_info(&pubkey, config.unwrap_or_default(), None)
-        .await?;
+    let account_info = client.get_account_info(&pubkey, params).await?;
     Ok(account_info)
 }
 
@@ -70,10 +69,15 @@ pub async fn sol_get_account_info(
 ///
 #[update(name = "sol_getBalance")]
 #[candid_method(rename = "sol_getBalance")]
-pub async fn sol_get_balance(provider: String, pubkey: String, config: Option<RpcContextConfig>) -> RpcResult<u64> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_balance(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    pubkey: String,
+    params: Option<RpcContextConfig>,
+) -> RpcResult<u64> {
+    let client = rpc_client(source, config);
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let balance = client.get_balance(&pubkey, config.unwrap_or_default()).await?;
+    let balance = client.get_balance(&pubkey, params).await?;
     Ok(balance)
 }
 
@@ -83,15 +87,13 @@ pub async fn sol_get_balance(provider: String, pubkey: String, config: Option<Rp
 #[update(name = "sol_getBlock")]
 #[candid_method(rename = "sol_getBlock")]
 pub async fn sol_get_block(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     slot: Slot,
-    config: Option<RpcBlockConfig>,
-    max_response_bytes: Option<u64>,
+    params: Option<RpcBlockConfig>,
 ) -> RpcResult<TaggedUiConfirmedBlock> {
-    let client = rpc_client(&provider);
-    let block = client
-        .get_block(slot, config.unwrap_or_default(), max_response_bytes)
-        .await?;
+    let client = rpc_client(source, config);
+    let block = client.get_block(slot, params).await?;
     Ok(block.into())
 }
 
@@ -100,8 +102,12 @@ pub async fn sol_get_block(
 ///
 #[update(name = "sol_getBlockCommitment")]
 #[candid_method(rename = "sol_getBlockCommitment")]
-pub async fn sol_get_block_commitment(provider: String, slot: Slot) -> RpcResult<RpcBlockCommitment> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_block_commitment(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    slot: Slot,
+) -> RpcResult<RpcBlockCommitment> {
+    let client = rpc_client(source, config);
     client.get_block_commitment(slot).await
 }
 
@@ -110,9 +116,13 @@ pub async fn sol_get_block_commitment(provider: String, slot: Slot) -> RpcResult
 ///
 #[update(name = "sol_getBlockHeight")]
 #[candid_method(rename = "sol_getBlockHeight")]
-pub async fn sol_get_block_height(provider: String, config: Option<RpcContextConfig>) -> RpcResult<u64> {
-    let client = rpc_client(&provider);
-    client.get_block_height(config).await
+pub async fn sol_get_block_height(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: Option<RpcContextConfig>,
+) -> RpcResult<u64> {
+    let client = rpc_client(source, config);
+    client.get_block_height(params).await
 }
 
 ///
@@ -121,11 +131,12 @@ pub async fn sol_get_block_height(provider: String, config: Option<RpcContextCon
 #[update(name = "sol_getBlockProduction")]
 #[candid_method(rename = "sol_getBlockProduction")]
 pub async fn sol_get_block_production(
-    provider: String,
-    config: TaggedRpcBlockProductionConfig,
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: TaggedRpcBlockProductionConfig,
 ) -> RpcResult<RpcBlockProduction> {
-    let client = rpc_client(&provider);
-    client.get_block_production(config.into()).await
+    let client = rpc_client(source, config);
+    client.get_block_production(params.into()).await
 }
 
 ///
@@ -133,8 +144,8 @@ pub async fn sol_get_block_production(
 ///
 #[update(name = "sol_getBlockTime")]
 #[candid_method(rename = "sol_getBlockTime")]
-pub async fn sol_get_block_time(provider: String, slot: Slot) -> RpcResult<i64> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_block_time(source: RpcServices, config: Option<RpcConfig>, slot: Slot) -> RpcResult<i64> {
+    let client = rpc_client(source, config);
     client.get_block_time(slot).await
 }
 
@@ -144,13 +155,14 @@ pub async fn sol_get_block_time(provider: String, slot: Slot) -> RpcResult<i64> 
 #[update(name = "sol_getBlocks")]
 #[candid_method(rename = "sol_getBlocks")]
 pub async fn sol_get_blocks(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     start_slot: Slot,
     last_slot: Option<Slot>,
-    config: Option<CommitmentConfig>,
+    params: Option<CommitmentConfig>,
 ) -> RpcResult<Vec<u64>> {
-    let client = rpc_client(&provider);
-    client.get_blocks(start_slot, last_slot, config).await
+    let client = rpc_client(source, config);
+    client.get_blocks(start_slot, last_slot, params).await
 }
 
 ///
@@ -159,13 +171,14 @@ pub async fn sol_get_blocks(
 #[update(name = "sol_getBlocksWithLimit")]
 #[candid_method(rename = "sol_getBlocksWithLimit")]
 pub async fn sol_get_blocks_with_limit(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     start_slot: Slot,
     limit: u64,
-    config: Option<CommitmentConfig>,
+    params: Option<CommitmentConfig>,
 ) -> RpcResult<Vec<u64>> {
-    let client = rpc_client(&provider);
-    client.get_blocks_with_limit(start_slot, limit, config).await
+    let client = rpc_client(source, config);
+    client.get_blocks_with_limit(start_slot, limit, params).await
 }
 
 ///
@@ -173,8 +186,8 @@ pub async fn sol_get_blocks_with_limit(
 ///
 #[update(name = "sol_getClusterNodes")]
 #[candid_method(rename = "sol_getClusterNodes")]
-pub async fn sol_get_cluster_nodes(provider: String) -> RpcResult<Vec<RpcContactInfo>> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_cluster_nodes(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<Vec<RpcContactInfo>> {
+    let client = rpc_client(source, config);
     client.get_cluster_nodes().await
 }
 
@@ -183,9 +196,13 @@ pub async fn sol_get_cluster_nodes(provider: String) -> RpcResult<Vec<RpcContact
 ///
 #[update(name = "sol_getEpochInfo")]
 #[candid_method(rename = "sol_getEpochInfo")]
-pub async fn sol_get_epoch_info(provider: String, config: Option<RpcContextConfig>) -> RpcResult<EpochInfo> {
-    let client = rpc_client(&provider);
-    client.get_epoch_info(config).await
+pub async fn sol_get_epoch_info(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: Option<RpcContextConfig>,
+) -> RpcResult<EpochInfo> {
+    let client = rpc_client(source, config);
+    client.get_epoch_info(params).await
 }
 
 ///
@@ -193,8 +210,8 @@ pub async fn sol_get_epoch_info(provider: String, config: Option<RpcContextConfi
 ///
 #[update(name = "sol_getEpochSchedule")]
 #[candid_method(rename = "sol_getEpochSchedule")]
-pub async fn sol_get_epoch_schedule(provider: String) -> RpcResult<EpochSchedule> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_epoch_schedule(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<EpochSchedule> {
+    let client = rpc_client(source, config);
     client.get_epoch_schedule().await
 }
 
@@ -204,12 +221,13 @@ pub async fn sol_get_epoch_schedule(provider: String) -> RpcResult<EpochSchedule
 #[update(name = "sol_getFeeForMessage")]
 #[candid_method(rename = "sol_getFeeForMessage")]
 pub async fn sol_get_fee_for_message(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     message: String,
-    config: Option<RpcContextConfig>,
+    params: Option<RpcContextConfig>,
 ) -> RpcResult<u64> {
-    let client = rpc_client(&provider);
-    client.get_fee_for_message(message, config).await
+    let client = rpc_client(source, config);
+    client.get_fee_for_message(message, params).await
 }
 
 ///
@@ -217,8 +235,8 @@ pub async fn sol_get_fee_for_message(
 ///
 #[update(name = "sol_getFirstAvailableBlock")]
 #[candid_method(rename = "sol_getFirstAvailableBlock")]
-pub async fn sol_get_first_available_block(provider: String) -> RpcResult<Slot> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_first_available_block(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<Slot> {
+    let client = rpc_client(source, config);
     client.get_first_available_block().await
 }
 
@@ -227,8 +245,8 @@ pub async fn sol_get_first_available_block(provider: String) -> RpcResult<Slot> 
 ///
 #[update(name = "sol_getGenesisHash")]
 #[candid_method(rename = "sol_getGenesisHash")]
-pub async fn sol_get_genesis_hash(provider: String) -> RpcResult<String> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_genesis_hash(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<String> {
+    let client = rpc_client(source, config);
     client.get_genesis_hash().await
 }
 
@@ -239,8 +257,8 @@ pub async fn sol_get_genesis_hash(provider: String) -> RpcResult<String> {
 ///
 #[update(name = "sol_getHealth")]
 #[candid_method(rename = "sol_getHealth")]
-pub async fn sol_get_health(provider: String) -> RpcResult<String> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_health(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<String> {
+    let client = rpc_client(source, config);
     client.get_health().await
 }
 
@@ -251,8 +269,11 @@ pub async fn sol_get_health(provider: String) -> RpcResult<String> {
 ///
 #[update(name = "sol_getHighestSnapshotSlot")]
 #[candid_method(rename = "sol_getHighestSnapshotSlot")]
-pub async fn sol_get_highest_snapshot_slot(provider: String) -> RpcResult<RpcSnapshotSlotInfo> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_highest_snapshot_slot(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+) -> RpcResult<RpcSnapshotSlotInfo> {
+    let client = rpc_client(source, config);
     client.get_highest_snapshot_slot().await
 }
 
@@ -261,8 +282,8 @@ pub async fn sol_get_highest_snapshot_slot(provider: String) -> RpcResult<RpcSna
 ///
 #[update(name = "sol_getIdentity")]
 #[candid_method(rename = "sol_getIdentity")]
-pub async fn sol_get_identity(provider: String) -> RpcResult<RpcIdentity> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_identity(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<RpcIdentity> {
+    let client = rpc_client(source, config);
     client.get_identity().await
 }
 
@@ -271,8 +292,11 @@ pub async fn sol_get_identity(provider: String) -> RpcResult<RpcIdentity> {
 ///
 #[update(name = "sol_getInflationGovernor")]
 #[candid_method(rename = "sol_getInflationGovernor")]
-pub async fn sol_get_inflation_governor(provider: String) -> RpcResult<RpcInflationGovernor> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_inflation_governor(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+) -> RpcResult<RpcInflationGovernor> {
+    let client = rpc_client(source, config);
     client.get_inflation_governor().await
 }
 
@@ -281,8 +305,8 @@ pub async fn sol_get_inflation_governor(provider: String) -> RpcResult<RpcInflat
 ///
 #[update(name = "sol_getInflationRate")]
 #[candid_method(rename = "sol_getInflationRate")]
-pub async fn sol_get_inflation_rate(provider: String) -> RpcResult<RpcInflationRate> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_inflation_rate(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<RpcInflationRate> {
+    let client = rpc_client(source, config);
     client.get_inflation_rate().await
 }
 
@@ -292,16 +316,17 @@ pub async fn sol_get_inflation_rate(provider: String) -> RpcResult<RpcInflationR
 #[update(name = "sol_getInflationReward")]
 #[candid_method(rename = "sol_getInflationReward")]
 pub async fn sol_get_inflation_reward(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     addresses: Vec<String>,
-    config: RpcEpochConfig,
+    params: RpcEpochConfig,
 ) -> RpcResult<Vec<Option<RpcInflationReward>>> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let pubkeys = addresses
         .iter()
         .map(|x| Pubkey::from_str(x).map_err(|e| RpcError::ParseError(e.to_string())))
         .collect::<Result<Vec<_>, _>>()?;
-    client.get_inflation_reward(&pubkeys, config).await
+    client.get_inflation_reward(&pubkeys, params).await
 }
 
 ///
@@ -311,13 +336,14 @@ pub async fn sol_get_inflation_reward(
 #[update(name = "sol_getSignaturesForAddress")]
 #[candid_method(rename = "sol_getSignaturesForAddress")]
 pub async fn sol_get_signatures_for_address(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     pubkey: String,
-    config: RpcSignaturesForAddressConfig,
+    params: RpcSignaturesForAddressConfig,
 ) -> RpcResult<Vec<RpcConfirmedTransactionStatusWithSignature>> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let result = client.get_signatures_for_address(&pubkey, config).await?;
+    let result = client.get_signatures_for_address(&pubkey, params).await?;
     Ok(result)
 }
 
@@ -326,9 +352,13 @@ pub async fn sol_get_signatures_for_address(
 ///
 #[update(name = "sol_getSlot")]
 #[candid_method(rename = "sol_getSlot")]
-pub async fn sol_get_slot(provider: String, config: Option<RpcContextConfig>) -> RpcResult<Slot> {
-    let client = rpc_client(&provider);
-    client.get_slot(config).await
+pub async fn sol_get_slot(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: Option<RpcContextConfig>,
+) -> RpcResult<Slot> {
+    let client = rpc_client(source, config);
+    client.get_slot(params).await
 }
 
 ///
@@ -336,9 +366,13 @@ pub async fn sol_get_slot(provider: String, config: Option<RpcContextConfig>) ->
 ///
 #[update(name = "sol_getSlotLeader")]
 #[candid_method(rename = "sol_getSlotLeader")]
-pub async fn sol_get_slot_leader(provider: String, config: Option<RpcContextConfig>) -> RpcResult<String> {
-    let client = rpc_client(&provider);
-    client.get_slot_leader(config).await
+pub async fn sol_get_slot_leader(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: Option<RpcContextConfig>,
+) -> RpcResult<String> {
+    let client = rpc_client(source, config);
+    client.get_slot_leader(params).await
 }
 
 ///
@@ -346,8 +380,13 @@ pub async fn sol_get_slot_leader(provider: String, config: Option<RpcContextConf
 ///
 #[update(name = "sol_getSlotLeaders")]
 #[candid_method(rename = "sol_getSlotLeaders")]
-pub async fn sol_get_slot_leaders(provider: String, start_slot: u64, limit: Option<u64>) -> RpcResult<String> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_slot_leaders(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    start_slot: u64,
+    limit: Option<u64>,
+) -> RpcResult<String> {
+    let client = rpc_client(source, config);
     client.get_slot_leaders(start_slot, limit).await
 }
 
@@ -356,9 +395,13 @@ pub async fn sol_get_slot_leaders(provider: String, start_slot: u64, limit: Opti
 ///
 #[update(name = "sol_getStakeMinimumDelegation")]
 #[candid_method(rename = "sol_getStakeMinimumDelegation")]
-pub async fn sol_get_stake_minimum_delegation(provider: String, config: Option<CommitmentConfig>) -> RpcResult<u64> {
-    let client = rpc_client(&provider);
-    client.get_stake_minimum_delegation(config).await.map(|c| c.value)
+pub async fn sol_get_stake_minimum_delegation(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: Option<CommitmentConfig>,
+) -> RpcResult<u64> {
+    let client = rpc_client(source, config);
+    client.get_stake_minimum_delegation(params).await.map(|c| c.value)
 }
 
 ///
@@ -366,9 +409,13 @@ pub async fn sol_get_stake_minimum_delegation(provider: String, config: Option<C
 ///
 #[update(name = "sol_getSupply")]
 #[candid_method(rename = "sol_getSupply")]
-pub async fn sol_get_supply(provider: String, config: RpcSupplyConfig) -> RpcResult<RpcSupply> {
-    let client = rpc_client(&provider);
-    client.get_supply(config).await
+pub async fn sol_get_supply(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: RpcSupplyConfig,
+) -> RpcResult<RpcSupply> {
+    let client = rpc_client(source, config);
+    client.get_supply(params).await
 }
 
 ///
@@ -377,13 +424,14 @@ pub async fn sol_get_supply(provider: String, config: RpcSupplyConfig) -> RpcRes
 #[update(name = "sol_getTokenAccountBalance")]
 #[candid_method(rename = "sol_getTokenAccountBalance")]
 pub async fn sol_get_token_account_balance(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     pubkey: String,
-    config: Option<CommitmentConfig>,
+    params: Option<CommitmentConfig>,
 ) -> RpcResult<UiTokenAmount> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    client.get_token_account_balance(&pubkey, config).await
+    client.get_token_account_balance(&pubkey, params).await
 }
 
 ///
@@ -392,18 +440,15 @@ pub async fn sol_get_token_account_balance(
 #[update(name = "sol_getTokenAccountsByDelegate")]
 #[candid_method(rename = "sol_getTokenAccountsByDelegate")]
 pub async fn sol_get_token_accounts_by_delegate(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     pubkey: String,
     filter: RpcTokenAccountsFilter,
-    config: Option<RpcAccountInfoConfig>,
-    max_response_bytes: Option<u64>,
+    params: Option<RpcAccountInfoConfig>,
 ) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let accounts = client
-        .get_token_accounts_by_delegate(&pubkey, filter, config, max_response_bytes)
-        .await?;
-
+    let accounts = client.get_token_accounts_by_delegate(&pubkey, filter, params).await?;
     Ok(accounts.into_iter().map(Into::into).collect())
 }
 
@@ -413,17 +458,15 @@ pub async fn sol_get_token_accounts_by_delegate(
 #[update(name = "sol_getTokenAccountsByOwner")]
 #[candid_method(rename = "sol_getTokenAccountsByOwner")]
 pub async fn sol_get_token_accounts_by_owner(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     pubkey: String,
     filter: RpcTokenAccountsFilter,
-    config: Option<RpcAccountInfoConfig>,
-    max_response_bytes: Option<u64>,
+    params: Option<RpcAccountInfoConfig>,
 ) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let accounts = client
-        .get_token_accounts_by_owner(&pubkey, filter, config, max_response_bytes)
-        .await?;
+    let accounts = client.get_token_accounts_by_owner(&pubkey, filter, params).await?;
 
     Ok(accounts.into_iter().map(Into::into).collect())
 }
@@ -434,16 +477,14 @@ pub async fn sol_get_token_accounts_by_owner(
 #[update(name = "sol_getTokenLargestAccounts")]
 #[candid_method(rename = "sol_getTokenLargestAccounts")]
 pub async fn sol_get_token_largest_accounts(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     mint: String,
-    config: Option<CommitmentConfig>,
-    max_response_bytes: Option<u64>,
+    params: Option<CommitmentConfig>,
 ) -> RpcResult<Vec<TaggedRpcTokenAccountBalance>> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let mint = Pubkey::from_str(&mint).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let accounts = client
-        .get_token_largest_accounts(&mint, config, max_response_bytes)
-        .await?;
+    let accounts = client.get_token_largest_accounts(&mint, params).await?;
 
     Ok(accounts.into_iter().map(Into::into).collect())
 }
@@ -454,14 +495,14 @@ pub async fn sol_get_token_largest_accounts(
 #[update(name = "sol_getTokenSupply")]
 #[candid_method(rename = "sol_getTokenSupply")]
 pub async fn sol_get_token_supply(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     mint: String,
-    config: Option<CommitmentConfig>,
-    max_response_bytes: Option<u64>,
+    params: Option<CommitmentConfig>,
 ) -> RpcResult<UiTokenAmount> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let mint = Pubkey::from_str(&mint).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    client.get_token_supply(&mint, config, max_response_bytes).await
+    client.get_token_supply(&mint, params).await
 }
 
 ///
@@ -469,9 +510,13 @@ pub async fn sol_get_token_supply(
 ///
 #[update(name = "sol_getLatestBlockhash")]
 #[candid_method(rename = "sol_getLatestBlockhash")]
-pub async fn sol_get_latest_blockhash(provider: String, config: Option<RpcContextConfig>) -> RpcResult<String> {
-    let client = rpc_client(&provider);
-    let blockhash = client.get_latest_blockhash(config).await?;
+pub async fn sol_get_latest_blockhash(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: Option<RpcContextConfig>,
+) -> RpcResult<String> {
+    let client = rpc_client(source, config);
+    let blockhash = client.get_latest_blockhash(params).await?;
     Ok(blockhash.to_string())
 }
 
@@ -482,11 +527,12 @@ pub async fn sol_get_latest_blockhash(provider: String, config: Option<RpcContex
 #[update(name = "sol_getSignatureStatuses")]
 #[candid_method(rename = "sol_getSignatureStatuses")]
 pub async fn sol_get_signature_statuses(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     signatures: Vec<String>,
-    config: Option<RpcSignatureStatusConfig>,
+    params: Option<RpcSignatureStatusConfig>,
 ) -> RpcResult<Vec<Option<TransactionStatus>>> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
 
     let signatures: Vec<Signature> = signatures
         .into_iter()
@@ -494,7 +540,7 @@ pub async fn sol_get_signature_statuses(
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| RpcError::ParseError(e.to_string()))?;
 
-    client.get_signature_statuses(&signatures, config).await
+    client.get_signature_statuses(&signatures, params).await
 }
 
 ///
@@ -503,14 +549,14 @@ pub async fn sol_get_signature_statuses(
 #[update(name = "sol_getTransaction")]
 #[candid_method(rename = "sol_getTransaction")]
 pub async fn sol_get_transaction(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     signature: String,
-    config: Option<RpcTransactionConfig>,
-    max_response_bytes: Option<u64>,
+    params: Option<RpcTransactionConfig>,
 ) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let signature = Signature::from_str(&signature).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let response = client.get_transaction(&signature, config, max_response_bytes).await?;
+    let response = client.get_transaction(&signature, params).await?;
     Ok(response.into())
 }
 
@@ -519,9 +565,13 @@ pub async fn sol_get_transaction(
 ///
 #[update(name = "sol_getTransactionCount")]
 #[candid_method(rename = "sol_getTransactionCount")]
-pub async fn sol_get_transaction_count(provider: String, config: Option<RpcContextConfig>) -> RpcResult<u64> {
-    let client = rpc_client(&provider);
-    client.get_transaction_count(config).await
+pub async fn sol_get_transaction_count(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: Option<RpcContextConfig>,
+) -> RpcResult<u64> {
+    let client = rpc_client(source, config);
+    client.get_transaction_count(params).await
 }
 
 ///
@@ -529,8 +579,8 @@ pub async fn sol_get_transaction_count(provider: String, config: Option<RpcConte
 ///
 #[update(name = "sol_getVersion")]
 #[candid_method(rename = "sol_getVersion")]
-pub async fn sol_get_version(provider: String) -> RpcResult<RpcVersionInfo> {
-    let client = rpc_client(&provider);
+pub async fn sol_get_version(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<RpcVersionInfo> {
+    let client = rpc_client(source, config);
     client.get_version().await
 }
 
@@ -540,11 +590,12 @@ pub async fn sol_get_version(provider: String) -> RpcResult<RpcVersionInfo> {
 #[update(name = "sol_getVoteAccounts")]
 #[candid_method(rename = "sol_getVoteAccounts")]
 pub async fn sol_get_vote_accounts(
-    provider: String,
-    config: RpcGetVoteAccountsConfig,
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: RpcGetVoteAccountsConfig,
 ) -> RpcResult<RpcVoteAccountStatus> {
-    let client = rpc_client(&provider);
-    client.get_vote_accounts(config).await
+    let client = rpc_client(source, config);
+    client.get_vote_accounts(params).await
 }
 
 ///
@@ -552,8 +603,13 @@ pub async fn sol_get_vote_accounts(
 ///
 #[update(name = "sol_requestAirdrop")]
 #[candid_method(rename = "sol_requestAirdrop")]
-pub async fn sol_request_airdrop(provider: String, pubkey: String, lamports: u64) -> RpcResult<String> {
-    let client = rpc_client(&provider);
+pub async fn sol_request_airdrop(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    pubkey: String,
+    lamports: u64,
+) -> RpcResult<String> {
+    let client = rpc_client(source, config);
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
     let signature = client.request_airdrop(&pubkey, lamports).await?;
     Ok(signature)
@@ -566,13 +622,14 @@ pub async fn sol_request_airdrop(provider: String, pubkey: String, lamports: u64
 #[update(name = "sol_sendTransaction")]
 #[candid_method(rename = "sol_sendTransaction")]
 pub async fn send_transaction(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     raw_signed_transaction: String,
-    config: Option<RpcSendTransactionConfig>,
+    params: Option<RpcSendTransactionConfig>,
 ) -> RpcResult<String> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, config);
     let tx = Transaction::from_str(&raw_signed_transaction).expect("Invalid transaction");
-    let signature = client.send_transaction(tx, config.unwrap_or_default()).await?;
+    let signature = client.send_transaction(tx, params.unwrap_or_default()).await?;
     Ok(signature.to_string())
 }
 
@@ -586,17 +643,17 @@ pub async fn send_transaction(
 #[update(name = "sol_getLogs")]
 #[candid_method(rename = "sol_getLogs")]
 pub async fn sol_get_logs(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     pubkey: String,
-    config: Option<RpcSignaturesForAddressConfig>,
-    max_response_bytes: Option<u64>,
+    params: Option<RpcSignaturesForAddressConfig>,
 ) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>> {
-    let client = rpc_client(&provider);
-    let config = config.unwrap_or_default();
-    let commitment = config.commitment;
+    let client = rpc_client(source, config);
+    let params = params.unwrap_or_default();
+    let commitment = params.commitment;
 
     let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let signatures = client.get_signatures_for_address(&pubkey, config).await?;
+    let signatures = client.get_signatures_for_address(&pubkey, params).await?;
 
     client
         .get_transactions(
@@ -605,7 +662,6 @@ pub async fn sol_get_logs(
                 commitment,
                 ..RpcTransactionConfig::default()
             }),
-            max_response_bytes,
         )
         .await
 }
@@ -617,12 +673,12 @@ pub async fn sol_get_logs(
 #[update]
 #[candid_method]
 pub async fn request(
-    provider: String,
+    source: RpcServices,
     method: String,
     params: CandidValue,
     max_response_bytes: Option<u64>,
 ) -> RpcResult<String> {
-    let client = rpc_client(&provider);
+    let client = rpc_client(source, None);
     let res = client
         .call::<_, serde_json::Value>(RpcRequest::Custom { method }, params, max_response_bytes)
         .await?;
@@ -635,7 +691,11 @@ pub async fn request(
 #[query(name = "requestCost")]
 #[candid_method(query, rename = "requestCost")]
 pub fn request_cost(json_rpc_payload: String, max_response_bytes: u64) -> u128 {
-    get_http_request_cost(json_rpc_payload.len() as u64, max_response_bytes)
+    if read_state(|s| s.is_demo_active) {
+        0
+    } else {
+        get_http_request_cost(json_rpc_payload.len() as u64, max_response_bytes)
+    }
 }
 
 #[query(name = "getNodesInSubnet")]

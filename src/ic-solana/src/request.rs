@@ -137,13 +137,13 @@ impl fmt::Display for RpcRequest {
 
 impl RpcRequest {
     pub fn build_json<P: Serialize>(&self, id: u64, params: P) -> Value {
-        serde_json::to_value(JsonRpcRequest::new(self.clone(), params, id)).expect("Failed to serialize request")
+        serde_json::to_value(JsonRpcRequest::new(self, params, id)).expect("Failed to serialize request")
     }
 
     pub fn batch<P: Serialize>(requests: Vec<(Self, P, u64)>) -> Value {
         let payload: Vec<_> = requests
-            .into_iter()
-            .map(|(method, params, id)| JsonRpcRequest::new(method, params, id))
+            .iter()
+            .map(|(method, params, id)| JsonRpcRequest::new(method, params, *id))
             .collect();
 
         serde_json::to_value(payload).expect("Failed to serialize batch request")
@@ -159,7 +159,7 @@ struct JsonRpcRequest<P: Serialize> {
 }
 
 impl<P: Serialize> JsonRpcRequest<P> {
-    fn new(method: RpcRequest, params: P, id: u64) -> Self {
+    fn new(method: impl ToString, params: P, id: u64) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
             method: method.to_string(),

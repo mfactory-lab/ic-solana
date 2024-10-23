@@ -1,5 +1,6 @@
 use {
     candid::{CandidType, Deserialize, Principal},
+    ic_solana::{rpc_client::RpcApi, rpc_result::ConsensusStrategy},
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
     std::borrow::Cow,
@@ -29,7 +30,7 @@ pub struct SendTransactionRequest {
     pub recent_blockhash: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, CandidType, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize, Serialize)]
 pub enum RpcAuth {
     BearerToken { token: String },
     PathSegment { segment: String },
@@ -55,4 +56,23 @@ pub struct UpdateProviderArgs {
     pub url: Option<String>,
     /// Optional authentication
     pub auth: Option<RpcAuth>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
+pub enum RpcServices {
+    Provider(Vec<String>),
+    Custom(Vec<RpcApi>),
+}
+
+#[derive(Clone, PartialEq, Eq, Ord, PartialOrd, CandidType, Deserialize)]
+pub enum RpcService {
+    Provider(String),
+    Custom(RpcApi),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Default, CandidType, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcConfig {
+    pub response_size_estimate: Option<u64>,
+    pub response_consensus: Option<ConsensusStrategy>,
 }
