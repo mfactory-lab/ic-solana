@@ -47,14 +47,14 @@ pub struct RpcSendTransactionConfig {
     pub min_context_slot: Option<Slot>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSimulateTransactionAccountsConfig {
     pub encoding: Option<UiAccountEncoding>,
     pub addresses: Vec<String>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSimulateTransactionConfig {
     #[serde(default)]
@@ -78,7 +78,7 @@ pub struct RpcRequestAirdropConfig {
     pub commitment: Option<CommitmentConfig>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcLeaderScheduleConfig {
     pub identity: Option<String>, // validator identity, as a base-58 encoded string
@@ -121,14 +121,14 @@ impl RpcLeaderScheduleConfigWrapper {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum RpcLargestAccountsFilter {
     Circulating,
     NonCirculating,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcLargestAccountsConfig {
     #[serde(flatten)]

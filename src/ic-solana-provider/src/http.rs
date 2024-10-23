@@ -15,6 +15,8 @@ use {
     ic_solana::rpc_client::{RpcClient, RpcClientConfig},
 };
 
+const DEFAULT_MAX_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
+
 ///
 /// Create an [RpcClient] based on the provided configuration.
 ///
@@ -37,16 +39,16 @@ pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
         let config = RpcClientConfig {
             response_consensus: config.response_consensus,
             response_size_estimate: config.response_size_estimate,
-            cost_calculator: Some(|s| {
+            request_cost_calculator: Some(|req| {
                 let cycles_cost = get_http_request_cost(
-                    s.body.as_ref().map_or(0, |b| b.len() as u64),
-                    s.max_response_bytes.unwrap_or(2 * 1024 * 1024),
+                    req.body.as_ref().map_or(0, |bytes| bytes.len() as u64),
+                    req.max_response_bytes.unwrap_or(DEFAULT_MAX_RESPONSE_BYTES),
                 );
                 (cycles_cost, get_cost_with_collateral(cycles_cost))
             }),
+            host_blocklist_checker: Some(|host| RPC_HOSTS_BLOCKLIST.contains(&host)),
             transform_context: Some(TransformContext::from_name("__transform_json_rpc".to_owned(), vec![])),
             is_demo_active: s.is_demo_active,
-            hosts_blocklist: RPC_HOSTS_BLOCKLIST,
             extra_response_bytes: 0,
         };
 

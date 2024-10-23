@@ -6,6 +6,7 @@ use {
         providers::{do_register_provider, do_unregister_provider, do_update_provider},
         state::STATE,
         types::{RegisterProviderArgs, RpcConfig, RpcServices, UpdateProviderArgs},
+        utils::{parse_pubkey, parse_pubkeys, parse_signature, parse_signatures},
     },
     candid::{candid_method, Principal},
     ic_canisters_http_types::{
@@ -18,19 +19,21 @@ use {
     ic_solana::{
         request::RpcRequest,
         response::{
-            RpcBlockCommitment, RpcBlockProduction, RpcConfirmedTransactionStatusWithSignature, RpcContactInfo,
-            RpcIdentity, RpcInflationGovernor, RpcInflationRate, RpcInflationReward, RpcKeyedAccount, RpcPerfSample,
-            RpcPrioritizationFee, RpcSnapshotSlotInfo, RpcSupply, RpcVersionInfo, RpcVoteAccountStatus,
+            RpcAccountBalance, RpcBlockCommitment, RpcBlockProduction, RpcBlockhash,
+            RpcConfirmedTransactionStatusWithSignature, RpcContactInfo, RpcIdentity, RpcInflationGovernor,
+            RpcInflationRate, RpcInflationReward, RpcKeyedAccount, RpcLeaderSchedule, RpcPerfSample,
+            RpcPrioritizationFee, RpcSimulateTransactionResult, RpcSnapshotSlotInfo, RpcSupply, RpcVersionInfo,
+            RpcVoteAccountStatus,
         },
-        rpc_client::{RpcError, RpcResult},
+        rpc_client::RpcResult,
         types::{
-            Account, CandidValue, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo,
-            EpochSchedule, Pubkey, RpcAccountInfoConfig, RpcBlockConfig, RpcContextConfig, RpcEpochConfig,
-            RpcGetVoteAccountsConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
-            RpcSignaturesForAddressConfig, RpcSupplyConfig, RpcTokenAccountsFilter, RpcTransactionConfig, Signature,
-            Slot, TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedRpcBlockProductionConfig,
-            TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock, Transaction,
-            TransactionStatus, UiTokenAmount,
+            CandidValue, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo, EpochSchedule,
+            RpcAccountInfoConfig, RpcBlockConfig, RpcContextConfig, RpcEpochConfig, RpcGetVoteAccountsConfig,
+            RpcLargestAccountsConfig, RpcLeaderScheduleConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
+            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSimulateTransactionConfig, RpcSupplyConfig,
+            RpcTokenAccountsFilter, RpcTransactionConfig, Slot, TaggedEncodedConfirmedTransactionWithStatusMeta,
+            TaggedRpcBlockProductionConfig, TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance,
+            TaggedUiConfirmedBlock, Transaction, TransactionStatus, UiAccount, UiTokenAmount,
         },
     },
     ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
@@ -57,10 +60,10 @@ pub async fn sol_get_account_info(
     config: Option<RpcConfig>,
     pubkey: String,
     params: Option<RpcAccountInfoConfig>,
-) -> RpcResult<Option<Account>> {
+) -> RpcResult<Option<UiAccount>> {
     let client = rpc_client(source, config);
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let account_info = client.get_account_info(&pubkey, params).await?;
+    let pubkey = parse_pubkey(&pubkey)?;
+    let account_info = client.get_account_info(&pubkey, params).await?.value;
     Ok(account_info)
 }
 
@@ -76,9 +79,9 @@ pub async fn sol_get_balance(
     params: Option<RpcContextConfig>,
 ) -> RpcResult<u64> {
     let client = rpc_client(source, config);
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let pubkey = parse_pubkey(&pubkey)?;
     let balance = client.get_balance(&pubkey, params).await?;
-    Ok(balance)
+    Ok(balance.parse_value())
 }
 
 ///
@@ -136,7 +139,7 @@ pub async fn sol_get_block_production(
     params: TaggedRpcBlockProductionConfig,
 ) -> RpcResult<RpcBlockProduction> {
     let client = rpc_client(source, config);
-    client.get_block_production(params.into()).await
+    Ok(client.get_block_production(params.into()).await?.parse_value())
 }
 
 ///
@@ -322,10 +325,7 @@ pub async fn sol_get_inflation_reward(
     params: RpcEpochConfig,
 ) -> RpcResult<Vec<Option<RpcInflationReward>>> {
     let client = rpc_client(source, config);
-    let pubkeys = addresses
-        .iter()
-        .map(|x| Pubkey::from_str(x).map_err(|e| RpcError::ParseError(e.to_string())))
-        .collect::<Result<Vec<_>, _>>()?;
+    let pubkeys = parse_pubkeys(addresses)?;
     client.get_inflation_reward(&pubkeys, params).await
 }
 
@@ -342,7 +342,7 @@ pub async fn sol_get_signatures_for_address(
     params: RpcSignaturesForAddressConfig,
 ) -> RpcResult<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     let client = rpc_client(source, config);
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let pubkey = parse_pubkey(&pubkey)?;
     let result = client.get_signatures_for_address(&pubkey, params).await?;
     Ok(result)
 }
@@ -401,7 +401,7 @@ pub async fn sol_get_stake_minimum_delegation(
     params: Option<CommitmentConfig>,
 ) -> RpcResult<u64> {
     let client = rpc_client(source, config);
-    client.get_stake_minimum_delegation(params).await.map(|c| c.value)
+    Ok(client.get_stake_minimum_delegation(params).await?.value)
 }
 
 ///
@@ -430,8 +430,8 @@ pub async fn sol_get_token_account_balance(
     params: Option<CommitmentConfig>,
 ) -> RpcResult<UiTokenAmount> {
     let client = rpc_client(source, config);
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    client.get_token_account_balance(&pubkey, params).await
+    let pubkey = parse_pubkey(&pubkey)?;
+    Ok(client.get_token_account_balance(&pubkey, params).await?.parse_value())
 }
 
 ///
@@ -447,8 +447,11 @@ pub async fn sol_get_token_accounts_by_delegate(
     params: Option<RpcAccountInfoConfig>,
 ) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
     let client = rpc_client(source, config);
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let accounts = client.get_token_accounts_by_delegate(&pubkey, filter, params).await?;
+    let pubkey = parse_pubkey(&pubkey)?;
+    let accounts = client
+        .get_token_accounts_by_delegate(&pubkey, filter, params)
+        .await?
+        .parse_value();
     Ok(accounts.into_iter().map(Into::into).collect())
 }
 
@@ -465,9 +468,11 @@ pub async fn sol_get_token_accounts_by_owner(
     params: Option<RpcAccountInfoConfig>,
 ) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
     let client = rpc_client(source, config);
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let accounts = client.get_token_accounts_by_owner(&pubkey, filter, params).await?;
-
+    let pubkey = parse_pubkey(&pubkey)?;
+    let accounts = client
+        .get_token_accounts_by_owner(&pubkey, filter, params)
+        .await?
+        .parse_value();
     Ok(accounts.into_iter().map(Into::into).collect())
 }
 
@@ -483,9 +488,8 @@ pub async fn sol_get_token_largest_accounts(
     params: Option<CommitmentConfig>,
 ) -> RpcResult<Vec<TaggedRpcTokenAccountBalance>> {
     let client = rpc_client(source, config);
-    let mint = Pubkey::from_str(&mint).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    let accounts = client.get_token_largest_accounts(&mint, params).await?;
-
+    let mint = parse_pubkey(&mint)?;
+    let accounts = client.get_token_largest_accounts(&mint, params).await?.parse_value();
     Ok(accounts.into_iter().map(Into::into).collect())
 }
 
@@ -501,8 +505,22 @@ pub async fn sol_get_token_supply(
     params: Option<CommitmentConfig>,
 ) -> RpcResult<UiTokenAmount> {
     let client = rpc_client(source, config);
-    let mint = Pubkey::from_str(&mint).map_err(|e| RpcError::ParseError(e.to_string()))?;
-    client.get_token_supply(&mint, params).await
+    let mint = parse_pubkey(&mint)?;
+    Ok(client.get_token_supply(&mint, params).await?.parse_value())
+}
+
+///
+/// Returns the 20 largest accounts, by lamport balance (results may be cached up to two hours).
+///
+#[update(name = "sol_getLargestAccounts")]
+#[candid_method(rename = "sol_getLargestAccounts")]
+pub async fn sol_get_largest_accounts(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    params: Option<RpcLargestAccountsConfig>,
+) -> RpcResult<Vec<RpcAccountBalance>> {
+    let client = rpc_client(source, config);
+    Ok(client.get_largest_accounts(params).await?.parse_value())
 }
 
 ///
@@ -514,10 +532,44 @@ pub async fn sol_get_latest_blockhash(
     source: RpcServices,
     config: Option<RpcConfig>,
     params: Option<RpcContextConfig>,
-) -> RpcResult<String> {
+) -> RpcResult<RpcBlockhash> {
     let client = rpc_client(source, config);
-    let blockhash = client.get_latest_blockhash(params).await?;
-    Ok(blockhash.to_string())
+    Ok(client.get_latest_blockhash(params).await?.parse_value())
+}
+
+///
+/// Returns the leader schedule for an epoch.
+///
+#[update(name = "sol_getLeaderSchedule")]
+#[candid_method(rename = "sol_getLeaderSchedule")]
+pub async fn sol_get_leader_schedule(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    epoch: u64,
+    params: Option<RpcLeaderScheduleConfig>,
+) -> RpcResult<RpcLeaderSchedule> {
+    let client = rpc_client(source, config);
+    client.get_leader_schedule(epoch, params).await
+}
+
+///
+/// Get the max slot seen from the retransmit stage.
+///
+#[update(name = "sol_getMaxRetransmitSlot")]
+#[candid_method(rename = "sol_getMaxRetransmitSlot")]
+pub async fn sol_get_max_retransmit_slot(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<u64> {
+    let client = rpc_client(source, config);
+    client.get_max_retransmit_slot().await
+}
+
+///
+/// Get the max slot seen from after shred insert.
+///
+#[update(name = "sol_getMaxShredInsertSlot")]
+#[candid_method(rename = "sol_getMaxShredInsertSlot")]
+pub async fn sol_get_max_shred_insert_slot(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<u64> {
+    let client = rpc_client(source, config);
+    client.get_max_shred_insert_slot().await
 }
 
 ///
@@ -536,6 +588,22 @@ pub async fn sol_get_minimum_balance_for_rent_exemption(
 }
 
 ///
+/// Returns the account information for a list of Pubkeys.
+///
+#[update(name = "sol_getMultipleAccounts")]
+#[candid_method(rename = "sol_getMultipleAccounts")]
+pub async fn sol_get_multiple_accounts(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    addresses: Vec<String>,
+    params: Option<RpcAccountInfoConfig>,
+) -> RpcResult<Vec<UiAccount>> {
+    let client = rpc_client(source, config);
+    let pubkeys = parse_pubkeys(addresses)?;
+    client.get_multiple_accounts(pubkeys, params).await
+}
+
+///
 /// Returns all accounts owned by the provided program Pubkey.
 ///
 #[update(name = "sel_getProgramAccounts")]
@@ -546,7 +614,7 @@ pub async fn sol_get_program_accounts(
     program: String,
     params: RpcProgramAccountsConfig,
 ) -> RpcResult<Vec<RpcKeyedAccount>> {
-    let pubkey = Pubkey::from_str(&program).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let pubkey = parse_pubkey(&program)?;
     let client = rpc_client(source, config);
     client.get_program_accounts(&pubkey, params).await
 }
@@ -578,10 +646,7 @@ pub async fn sol_get_recent_prioritization_fees(
     addresses: Vec<String>,
 ) -> RpcResult<Vec<RpcPrioritizationFee>> {
     let client = rpc_client(source, config);
-    let pubkeys = addresses
-        .iter()
-        .map(|x| Pubkey::from_str(x).map_err(|e| RpcError::ParseError(e.to_string())))
-        .collect::<Result<Vec<_>, _>>()?;
+    let pubkeys = parse_pubkeys(addresses)?;
     client.get_recent_prioritization_fees(&pubkeys).await
 }
 
@@ -598,14 +663,8 @@ pub async fn sol_get_signature_statuses(
     params: Option<RpcSignatureStatusConfig>,
 ) -> RpcResult<Vec<Option<TransactionStatus>>> {
     let client = rpc_client(source, config);
-
-    let signatures: Vec<Signature> = signatures
-        .into_iter()
-        .map(|s| Signature::from_str(&s))
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| RpcError::ParseError(e.to_string()))?;
-
-    client.get_signature_statuses(&signatures, params).await
+    let signatures = parse_signatures(signatures)?;
+    Ok(client.get_signature_statuses(&signatures, params).await?.parse_value())
 }
 
 ///
@@ -620,7 +679,7 @@ pub async fn sol_get_transaction(
     params: Option<RpcTransactionConfig>,
 ) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
     let client = rpc_client(source, config);
-    let signature = Signature::from_str(&signature).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let signature = parse_signature(&signature)?;
     let response = client.get_transaction(&signature, params).await?;
     Ok(response.into())
 }
@@ -664,6 +723,31 @@ pub async fn sol_get_vote_accounts(
 }
 
 ///
+/// Returns whether a blockhash is still valid or not.
+///
+#[update(name = "sol_isBlockhashValid")]
+#[candid_method(rename = "sol_isBlockhashValid")]
+pub async fn sol_is_blockhash_valid(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    blockhash: String,
+    params: Option<RpcContextConfig>,
+) -> RpcResult<bool> {
+    let client = rpc_client(source, config);
+    Ok(client.is_blockhash_valid(blockhash, params).await?.parse_value())
+}
+
+///
+/// Returns the lowest slot that the node has information about in its ledger.
+///
+#[update(name = "sol_minimumLedgerSlot")]
+#[candid_method(rename = "sol_minimumLedgerSlot")]
+pub async fn sol_minimum_ledger_slot(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<u64> {
+    let client = rpc_client(source, config);
+    client.minimum_ledger_slot().await
+}
+
+///
 /// Requests an airdrop of lamports to a Pubkey.
 ///
 #[update(name = "sol_requestAirdrop")]
@@ -675,7 +759,7 @@ pub async fn sol_request_airdrop(
     lamports: u64,
 ) -> RpcResult<String> {
     let client = rpc_client(source, config);
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let pubkey = parse_pubkey(&pubkey)?;
     let signature = client.request_airdrop(&pubkey, lamports).await?;
     Ok(signature)
 }
@@ -686,7 +770,7 @@ pub async fn sol_request_airdrop(
 ///
 #[update(name = "sol_sendTransaction")]
 #[candid_method(rename = "sol_sendTransaction")]
-pub async fn send_transaction(
+pub async fn sol_send_transaction(
     source: RpcServices,
     config: Option<RpcConfig>,
     raw_signed_transaction: String,
@@ -696,6 +780,22 @@ pub async fn send_transaction(
     let tx = Transaction::from_str(&raw_signed_transaction).expect("Invalid transaction");
     let signature = client.send_transaction(tx, params.unwrap_or_default()).await?;
     Ok(signature.to_string())
+}
+
+///
+/// Simulate sending a transaction.
+///
+#[update(name = "sol_simulateTransaction")]
+#[candid_method(rename = "sol_simulateTransaction")]
+pub async fn sol_simulate_transaction(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    raw_transaction: String,
+    params: Option<RpcSimulateTransactionConfig>,
+) -> RpcResult<RpcSimulateTransactionResult> {
+    let client = rpc_client(source, config);
+    let tx = Transaction::from_str(&raw_transaction).expect("Invalid transaction");
+    client.simulate_transaction(tx, params.unwrap_or_default()).await
 }
 
 ///
@@ -717,7 +817,7 @@ pub async fn sol_get_logs(
     let params = params.unwrap_or_default();
     let commitment = params.commitment;
 
-    let pubkey = Pubkey::from_str(&pubkey).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let pubkey = parse_pubkey(&pubkey)?;
     let signatures = client.get_signatures_for_address(&pubkey, params).await?;
 
     client
@@ -831,7 +931,7 @@ fn http_request(request: AssetHttpRequest) -> AssetHttpResponse {
 #[query(name = "getMetrics")]
 #[candid_method(query, rename = "getMetrics")]
 fn get_metrics() -> Metrics {
-    read_metrics(|m| m.clone())
+    read_metrics(|m| m.to_owned())
 }
 
 /// Cleans up the HTTP response headers to make them deterministic.
