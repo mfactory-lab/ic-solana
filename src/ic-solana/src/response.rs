@@ -131,7 +131,7 @@ pub struct RpcInflationRate {
     pub epoch: Epoch,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcKeyedAccount {
     pub pubkey: String,
@@ -456,15 +456,15 @@ pub struct RpcConfirmedTransactionStatusWithSignature {
     pub confirmation_status: Option<TransactionConfirmationStatus>,
 }
 
-// #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcPerfSample {
-//     pub slot: Slot,
-//     pub num_transactions: u64,
-//     pub num_non_vote_transactions: Option<u64>,
-//     pub num_slots: u64,
-//     pub sample_period_secs: u16,
-// }
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcPerfSample {
+    pub slot: Slot,
+    pub num_transactions: u64,
+    pub num_non_vote_transactions: Option<u64>,
+    pub num_slots: u64,
+    pub sample_period_secs: u16,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
@@ -499,9 +499,9 @@ pub struct RpcSnapshotSlotInfo {
     pub incremental: Option<Slot>,
 }
 
-// #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcPrioritizationFee {
-//     pub slot: Slot,
-//     pub prioritization_fee: u64,
-// }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct RpcPrioritizationFee {
+    pub slot: Slot,
+    pub prioritization_fee: u64,
+}

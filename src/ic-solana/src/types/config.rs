@@ -172,7 +172,7 @@ pub struct RpcAccountInfoConfig {
     pub min_context_slot: Option<Slot>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcProgramAccountsConfig {
     pub filters: Option<Vec<RpcFilterType>>,
@@ -283,8 +283,11 @@ pub struct RpcBlockConfig {
 impl Default for RpcBlockConfig {
     fn default() -> Self {
         Self {
+            encoding: None,
+            transaction_details: None,
+            rewards: None,
+            commitment: None,
             max_supported_transaction_version: Some(0),
-            ..Default::default()
         }
     }
 }

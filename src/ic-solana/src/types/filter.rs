@@ -11,7 +11,7 @@ const MAX_DATA_SIZE: usize = 128;
 const MAX_DATA_BASE58_SIZE: usize = 175;
 const MAX_DATA_BASE64_SIZE: usize = 172;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum RpcFilterType {
     DataSize(u64),
@@ -102,13 +102,13 @@ pub enum RpcFilterError {
     Base64DecodeError(#[from] base64::DecodeError),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum MemcmpEncoding {
     Binary,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum MemcmpEncodedBytes {
     #[deprecated(since = "1.8.1", note = "Please use MemcmpEncodedBytes::Base58 instead")]
@@ -118,7 +118,7 @@ pub enum MemcmpEncodedBytes {
     Bytes(Vec<u8>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
 #[serde(into = "RpcMemcmp", from = "RpcMemcmp")]
 pub struct Memcmp {
     /// Data offset to begin match

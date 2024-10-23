@@ -5,8 +5,8 @@ use {
         response::{
             OptionalContext, Response, RpcBlockCommitment, RpcBlockProduction, RpcBlockhash,
             RpcConfirmedTransactionStatusWithSignature, RpcContactInfo, RpcIdentity, RpcInflationGovernor,
-            RpcInflationRate, RpcInflationReward, RpcKeyedAccount, RpcSnapshotSlotInfo, RpcSupply,
-            RpcTokenAccountBalance, RpcVersionInfo, RpcVoteAccountStatus,
+            RpcInflationRate, RpcInflationReward, RpcKeyedAccount, RpcPerfSample, RpcPrioritizationFee,
+            RpcSnapshotSlotInfo, RpcSupply, RpcTokenAccountBalance, RpcVersionInfo, RpcVoteAccountStatus,
         },
         rpc_result::{ConsensusStrategy, MultiCallError, MultiCallResults},
         types::{
@@ -68,8 +68,8 @@ impl<T> JsonRpcResponse<T> {
 
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Error, Deserialize, CandidType)]
 pub enum RpcError {
-    #[error("RPC request error: {0}")]
-    RpcRequestError(String),
+    #[error("Validation error: {0}")]
+    ValidationError(String),
 
     #[error("HTTP outcall error: {0}")]
     HttpOutcallError(HttpOutcallError),
@@ -286,7 +286,7 @@ impl RpcClient {
         if !self.config.is_demo_active {
             let cycles_available = ic_cdk::api::call::msg_cycles_available128();
             if cycles_available < cycles_cost_with_collateral {
-                return Err(RpcError::RpcRequestError(format!(
+                return Err(RpcError::Text(format!(
                     "Insufficient cycles: available {}, required {} (with collateral).",
                     cycles_available, cycles_cost_with_collateral
                 )));
@@ -401,6 +401,44 @@ impl RpcClient {
             .map_err(|_| RpcError::ParseError("BlockHash".to_string()))?;
 
         Ok(blockhash)
+    }
+
+    ///
+    /// Returns a list of recent performance samples, in reverse slot order.
+    /// Performance samples are taken every 60 seconds and include the number
+    /// of transactions and slots that occur in a given time window.
+    ///
+    /// Method relies on the `getRecentPerformanceSamples` RPC call to get the performance samples:
+    ///   https://solana.com/docs/rpc/http/getRecentPerformanceSamples
+    ///
+    pub async fn get_recent_performance_samples(&self, limit: u64) -> RpcResult<Vec<RpcPerfSample>> {
+        let response = self
+            .call::<_, _>(
+                RpcRequest::GetRecentPerformanceSamples,
+                json!([limit]),
+                Some(256 * limit),
+            )
+            .await?;
+
+        response.into_rpc_result()
+    }
+
+    ///
+    /// Returns a list of prioritization fees from recent blocks.
+    ///
+    /// Method relies on the `getRecentPrioritizationFees` RPC call to get the prioritization fees:
+    ///   https://solana.com/docs/rpc/http/getRecentPrioritizationFees
+    ///
+    pub async fn get_recent_prioritization_fees(&self, addresses: &[Pubkey]) -> RpcResult<Vec<RpcPrioritizationFee>> {
+        let response = self
+            .call::<_, _>(
+                RpcRequest::GetRecentPrioritizationFees,
+                json!([addresses]),
+                Some(128 * addresses.len() as u64),
+            )
+            .await?;
+
+        response.into_rpc_result()
     }
 
     ///
@@ -731,7 +769,7 @@ impl RpcClient {
         let limit = end_slot.saturating_sub(start_slot);
 
         if limit > MAX_GET_BLOCKS_RANGE {
-            return Err(RpcError::RpcRequestError(format!(
+            return Err(RpcError::ValidationError(format!(
                 "Slot range too large; must be less or equal than {}",
                 MAX_GET_BLOCKS_RANGE
             )));
@@ -759,7 +797,7 @@ impl RpcClient {
         commitment_config: Option<CommitmentConfig>,
     ) -> RpcResult<Vec<u64>> {
         if limit > MAX_GET_BLOCKS_RANGE {
-            return Err(RpcError::RpcRequestError(format!(
+            return Err(RpcError::ValidationError(format!(
                 "Limit too large, must be less or equal than {}",
                 MAX_GET_BLOCKS_RANGE
             )));
@@ -865,7 +903,7 @@ impl RpcClient {
         let limit = limit.unwrap_or(MAX_GET_SLOT_LEADERS);
 
         if limit > MAX_GET_SLOT_LEADERS {
-            return Err(RpcError::RpcRequestError(format!(
+            return Err(RpcError::ValidationError(format!(
                 "Exceeded maximum limit of {}",
                 MAX_GET_SLOT_LEADERS
             )));
@@ -976,6 +1014,26 @@ impl RpcClient {
     }
 
     ///
+    /// Returns the minimum balance required to make account rent exempt.
+    ///
+    /// Method relies on the `getMinimumBalanceForRentExemption` RPC call to get the minimum balance for rent exemption:
+    ///   https://solana.com/docs/rpc/http/getMinimumBalanceForRentExemption
+    ///
+    pub async fn get_minimum_balance_for_rent_exemption(
+        &self,
+        data_len: usize,
+        config: Option<CommitmentConfig>,
+    ) -> RpcResult<u64> {
+        self.call::<_, _>(
+            RpcRequest::GetMinimumBalanceForRentExemption,
+            json!([data_len, config]),
+            Some(64),
+        )
+        .await?
+        .into_rpc_result()
+    }
+
+    ///
     /// Returns all accounts owned by the provided program Pubkey.
     ///
     /// Method relies on the `getProgramAccounts` RPC call to get the program accounts:
@@ -1048,7 +1106,7 @@ impl RpcClient {
         let signatures = signatures.iter().map(|s| s.to_string()).collect::<Vec<_>>();
 
         if signatures.len() > 256 {
-            return Err(RpcError::RpcRequestError(
+            return Err(RpcError::ValidationError(
                 "Exceeded maximum signature limit of 256".to_string(),
             ));
         }

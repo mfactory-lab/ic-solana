@@ -19,14 +19,14 @@ use {
         request::RpcRequest,
         response::{
             RpcBlockCommitment, RpcBlockProduction, RpcConfirmedTransactionStatusWithSignature, RpcContactInfo,
-            RpcIdentity, RpcInflationGovernor, RpcInflationRate, RpcInflationReward, RpcSnapshotSlotInfo, RpcSupply,
-            RpcVersionInfo, RpcVoteAccountStatus,
+            RpcIdentity, RpcInflationGovernor, RpcInflationRate, RpcInflationReward, RpcKeyedAccount, RpcPerfSample,
+            RpcPrioritizationFee, RpcSnapshotSlotInfo, RpcSupply, RpcVersionInfo, RpcVoteAccountStatus,
         },
         rpc_client::{RpcError, RpcResult},
         types::{
             Account, CandidValue, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo,
             EpochSchedule, Pubkey, RpcAccountInfoConfig, RpcBlockConfig, RpcContextConfig, RpcEpochConfig,
-            RpcGetVoteAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
+            RpcGetVoteAccountsConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
             RpcSignaturesForAddressConfig, RpcSupplyConfig, RpcTokenAccountsFilter, RpcTransactionConfig, Signature,
             Slot, TaggedEncodedConfirmedTransactionWithStatusMeta, TaggedRpcBlockProductionConfig,
             TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance, TaggedUiConfirmedBlock, Transaction,
@@ -518,6 +518,71 @@ pub async fn sol_get_latest_blockhash(
     let client = rpc_client(source, config);
     let blockhash = client.get_latest_blockhash(params).await?;
     Ok(blockhash.to_string())
+}
+
+///
+/// Returns the minimum balance required to make account rent exempt.
+///
+#[update(name = "sol_getMinimumBalanceForRentExemption")]
+#[candid_method(rename = "sol_getMinimumBalanceForRentExemption")]
+pub async fn sol_get_minimum_balance_for_rent_exemption(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    size: usize,
+    params: Option<CommitmentConfig>,
+) -> RpcResult<u64> {
+    let client = rpc_client(source, config);
+    client.get_minimum_balance_for_rent_exemption(size, params).await
+}
+
+///
+/// Returns all accounts owned by the provided program Pubkey.
+///
+#[update(name = "sel_getProgramAccounts")]
+#[candid_method(rename = "sel_getProgramAccounts")]
+pub async fn sol_get_program_accounts(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    program: String,
+    params: RpcProgramAccountsConfig,
+) -> RpcResult<Vec<RpcKeyedAccount>> {
+    let pubkey = Pubkey::from_str(&program).map_err(|e| RpcError::ParseError(e.to_string()))?;
+    let client = rpc_client(source, config);
+    client.get_program_accounts(&pubkey, params).await
+}
+
+///
+/// Returns a list of recent performance samples, in reverse slot order.
+/// Performance samples are taken every 60 seconds and include the number
+/// of transactions and slots that occur in a given time window.
+///
+#[update(name = "sol_getRecentPerformanceSamples")]
+#[candid_method(rename = "sol_getRecentPerformanceSamples")]
+pub async fn sol_get_recent_performance_samples(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    limit: u64,
+) -> RpcResult<Vec<RpcPerfSample>> {
+    let client = rpc_client(source, config);
+    client.get_recent_performance_samples(limit).await
+}
+
+///
+/// Returns a list of prioritization fees from recent blocks.
+///
+#[update(name = "sol_getRecentPrioritizationFees")]
+#[candid_method(rename = "sol_getRecentPrioritizationFees")]
+pub async fn sol_get_recent_prioritization_fees(
+    source: RpcServices,
+    config: Option<RpcConfig>,
+    addresses: Vec<String>,
+) -> RpcResult<Vec<RpcPrioritizationFee>> {
+    let client = rpc_client(source, config);
+    let pubkeys = addresses
+        .iter()
+        .map(|x| Pubkey::from_str(x).map_err(|e| RpcError::ParseError(e.to_string())))
+        .collect::<Result<Vec<_>, _>>()?;
+    client.get_recent_prioritization_fees(&pubkeys).await
 }
 
 ///

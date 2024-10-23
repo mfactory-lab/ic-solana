@@ -26,7 +26,7 @@ pub struct Account {
 }
 
 /// A duplicate representation of an Account for pretty JSON serialization
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiAccount {
     pub lamports: u64,
@@ -50,7 +50,7 @@ impl UiAccount {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum UiAccountData {
     LegacyBinary(String), // Legacy. Retained for RPC backwards compatibility
