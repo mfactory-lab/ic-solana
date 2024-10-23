@@ -120,37 +120,45 @@ type Result_14 = variant { Ok : RpcIdentity; Err : RpcError };
 type Result_15 = variant { Ok : RpcInflationGovernor; Err : RpcError };
 type Result_16 = variant { Ok : RpcInflationRate; Err : RpcError };
 type Result_17 = variant { Ok : vec opt RpcInflationReward; Err : RpcError };
-type Result_18 = variant { Ok : RpcBlockhash; Err : RpcError };
-type Result_19 = variant {
+type Result_18 = variant { Ok : vec RpcAccountBalance; Err : RpcError };
+type Result_19 = variant { Ok : RpcBlockhash; Err : RpcError };
+type Result_2 = variant { Ok : opt UiAccount; Err : RpcError };
+type Result_20 = variant {
+  Ok : vec record { text; vec nat64 };
+  Err : RpcError;
+};
+type Result_21 = variant {
   Ok : opt EncodedConfirmedTransactionWithStatusMeta;
   Err : RpcError;
 };
-type Result_2 = variant { Ok : opt UiAccount; Err : RpcError };
-type Result_20 = variant {
-  Ok : vec record { text; Result_19 };
+type Result_22 = variant {
+  Ok : vec record { text; Result_21 };
   Err : RpcError;
 };
-type Result_21 = variant { Ok : vec RpcPerfSample; Err : RpcError };
-type Result_22 = variant { Ok : vec RpcPrioritizationFee; Err : RpcError };
-type Result_23 = variant { Ok : vec opt TransactionStatus; Err : RpcError };
-type Result_24 = variant {
+type Result_23 = variant { Ok : vec UiAccount; Err : RpcError };
+type Result_24 = variant { Ok : vec RpcPerfSample; Err : RpcError };
+type Result_25 = variant { Ok : vec RpcPrioritizationFee; Err : RpcError };
+type Result_26 = variant { Ok : vec opt TransactionStatus; Err : RpcError };
+type Result_27 = variant {
   Ok : vec RpcConfirmedTransactionStatusWithSignature;
   Err : RpcError;
 };
-type Result_25 = variant { Ok : RpcSupply; Err : RpcError };
-type Result_26 = variant { Ok : UiTokenAmount; Err : RpcError };
-type Result_27 = variant { Ok : vec TaggedRpcKeyedAccount; Err : RpcError };
-type Result_28 = variant {
+type Result_28 = variant { Ok : RpcSupply; Err : RpcError };
+type Result_29 = variant { Ok : UiTokenAmount; Err : RpcError };
+type Result_3 = variant { Ok : nat64; Err : RpcError };
+type Result_30 = variant { Ok : vec TaggedRpcKeyedAccount; Err : RpcError };
+type Result_31 = variant {
   Ok : vec TaggedRpcTokenAccountBalance;
   Err : RpcError;
 };
-type Result_29 = variant {
+type Result_32 = variant {
   Ok : TaggedEncodedConfirmedTransactionWithStatusMeta;
   Err : RpcError;
 };
-type Result_3 = variant { Ok : nat64; Err : RpcError };
-type Result_30 = variant { Ok : RpcVersionInfo; Err : RpcError };
-type Result_31 = variant { Ok : RpcVoteAccountStatus; Err : RpcError };
+type Result_33 = variant { Ok : RpcVersionInfo; Err : RpcError };
+type Result_34 = variant { Ok : RpcVoteAccountStatus; Err : RpcError };
+type Result_35 = variant { Ok : bool; Err : RpcError };
+type Result_36 = variant { Ok : RpcSimulateTransactionResult; Err : RpcError };
 type Result_4 = variant { Ok; Err : TransactionError };
 type Result_5 = variant { Ok : TaggedUiConfirmedBlock; Err : RpcError };
 type Result_6 = variant { Ok : RpcBlockCommitment; Err : RpcError };
@@ -165,6 +173,7 @@ type Reward = record {
   rewardType : opt RewardType;
 };
 type RewardType = variant { Fee; Rent; Voting; Staking };
+type RpcAccountBalance = record { lamports : nat64; address : text };
 type RpcAccountInfoConfig = record {
   encoding : opt UiAccountEncoding;
   data_slice : opt UiDataSliceConfig;
@@ -274,6 +283,15 @@ type RpcInflationReward = record {
   post_balance : nat64;
 };
 type RpcKeyedAccount = record { pubkey : text; account : UiAccount };
+type RpcLargestAccountsConfig = record {
+  filter : opt RpcLargestAccountsFilter;
+  commitment : opt CommitmentConfig;
+};
+type RpcLargestAccountsFilter = variant { NonCirculating; Circulating };
+type RpcLeaderScheduleConfig = record {
+  identity : opt text;
+  commitment : opt CommitmentConfig;
+};
 type RpcPerfSample = record {
   num_transactions : nat64;
   slot : nat64;
@@ -302,6 +320,27 @@ type RpcSignaturesForAddressConfig = record {
   before : opt text;
   until : opt text;
   commitment : opt CommitmentConfig;
+};
+type RpcSimulateTransactionAccountsConfig = record {
+  encoding : opt UiAccountEncoding;
+  addresses : vec text;
+};
+type RpcSimulateTransactionConfig = record {
+  inner_instructions : bool;
+  encoding : opt UiTransactionEncoding;
+  replace_recent_blockhash : bool;
+  min_context_slot : opt nat64;
+  accounts : opt RpcSimulateTransactionAccountsConfig;
+  commitment : opt CommitmentConfig;
+  sig_verify : bool;
+};
+type RpcSimulateTransactionResult = record {
+  err : opt TransactionError;
+  inner_instructions : opt vec UiInnerInstructions;
+  logs : opt vec text;
+  return_data : opt UiTransactionReturnData;
+  accounts : opt vec opt UiAccount;
+  units_consumed : opt nat64;
 };
 type RpcSnapshotSlotInfo = record { full : nat64; incremental : opt nat64 };
 type RpcSupply = record {
@@ -662,41 +701,60 @@ service : (InitArgs) -> {
       vec text,
       RpcEpochConfig,
     ) -> (Result_17);
+  sol_getLargestAccounts : (
+      RpcServices,
+      opt RpcConfig,
+      opt RpcLargestAccountsConfig,
+    ) -> (Result_18);
   sol_getLatestBlockhash : (
       RpcServices,
       opt RpcConfig,
       opt RpcContextConfig,
-    ) -> (Result_18);
+    ) -> (Result_19);
+  sol_getLeaderSchedule : (
+      RpcServices,
+      opt RpcConfig,
+      nat64,
+      opt RpcLeaderScheduleConfig,
+    ) -> (Result_20);
   sol_getLogs : (
       RpcServices,
       opt RpcConfig,
       text,
       opt RpcSignaturesForAddressConfig,
-    ) -> (Result_20);
+    ) -> (Result_22);
+  sol_getMaxRetransmitSlot : (RpcServices, opt RpcConfig) -> (Result_3);
+  sol_getMaxShredInsertSlot : (RpcServices, opt RpcConfig) -> (Result_3);
   sol_getMinimumBalanceForRentExemption : (
       RpcServices,
       opt RpcConfig,
       nat64,
       opt CommitmentConfig,
     ) -> (Result_3);
+  sol_getMultipleAccounts : (
+      RpcServices,
+      opt RpcConfig,
+      vec text,
+      opt RpcAccountInfoConfig,
+    ) -> (Result_23);
   sol_getRecentPerformanceSamples : (RpcServices, opt RpcConfig, nat64) -> (
-      Result_21,
+      Result_24,
     );
   sol_getRecentPrioritizationFees : (RpcServices, opt RpcConfig, vec text) -> (
-      Result_22,
+      Result_25,
     );
   sol_getSignatureStatuses : (
       RpcServices,
       opt RpcConfig,
       vec text,
       opt RpcSignatureStatusConfig,
-    ) -> (Result_23);
+    ) -> (Result_26);
   sol_getSignaturesForAddress : (
       RpcServices,
       opt RpcConfig,
       text,
       RpcSignaturesForAddressConfig,
-    ) -> (Result_24);
+    ) -> (Result_27);
   sol_getSlot : (RpcServices, opt RpcConfig, opt RpcContextConfig) -> (
       Result_3,
     );
@@ -711,56 +769,63 @@ service : (InitArgs) -> {
       opt RpcConfig,
       opt CommitmentConfig,
     ) -> (Result_3);
-  sol_getSupply : (RpcServices, opt RpcConfig, RpcSupplyConfig) -> (Result_25);
+  sol_getSupply : (RpcServices, opt RpcConfig, RpcSupplyConfig) -> (Result_28);
   sol_getTokenAccountBalance : (
       RpcServices,
       opt RpcConfig,
       text,
       opt CommitmentConfig,
-    ) -> (Result_26);
+    ) -> (Result_29);
   sol_getTokenAccountsByDelegate : (
       RpcServices,
       opt RpcConfig,
       text,
       RpcTokenAccountsFilter,
       opt RpcAccountInfoConfig,
-    ) -> (Result_27);
+    ) -> (Result_30);
   sol_getTokenAccountsByOwner : (
       RpcServices,
       opt RpcConfig,
       text,
       RpcTokenAccountsFilter,
       opt RpcAccountInfoConfig,
-    ) -> (Result_27);
+    ) -> (Result_30);
   sol_getTokenLargestAccounts : (
       RpcServices,
       opt RpcConfig,
       text,
       opt CommitmentConfig,
-    ) -> (Result_28);
+    ) -> (Result_31);
   sol_getTokenSupply : (
       RpcServices,
       opt RpcConfig,
       text,
       opt CommitmentConfig,
-    ) -> (Result_26);
+    ) -> (Result_29);
   sol_getTransaction : (
       RpcServices,
       opt RpcConfig,
       text,
       opt RpcTransactionConfig,
-    ) -> (Result_29);
+    ) -> (Result_32);
   sol_getTransactionCount : (
       RpcServices,
       opt RpcConfig,
       opt RpcContextConfig,
     ) -> (Result_3);
-  sol_getVersion : (RpcServices, opt RpcConfig) -> (Result_30);
+  sol_getVersion : (RpcServices, opt RpcConfig) -> (Result_33);
   sol_getVoteAccounts : (
       RpcServices,
       opt RpcConfig,
       RpcGetVoteAccountsConfig,
-    ) -> (Result_31);
+    ) -> (Result_34);
+  sol_isBlockhashValid : (
+      RpcServices,
+      opt RpcConfig,
+      text,
+      opt RpcContextConfig,
+    ) -> (Result_35);
+  sol_minimumLedgerSlot : (RpcServices, opt RpcConfig) -> (Result_3);
   sol_requestAirdrop : (RpcServices, opt RpcConfig, text, nat64) -> (Result);
   sol_sendTransaction : (
       RpcServices,
@@ -768,6 +833,12 @@ service : (InitArgs) -> {
       text,
       opt RpcSendTransactionConfig,
     ) -> (Result);
+  sol_simulateTransaction : (
+      RpcServices,
+      opt RpcConfig,
+      text,
+      opt RpcSimulateTransactionConfig,
+    ) -> (Result_36);
   unregisterProvider : (text) -> (bool);
   updateProvider : (UpdateProviderArgs) -> ();
 }
