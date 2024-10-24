@@ -1,24 +1,13 @@
 use {
-    crate::rpc_client::{RpcApi, RpcError, RpcResult},
-    candid::CandidType,
+    crate::rpc_client::types::{ConsensusStrategy, RpcApi, RpcError, RpcResult},
     ic_canister_log::log,
     ic_solana_common::logs::INFO,
-    serde::{Deserialize, Serialize},
+    serde::Serialize,
     std::{
         collections::{BTreeMap, BTreeSet},
         fmt::Debug,
     },
 };
-
-#[derive(Clone, Debug, PartialEq, Eq, Default, Deserialize, CandidType)]
-pub enum ConsensusStrategy {
-    /// All providers must return the same non-error result.
-    #[default]
-    Equality,
-
-    /// A subset of providers must return the same non-error result.
-    Threshold(u8),
-}
 
 /// Aggregates responses of different providers to the same query.
 /// Guaranteed to be non-empty.

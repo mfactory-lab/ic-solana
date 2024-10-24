@@ -4,15 +4,15 @@ use {
             CANISTER_OVERHEAD, COLLATERAL_CYCLES_PER_NODE, HTTP_OUTCALL_REQUEST_BASE_COST,
             HTTP_OUTCALL_REQUEST_COST_PER_BYTE, HTTP_OUTCALL_REQUEST_PER_NODE_COST,
             HTTP_OUTCALL_RESPONSE_COST_PER_BYTE, INGRESS_MESSAGE_BYTE_RECEIVED_COST, INGRESS_MESSAGE_RECEIVED_COST,
-            INGRESS_OVERHEAD_BYTES, NODES_IN_SUBNET, RPC_HOSTS_BLOCKLIST, RPC_URL_COST_BYTES,
+            INGRESS_OVERHEAD_BYTES, NODES_IN_SUBNET, RPC_URL_COST_BYTES,
         },
         providers::find_provider,
         state::read_state,
-        types::{RpcConfig, RpcServices},
+        utils::validate_hostname,
     },
     ic_canisters_http_types::{HttpRequest, HttpResponse, HttpResponseBuilder},
     ic_cdk::api::management_canister::http_request::TransformContext,
-    ic_solana::rpc_client::{RpcClient, RpcClientConfig},
+    ic_solana::rpc_client::{RpcClient, RpcClientConfig, RpcConfig, RpcServices},
 };
 
 const DEFAULT_MAX_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
@@ -46,12 +46,11 @@ pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
                 );
                 (cycles_cost, get_cost_with_collateral(cycles_cost))
             }),
-            host_blocklist_checker: Some(|host| RPC_HOSTS_BLOCKLIST.contains(&host)),
+            host_validator: Some(|host| validate_hostname(host).is_ok()),
             transform_context: Some(TransformContext::from_name("__transform_json_rpc".to_owned(), vec![])),
             is_demo_active: s.is_demo_active,
             extra_response_bytes: 0,
         };
-
         RpcClient::new(providers, Some(config))
     })
 }

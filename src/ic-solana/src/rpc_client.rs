@@ -9,32 +9,29 @@ use {
             RpcPrioritizationFee, RpcSimulateTransactionResult, RpcSnapshotSlotInfo, RpcSupply, RpcTokenAccountBalance,
             RpcVersionInfo, RpcVoteAccountStatus,
         },
-        rpc_result::{ConsensusStrategy, MultiCallError, MultiCallResults},
+        rpc_client::multi_call::{MultiCallError, MultiCallResults},
         types::{
-            Cluster, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, Epoch, EpochInfo, EpochSchedule,
-            Pubkey, RpcAccountInfoConfig, RpcBlockConfig, RpcBlockProductionConfig, RpcContextConfig, RpcEpochConfig,
+            CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, Epoch, EpochInfo, EpochSchedule, Pubkey,
+            RpcAccountInfoConfig, RpcBlockConfig, RpcBlockProductionConfig, RpcContextConfig, RpcEpochConfig,
             RpcGetVoteAccountsConfig, RpcLargestAccountsConfig, RpcLeaderScheduleConfig, RpcProgramAccountsConfig,
             RpcSendTransactionConfig, RpcSignatureStatusConfig, RpcSignaturesForAddressConfig,
             RpcSimulateTransactionConfig, RpcSupplyConfig, RpcTokenAccountsFilter, RpcTransactionConfig, Signature,
             Slot, Transaction, TransactionStatus, UiAccount, UiConfirmedBlock, UiTokenAmount, UiTransactionEncoding,
+            UnixTimestamp,
         },
     },
     anyhow::Result,
     base64::{prelude::BASE64_STANDARD, Engine},
-    candid::CandidType,
     ic_canister_log::log,
-    ic_cdk::api::{
-        call::RejectionCode,
-        management_canister::http_request::{
-            http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, TransformContext,
-        },
+    ic_cdk::api::management_canister::http_request::{
+        http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, TransformContext,
     },
     ic_solana_common::{
         add_metric_entry,
         logs::DEBUG,
         metrics::{MetricRpcHost, MetricRpcMethod},
     },
-    serde::{de::DeserializeOwned, Deserialize, Serialize},
+    serde::{de::DeserializeOwned, Serialize},
     serde_json::{json, Value},
     std::{
         cell::RefCell,
@@ -42,118 +39,15 @@ use {
         fmt::Debug,
         str::FromStr,
     },
-    thiserror::Error,
 };
+
+mod multi_call;
+mod types;
+
+pub use types::*;
 
 thread_local! {
     static NEXT_ID: RefCell<u64> = RefCell::default();
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct JsonRpcResponse<T> {
-    pub jsonrpc: String,
-    pub result: Option<T>,
-    pub error: Option<JsonRpcError>,
-    pub id: u64,
-}
-
-impl<T> From<JsonRpcResponse<T>> for RpcResult<T> {
-    fn from(response: JsonRpcResponse<T>) -> Self {
-        match (response.result, response.error) {
-            (Some(result), _) => Ok(result),
-            (None, Some(error)) => Err(error.into()),
-            (None, None) => Err(RpcError::Text(
-                "Empty response: both result and error are None".to_string(),
-            )),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Error, Deserialize, CandidType)]
-pub enum RpcError {
-    #[error("Validation error: {0}")]
-    ValidationError(String),
-
-    #[error("HTTP outcall error: {0}")]
-    HttpOutcallError(HttpOutcallError),
-
-    #[error("JSON-RPC error: {0}")]
-    JsonRpcError(JsonRpcError),
-
-    #[error("Parse error: expected {0}")]
-    ParseError(String),
-
-    #[error("Inconsistent response: {0:?}")]
-    InconsistentResponse(Vec<(RpcApi, String)>),
-
-    #[error("{0}")]
-    Text(String),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, CandidType, Serialize, Deserialize, Error)]
-#[error("JSON-RPC error (code: {code}): {message}")]
-pub struct JsonRpcError {
-    pub code: i64,
-    pub message: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, CandidType, Deserialize, Error)]
-pub enum HttpOutcallError {
-    /// Error from the IC system API.
-    #[error("IC error (code: {code:?}): {message}")]
-    IcError { code: RejectionCode, message: String },
-    /// Response is not a valid JSON-RPC response,
-    /// which means that the response was not successful (status other than 2xx)
-    /// or that the response body could not be deserialized into a JSON-RPC response.
-    #[error("Invalid HTTP JSON-RPC response: status {status}, body: {body}, parsing error: {parsing_error:?}")]
-    InvalidHttpJsonRpcResponse {
-        status: u16,
-        body: String,
-        #[serde(rename = "parsingError")]
-        parsing_error: Option<String>,
-    },
-}
-
-impl From<HttpOutcallError> for RpcError {
-    fn from(err: HttpOutcallError) -> Self {
-        RpcError::HttpOutcallError(err)
-    }
-}
-
-impl From<JsonRpcError> for RpcError {
-    fn from(err: JsonRpcError) -> Self {
-        RpcError::JsonRpcError(err)
-    }
-}
-
-impl From<serde_json::Error> for RpcError {
-    fn from(e: serde_json::Error) -> Self {
-        RpcError::ParseError(e.to_string())
-    }
-}
-
-pub type RpcResult<T> = Result<T, RpcError>;
-
-pub type RequestCostCalculator = fn(&CanisterHttpRequestArgument) -> (u128, u128);
-pub type HostBlocklistChecker = fn(&str) -> bool;
-
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, CandidType, Deserialize)]
-pub struct RpcApi {
-    pub network: String,
-    pub headers: Option<Vec<HttpHeader>>,
-}
-
-impl RpcApi {
-    pub fn cluster(&self) -> Cluster {
-        Cluster::from_str(&self.network).expect("Failed to parse cluster url")
-    }
-}
-
-impl Debug for RpcApi {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let host = self.cluster().host_str().unwrap_or("N/A".to_string());
-        write!(f, "RpcApi {{ host: {} }}", host) // URL or header value could contain API keys
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -161,7 +55,7 @@ pub struct RpcClientConfig {
     pub response_consensus: Option<ConsensusStrategy>,
     pub response_size_estimate: Option<u64>,
     pub request_cost_calculator: Option<RequestCostCalculator>,
-    pub host_blocklist_checker: Option<HostBlocklistChecker>,
+    pub host_validator: Option<HostValidator>,
     pub transform_context: Option<TransformContext>,
     pub is_demo_active: bool,
     pub extra_response_bytes: u64,
@@ -173,7 +67,7 @@ impl Default for RpcClientConfig {
             response_consensus: None,
             response_size_estimate: None,
             request_cost_calculator: None,
-            host_blocklist_checker: None,
+            host_validator: None,
             transform_context: None,
             is_demo_active: false,
             extra_response_bytes: 2 * 1024, // 2KB
@@ -196,7 +90,7 @@ impl RpcClient {
     }
 
     fn consensus_strategy(&self) -> ConsensusStrategy {
-        self.config.response_consensus.as_ref().cloned().unwrap_or_default()
+        self.config.response_consensus.as_ref().copied().unwrap_or_default()
     }
 
     ///
@@ -275,7 +169,7 @@ impl RpcClient {
         let rpc_host = MetricRpcHost(host.to_string());
         let rpc_method = MetricRpcMethod(Self::find_rpc_method_name(payload).to_string());
 
-        if let Some(is_blocked) = self.config.host_blocklist_checker {
+        if let Some(is_blocked) = self.config.host_validator {
             if is_blocked(host) {
                 add_metric_entry!(err_host_not_allowed, rpc_host.clone(), 1);
                 return Err(RpcError::Text(format!("Disallowed RPC service host: {}", host)));
@@ -321,9 +215,9 @@ impl RpcClient {
 
                 Ok(response.body)
             }
-            Err((code, message)) => {
+            Err(error) => {
                 add_metric_entry!(err_http_outcall, (rpc_method, rpc_host), 1);
-                Err(HttpOutcallError::IcError { code, message }.into())
+                Err(error.into())
             }
         }
     }
@@ -493,7 +387,7 @@ impl RpcClient {
     /// Method relies on the `getBlockTime` RPC call to get the block time:
     ///   https://solana.com/docs/rpc/http/getBlockTime
     ///
-    pub async fn get_block_time(&self, slot: Slot) -> RpcResult<i64> {
+    pub async fn get_block_time(&self, slot: Slot) -> RpcResult<UnixTimestamp> {
         self.call(RpcRequest::GetBlockTime, json!([slot]), Some(45))
             .await?
             .into()
@@ -1376,6 +1270,17 @@ impl RpcClient {
         }
     }
 
+    ///
+    /// Extracts the JSON-RPC `method` name from the request payload.
+    ///
+    /// This function searches for the `method` field within the provided JSON-RPC
+    /// request payload. It handles both single and batch requests:
+    ///
+    /// - **Single Request**: Retrieves the `method` directly from the payload.
+    /// - **Batch Request**: Retrieves the `method` from the first request in the batch.
+    ///
+    /// If the `method` field is not found in either case returns `"unknown"`.
+    ///
     fn find_rpc_method_name(payload: &Value) -> &str {
         payload
             .pointer("/method")

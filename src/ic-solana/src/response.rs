@@ -233,20 +233,6 @@ pub struct RpcVoteAccountInfo {
     pub root_slot: Slot,
 }
 
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcSignatureConfirmation {
-//     pub confirmations: usize,
-//     pub status: Result<()>,
-// }
-
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-// #[serde(rename_all = "camelCase")]
-// pub struct RpcStorageTurn {
-//     pub blockhash: String,
-//     pub slot: Slot,
-// }
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSimulateTransactionResult {
@@ -366,6 +352,20 @@ pub struct RpcPrioritizationFee {
     pub slot: Slot,
     pub prioritization_fee: u64,
 }
+
+// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+// #[serde(rename_all = "camelCase")]
+// pub struct RpcSignatureConfirmation {
+//     pub confirmations: usize,
+//     pub status: Result<()>,
+// }
+
+// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+// #[serde(rename_all = "camelCase")]
+// pub struct RpcStorageTurn {
+//     pub blockhash: String,
+//     pub slot: Slot,
+// }
 
 //
 // PubSub Client types for future usage

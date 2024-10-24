@@ -34,14 +34,6 @@ type EpochSchedule = record {
   first_normal_epoch : nat64;
 };
 type HttpHeader = record { value : text; name : text };
-type HttpOutcallError = variant {
-  IcError : record { code : RejectionCode; message : text };
-  InvalidHttpJsonRpcResponse : record {
-    status : nat16;
-    body : text;
-    parsingError : opt text;
-  };
-};
 type HttpRequest = record {
   url : text;
   method : text;
@@ -247,7 +239,7 @@ type RpcError = variant {
   Text : text;
   InconsistentResponse : vec record { RpcApi; text };
   ValidationError : text;
-  HttpOutcallError : HttpOutcallError;
+  HttpOutcallError : record { code : RejectionCode; message : text };
   ParseError : text;
 };
 type RpcFilterType = variant {

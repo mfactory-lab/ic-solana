@@ -5,7 +5,7 @@ use {
         http::{get_http_request_cost, rpc_client, serve_logs, serve_metrics},
         providers::{do_register_provider, do_unregister_provider, do_update_provider},
         state::STATE,
-        types::{RegisterProviderArgs, RpcConfig, RpcServices, UpdateProviderArgs},
+        types::{RegisterProviderArgs, UpdateProviderArgs},
         utils::{parse_pubkey, parse_pubkeys, parse_signature, parse_signatures},
     },
     candid::{candid_method, Principal},
@@ -25,7 +25,7 @@ use {
             RpcPrioritizationFee, RpcSimulateTransactionResult, RpcSnapshotSlotInfo, RpcSupply, RpcVersionInfo,
             RpcVoteAccountStatus,
         },
-        rpc_client::RpcResult,
+        rpc_client::{RpcConfig, RpcResult, RpcServices},
         types::{
             CandidValue, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo, EpochSchedule,
             RpcAccountInfoConfig, RpcBlockConfig, RpcContextConfig, RpcEpochConfig, RpcGetVoteAccountsConfig,

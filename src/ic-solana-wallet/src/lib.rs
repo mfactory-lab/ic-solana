@@ -7,8 +7,8 @@ use {
     candid::candid_method,
     ic_cdk::update,
     ic_solana::{
-        rpc_client::RpcResult,
-        types::{BlockHash, Pubkey, RpcSendTransactionConfig, Transaction},
+        rpc_client::{RpcConfig, RpcResult, RpcServices},
+        types::{BlockHash, Pubkey, RpcSendTransactionConfig, Signature, Transaction},
     },
     serde_bytes::ByteBuf,
     std::str::FromStr,
@@ -16,7 +16,6 @@ use {
 
 mod eddsa;
 mod state;
-mod types;
 mod utils;
 
 /// Returns the public key of the Solana wallet associated with the caller.
@@ -29,7 +28,7 @@ mod utils;
 #[candid_method]
 pub async fn address() -> String {
     let caller = validate_caller_not_anonymous();
-    let key_name = read_state(|s| s.schnorr_key.clone());
+    let key_name = read_state(|s| s.schnorr_key.to_owned());
     let derived_path = vec![ByteBuf::from(caller.as_slice())];
     let pk = eddsa_public_key(key_name, derived_path).await;
     Pubkey::try_from(pk.as_slice()).expect("Invalid public key").to_string()
@@ -44,15 +43,18 @@ pub async fn address() -> String {
 ///
 /// # Returns
 ///
-/// - `RpcResult<String>`: The signature as a hexadecimal string on success, or an `RpcError` on failure.
+/// - `RpcResult<String>`: The signature as a base58 encoded string on success, or an `RpcError` on failure.
 ///
 #[update]
 #[candid_method]
 pub async fn sign_message(message: String) -> RpcResult<String> {
     let caller = validate_caller_not_anonymous();
-    let key_name = read_state(|s| s.schnorr_key);
+    let key_name = read_state(|s| s.schnorr_key.to_owned());
     let derived_path = vec![ByteBuf::from(caller.as_slice())];
-    let signature = sign_with_eddsa(key_name, derived_path, message.as_bytes().to_vec()).await?;
+    let signature: Signature = sign_with_eddsa(key_name, derived_path, message.as_bytes().into())
+        .await
+        .try_into()
+        .expect("Invalid signature");
     Ok(signature.to_string())
 }
 
@@ -72,9 +74,10 @@ pub async fn sign_message(message: String) -> RpcResult<String> {
 #[update]
 #[candid_method]
 pub async fn send_transaction(
-    provider: String,
+    source: RpcServices,
+    config: Option<RpcConfig>,
     raw_transaction: String,
-    config: Option<RpcSendTransactionConfig>,
+    params: Option<RpcSendTransactionConfig>,
 ) -> RpcResult<String> {
     let caller = validate_caller_not_anonymous();
     let sol_canister = read_state(|s| s.sol_canister);
@@ -84,11 +87,11 @@ pub async fn send_transaction(
     // Fetch the recent blockhash if it's not set
     if tx.message.recent_blockhash == BlockHash::default() {
         let response =
-            ic_cdk::call::<_, (RpcResult<String>,)>(sol_canister, "sol_getLatestBlockhash", (provider,)).await?;
+            ic_cdk::call::<_, (RpcResult<String>,)>(sol_canister, "sol_getLatestBlockhash", (&source,)).await?;
         tx.message.recent_blockhash = BlockHash::from_str(&response.0?).expect("Invalid recent blockhash");
     }
 
-    let key_name = read_state(|s| s.schnorr_key);
+    let key_name = read_state(|s| s.schnorr_key.to_owned());
     let derived_path = vec![ByteBuf::from(caller.as_slice())];
 
     let signature = sign_with_eddsa(key_name, derived_path, tx.message_data())
@@ -101,7 +104,7 @@ pub async fn send_transaction(
     let response = ic_cdk::call::<_, (RpcResult<String>,)>(
         sol_canister,
         "sol_sendTransaction",
-        (&provider, tx.to_string(), config),
+        (&source, config, tx.to_string(), params),
     )
     .await?;
 

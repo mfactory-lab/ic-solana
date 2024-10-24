@@ -99,8 +99,8 @@ fn visit_byte(elem: u8, val: u16, nth_byte: usize) -> VisitResult {
         return Err(VisitError::ByteThreeContinues);
     }
 
-    let shift = u32::try_from(nth_byte).unwrap_or(std::u32::MAX).saturating_mul(7);
-    let elem_val = elem_val.checked_shl(shift).unwrap_or(std::u32::MAX);
+    let shift = u32::try_from(nth_byte).unwrap_or(u32::MAX).saturating_mul(7);
+    let elem_val = elem_val.checked_shl(shift).unwrap_or(u32::MAX);
 
     let new_val = val | elem_val;
     let val = u16::try_from(new_val).map_err(|_| VisitError::Overflow(new_val))?;
@@ -164,7 +164,7 @@ pub fn serialize<S: Serializer, T: Serialize>(elements: &[T], serializer: S) -> 
     let mut seq = serializer.serialize_tuple(1)?;
 
     let len = elements.len();
-    if len > std::u16::MAX as usize {
+    if len > u16::MAX as usize {
         return Err(ser::Error::custom("length larger than u16"));
     }
     let short_len = ShortU16(len as u16);
@@ -217,7 +217,7 @@ where
     T: Deserialize<'de>,
 {
     let visitor = ShortVecVisitor { _t: PhantomData };
-    deserializer.deserialize_tuple(std::usize::MAX, visitor)
+    deserializer.deserialize_tuple(usize::MAX, visitor)
 }
 
 pub struct ShortVec<T>(pub Vec<T>);
