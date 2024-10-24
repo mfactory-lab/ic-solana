@@ -26,7 +26,7 @@ pub struct Account {
 }
 
 /// A duplicate representation of an Account for pretty JSON serialization
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiAccount {
     pub lamports: u64,
@@ -50,7 +50,7 @@ impl UiAccount {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum UiAccountData {
     LegacyBinary(String), // Legacy. Retained for RPC backwards compatibility
@@ -67,23 +67,18 @@ impl UiAccountData {
             UiAccountData::Binary(blob, encoding) => match encoding {
                 UiAccountEncoding::Base58 => bs58::decode(blob).into_vec().ok(),
                 UiAccountEncoding::Base64 => BASE64_STANDARD.decode(blob).ok(),
-                UiAccountEncoding::Base64Zstd
-                | UiAccountEncoding::Binary
-                | UiAccountEncoding::JsonParsed => None,
+                UiAccountEncoding::Base64Zstd | UiAccountEncoding::Binary | UiAccountEncoding::JsonParsed => None,
             },
         }
     }
 }
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum UiAccountEncoding {
-    #[serde(rename = "bianry")]
     Binary, // Legacy. Retained for RPC backwards compatibility
-    #[serde(rename = "base58")]
     Base58,
-    #[serde(rename = "base64")]
     Base64,
-    #[serde(rename = "jsonParsed")]
     JsonParsed,
     #[serde(rename = "base64+zstd")]
     Base64Zstd,

@@ -1,4 +1,12 @@
-use {crate::constants::RPC_HOSTS_BLOCKLIST, candid::Principal, url::Host};
+use {
+    crate::constants::RPC_HOSTS_BLOCKLIST,
+    ic_solana::{
+        rpc_client::{RpcError, RpcResult},
+        types::{Pubkey, Signature},
+    },
+    std::str::FromStr,
+    url::Host,
+};
 
 pub fn hostname_from_url(url: &str) -> Option<String> {
     url::Url::parse(url).ok().and_then(|url| match url.host() {
@@ -13,20 +21,28 @@ pub fn hostname_from_url(url: &str) -> Option<String> {
     })
 }
 
-pub fn validate_caller_not_anonymous() -> Principal {
-    let caller = ic_cdk::caller();
-    if caller == Principal::anonymous() {
-        panic!("Anonymous principal not allowed to make calls.")
-    }
-    caller
-}
-
 pub fn validate_hostname(hostname: &str) -> Result<(), &'static str> {
     if RPC_HOSTS_BLOCKLIST.contains(&hostname) {
         Err("Hostname not allowed")
     } else {
         Ok(())
     }
+}
+
+pub fn parse_pubkey(address: &str) -> RpcResult<Pubkey> {
+    Pubkey::from_str(address).map_err(|e| RpcError::ParseError(e.to_string()))
+}
+
+pub fn parse_pubkeys(addresses: Vec<String>) -> RpcResult<Vec<Pubkey>> {
+    addresses.iter().map(|addr| parse_pubkey(addr)).collect()
+}
+
+pub fn parse_signature(signature: &str) -> RpcResult<Signature> {
+    Signature::from_str(signature).map_err(|e| RpcError::ParseError(e.to_string()))
+}
+
+pub fn parse_signatures(signatures: Vec<String>) -> RpcResult<Vec<Signature>> {
+    signatures.iter().map(|s| parse_signature(s)).collect()
 }
 
 #[cfg(test)]

@@ -1,20 +1,18 @@
-use {
-    serde_json::{json, Value},
-    std::fmt,
-};
+use {serde::Serialize, serde_json::Value, std::fmt};
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum RpcRequest {
-    Custom { method: &'static str },
+    Custom { method: String },
     DeregisterNode,
     GetAccountInfo,
     GetBalance,
     GetBlock,
+    GetBlockCommitment,
     GetBlockHeight,
     GetBlockProduction,
+    GetBlockTime,
     GetBlocks,
     GetBlocksWithLimit,
-    GetBlockTime,
     GetClusterNodes,
     GetEpochInfo,
     GetEpochSchedule,
@@ -67,7 +65,6 @@ pub enum RpcRequest {
     SignVote,
 }
 
-#[allow(deprecated)]
 impl fmt::Display for RpcRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let method = match self {
@@ -76,11 +73,12 @@ impl fmt::Display for RpcRequest {
             RpcRequest::GetAccountInfo => "getAccountInfo",
             RpcRequest::GetBalance => "getBalance",
             RpcRequest::GetBlock => "getBlock",
+            RpcRequest::GetBlockCommitment => "getBlockCommitment",
             RpcRequest::GetBlockHeight => "getBlockHeight",
             RpcRequest::GetBlockProduction => "getBlockProduction",
+            RpcRequest::GetBlockTime => "getBlockTime",
             RpcRequest::GetBlocks => "getBlocks",
             RpcRequest::GetBlocksWithLimit => "getBlocksWithLimit",
-            RpcRequest::GetBlockTime => "getBlockTime",
             RpcRequest::GetClusterNodes => "getClusterNodes",
             RpcRequest::GetEpochInfo => "getEpochInfo",
             RpcRequest::GetEpochSchedule => "getEpochSchedule",
@@ -138,55 +136,77 @@ impl fmt::Display for RpcRequest {
 }
 
 impl RpcRequest {
-    pub fn build_request_json(self, id: u64, params: Value) -> Value {
-        let jsonrpc = "2.0";
-        json!({
-           "jsonrpc": jsonrpc,
-           "id": id,
-           "method": format!("{self}"),
-           "params": params,
-        })
+    pub fn build_json<P: Serialize>(&self, id: u64, params: P) -> Value {
+        serde_json::to_value(JsonRpcRequest::new(self, params, id)).expect("Failed to serialize request")
+    }
+
+    pub fn batch<P: Serialize>(requests: Vec<(Self, P, u64)>) -> Value {
+        let payload: Vec<_> = requests
+            .iter()
+            .map(|(method, params, id)| JsonRpcRequest::new(method, params, *id))
+            .collect();
+
+        serde_json::to_value(payload).expect("Failed to serialize batch request")
+    }
+}
+
+#[derive(Serialize, Debug)]
+struct JsonRpcRequest<P: Serialize> {
+    jsonrpc: String,
+    method: String,
+    params: P,
+    id: u64,
+}
+
+impl<P: Serialize> JsonRpcRequest<P> {
+    fn new(method: impl ToString, params: P, id: u64) -> Self {
+        Self {
+            jsonrpc: "2.0".to_string(),
+            method: method.to_string(),
+            params,
+            id,
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use {super::*, serde_json::json};
 
     #[test]
     fn test_build_request_json() {
         let test_request = RpcRequest::GetAccountInfo;
         let addr = json!("deadbeefXjn8o3yroDHxUtKsZZgoy4GPkPPXfouKNHhx");
-        let request = test_request.build_request_json(1, json!([addr]));
+        let request = test_request.build_json(1, json!([addr]));
         assert_eq!(request["method"], "getAccountInfo");
         assert_eq!(request["params"], json!([addr]));
 
         let test_request = RpcRequest::GetBalance;
-        let request = test_request.build_request_json(1, json!([addr]));
+        let request = test_request.build_json(1, json!([addr]));
         assert_eq!(request["method"], "getBalance");
 
         let test_request = RpcRequest::GetEpochInfo;
-        let request = test_request.build_request_json(1, Value::Null);
+        let request = test_request.build_json(1, Value::Null);
         assert_eq!(request["method"], "getEpochInfo");
 
         let test_request = RpcRequest::GetSlot;
-        let request = test_request.build_request_json(1, Value::Null);
+        let request = test_request.build_json(1, Value::Null);
         assert_eq!(request["method"], "getSlot");
 
         let test_request = RpcRequest::GetTransactionCount;
-        let request = test_request.build_request_json(1, Value::Null);
+        let request = test_request.build_json(1, Value::Null);
         assert_eq!(request["method"], "getTransactionCount");
 
         let test_request = RpcRequest::RequestAirdrop;
-        let request = test_request.build_request_json(1, Value::Null);
+        let request = test_request.build_json(1, Value::Null);
         assert_eq!(request["method"], "requestAirdrop");
 
         let test_request = RpcRequest::SendTransaction;
-        let request = test_request.build_request_json(1, Value::Null);
+        let request = test_request.build_json(1, Value::Null);
         assert_eq!(request["method"], "sendTransaction");
 
         let test_request = RpcRequest::GetTokenLargestAccounts;
-        let request = test_request.build_request_json(1, Value::Null);
+        let request = test_request.build_json(1, Value::Null);
         assert_eq!(request["method"], "getTokenLargestAccounts");
     }
 }

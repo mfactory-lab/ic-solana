@@ -4,8 +4,7 @@ use {
     candid::{encode_args, encode_one, Decode, Principal},
     common::{
         decode_raw_wasm_result, init, BASIC_IDENTITY, CONTROLLER_PRINCIPAL, SECRET1, SECRET2,
-        SOLANA_DEVNET_CLUSTER_URL, SOLANA_MAINNET_CLUSTER_URL, SOLANA_TESTNET_CLUSTER_URL,
-        USER_PRINCIPAL,
+        SOLANA_DEVNET_CLUSTER_URL, SOLANA_MAINNET_CLUSTER_URL, SOLANA_TESTNET_CLUSTER_URL, USER_PRINCIPAL,
     },
     ic_agent::Agent,
     ic_solana_provider::{auth::Auth, types::RegisterProviderArgs},
@@ -70,8 +69,7 @@ async fn test_request_cost() {
 
     let canister_id = init(&pic).await;
 
-    let solana_client =
-        solana_client::rpc_client::RpcClient::new(SOLANA_DEVNET_CLUSTER_URL.to_string());
+    let solana_client = solana_client::rpc_client::RpcClient::new(SOLANA_DEVNET_CLUSTER_URL.to_string());
 
     let keypair1 = solana_sdk::signer::keypair::Keypair::from_bytes(&SECRET1).unwrap();
     let keypair2 = solana_sdk::signer::keypair::Keypair::from_bytes(&SECRET2).unwrap();
@@ -81,12 +79,7 @@ async fn test_request_cost() {
     let latest_blockhash = solana_client.get_latest_blockhash().unwrap();
 
     // Creating a transaction to send 2 SOL from keypair1 to keypair2
-    let tx = solana_sdk::system_transaction::transfer(
-        &keypair1,
-        &pubkey2,
-        AMOUNT_TO_SEND,
-        latest_blockhash,
-    );
+    let tx = solana_sdk::system_transaction::transfer(&keypair1, &pubkey2, AMOUNT_TO_SEND, latest_blockhash);
     let serialized = bincode::serialize(&tx).unwrap();
     let raw_tx = bs58::encode(serialized).into_string();
 

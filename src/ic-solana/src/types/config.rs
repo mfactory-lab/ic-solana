@@ -9,41 +9,52 @@ use {
             Epoch, Slot,
         },
     },
+    candid::CandidType,
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiDataSliceConfig {
     pub offset: usize,
     pub length: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSignatureStatusConfig {
     pub search_transaction_history: bool,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSendTransactionConfig {
     #[serde(default)]
+    /// When true, skip the preflight transaction checks.
+    /// Default: false
     pub skip_preflight: bool,
+    /// Commitment level to use for preflight.
+    /// Default: `Finalized`
     pub preflight_commitment: Option<CommitmentLevel>,
+    /// Encoding used for the transaction data.
+    /// Default: `Base64`
     pub encoding: Option<UiTransactionEncoding>,
+    /// Maximum number of times for the RPC node to retry sending the transaction to the leader.
+    /// If this parameter is not provided, the RPC node will retry the transaction until it is
+    /// finalized or until the blockhash expires.
     pub max_retries: Option<usize>,
+    /// Set the minimum slot at which to perform preflight transaction checks.
     pub min_context_slot: Option<Slot>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSimulateTransactionAccountsConfig {
     pub encoding: Option<UiAccountEncoding>,
     pub addresses: Vec<String>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSimulateTransactionConfig {
     #[serde(default)]
@@ -67,7 +78,7 @@ pub struct RpcRequestAirdropConfig {
     pub commitment: Option<CommitmentConfig>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcLeaderScheduleConfig {
     pub identity: Option<String>, // validator identity, as a base-58 encoded string
@@ -84,7 +95,7 @@ pub struct RpcBlockProductionConfig {
     pub commitment: Option<CommitmentConfig>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcGetVoteAccountsConfig {
     pub vote_pubkey: Option<String>, // validator vote address, as a base-58 encoded string
@@ -110,14 +121,14 @@ impl RpcLeaderScheduleConfigWrapper {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum RpcLargestAccountsFilter {
     Circulating,
     NonCirculating,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcLargestAccountsConfig {
     #[serde(flatten)]
@@ -125,7 +136,7 @@ pub struct RpcLargestAccountsConfig {
     pub filter: Option<RpcLargestAccountsFilter>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSupplyConfig {
     #[serde(flatten)]
@@ -134,7 +145,7 @@ pub struct RpcSupplyConfig {
     pub exclude_non_circulating_accounts_list: bool,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcEpochConfig {
     pub epoch: Option<Epoch>,
@@ -151,7 +162,7 @@ pub enum RpcAccountIndex {
     SplTokenOwner,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcAccountInfoConfig {
     pub encoding: Option<UiAccountEncoding>,
@@ -161,7 +172,7 @@ pub struct RpcAccountInfoConfig {
     pub min_context_slot: Option<Slot>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcProgramAccountsConfig {
     pub filters: Option<Vec<RpcFilterType>>,
@@ -185,7 +196,7 @@ pub struct RpcTransactionLogsConfig {
     pub commitment: Option<CommitmentConfig>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum RpcTokenAccountsFilter {
     Mint(String),
@@ -218,7 +229,7 @@ pub struct RpcBlockSubscribeConfig {
     pub max_supported_transaction_version: Option<u8>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSignaturesForAddressConfig {
     pub before: Option<String>, // Signature as base-58 string
@@ -246,9 +257,7 @@ impl<T: EncodingConfig + Default + Copy> RpcEncodingConfigWrapper<T> {
 
     pub fn convert<U: EncodingConfig + From<T>>(&self) -> RpcEncodingConfigWrapper<U> {
         match self {
-            RpcEncodingConfigWrapper::Deprecated(encoding) => {
-                RpcEncodingConfigWrapper::Deprecated(*encoding)
-            }
+            RpcEncodingConfigWrapper::Deprecated(encoding) => RpcEncodingConfigWrapper::Deprecated(*encoding),
             RpcEncodingConfigWrapper::Current(config) => {
                 RpcEncodingConfigWrapper::Current(config.map(|config| config.into()))
             }
@@ -260,7 +269,7 @@ pub trait EncodingConfig {
     fn new_with_encoding(encoding: &Option<UiTransactionEncoding>) -> Self;
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockConfig {
     pub encoding: Option<UiTransactionEncoding>,
@@ -269,6 +278,18 @@ pub struct RpcBlockConfig {
     #[serde(flatten)]
     pub commitment: Option<CommitmentConfig>,
     pub max_supported_transaction_version: Option<u8>,
+}
+
+impl Default for RpcBlockConfig {
+    fn default() -> Self {
+        Self {
+            encoding: None,
+            transaction_details: None,
+            rewards: None,
+            commitment: None,
+            max_supported_transaction_version: Some(0),
+        }
+    }
 }
 
 impl EncodingConfig for RpcBlockConfig {
@@ -303,7 +324,7 @@ impl From<RpcBlockConfig> for RpcEncodingConfigWrapper<RpcBlockConfig> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcTransactionConfig {
     pub encoding: Option<UiTransactionEncoding>,
@@ -337,7 +358,7 @@ impl RpcBlocksConfigWrapper {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcContextConfig {
     #[serde(flatten)]

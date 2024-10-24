@@ -4,6 +4,7 @@ members = [
     "src/common",
     "src/ic-solana",
     "src/ic-solana-provider",
+    "src/ic-solana-wallet",
     "src/test_canister",
 ]
 
@@ -23,14 +24,16 @@ edition = "2021"
 [workspace.dependencies]
 # Core IC dependencies
 candid = "0.10"
+ic-agent = "0.39"
 ic-cdk = "0.16"
-ic-types = "0.7"
 ic-canister-log = "0.2"
 ic-canisters-http-types = { git = "https://github.com/dfinity/ic", package = "ic-canisters-http-types" }
 ic-crypto-ed25519 = { git = "https://github.com/dfinity/ic", package = "ic-crypto-ed25519" }
 ic-management-canister-types = { git = "https://github.com/dfinity/ic", package = "ic-management-canister-types" }
 ic-metrics-encoder = "1.1"
 ic-stable-structures = "0.6.5"
+ic-types = "0.7"
+ic-utils = "0.39"
 
 # Project-specific dependencies
 ic-solana = { path = "src/ic-solana" }
@@ -56,5 +59,3 @@ inherits = "release"
 # Required by `solana-client` v2.0
 [patch.crates-io]
 curve25519-dalek = { git = "https://github.com/solana-labs/curve25519-dalek.git", rev = "b500cdc2a920cd5bff9e2dd974d7b97349d61464" }
-
-#pocket-ic = { git = "https://github.com/dfinity/ic.git", rev = "afe1a18" }

@@ -19,9 +19,11 @@ ic-solana-common = { workspace = true }
 ic-canister-log = { workspace = true }
 ic-cdk = { workspace = true }
 ic-crypto-ed25519 = { workspace = true }
+ic-sha3 = "1.0.0"
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_bytes = { workspace = true }
 serde-big-array = "0.5.1"
 thiserror = "^1.0.61"
 url = "2.5.0"
+futures = "0.3.31"

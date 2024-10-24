@@ -3,12 +3,13 @@ use {
         auth::{do_deauthorize, is_authorized, Auth},
         constants::PROVIDER_ID_MAX_SIZE,
         state::{mutate_state, read_state},
-        types::{RegisterProviderArgs, RpcApi, RpcAuth, UpdateProviderArgs},
+        types::{RegisterProviderArgs, RpcAuth, UpdateProviderArgs},
         utils::{hostname_from_url, validate_hostname},
     },
     candid::{CandidType, Decode, Deserialize, Encode, Principal},
     ic_canister_log::log,
     ic_cdk::api::{is_controller, management_canister::http_request::HttpHeader},
+    ic_solana::rpc_client::RpcApi,
     ic_solana_common::logs::INFO,
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
@@ -59,7 +60,7 @@ impl RpcProvider {
             }
         }
 
-        RpcApi { url, headers }
+        RpcApi { network: url, headers }
     }
 
     pub fn validate(&self) {
@@ -138,16 +139,8 @@ pub fn do_unregister_provider(caller: Principal, provider_id: &str) -> bool {
     mutate_state(|s| {
         let id = ProviderId::new(provider_id);
         if let Some(provider) = s.rpc_providers.get(&id) {
-            if provider.owner == caller
-                || is_controller(&caller)
-                || is_authorized(&caller, Auth::Manage)
-            {
-                log!(
-                    INFO,
-                    "[{}] Unregistering provider: {:?}",
-                    caller,
-                    provider_id
-                );
+            if provider.owner == caller || is_controller(&caller) || is_authorized(&caller, Auth::Manage) {
+                log!(INFO, "[{}] Unregistering provider: {:?}", caller, provider_id);
                 s.rpc_providers.remove(&id).is_some()
             } else {
                 ic_cdk::trap("You are not authorized");
@@ -163,11 +156,15 @@ pub fn do_update_provider(caller: Principal, args: UpdateProviderArgs) {
     let provider_id = ProviderId::new(args.id);
     mutate_state(|s| match s.rpc_providers.get(&provider_id) {
         Some(mut provider) => {
-            if provider.owner == caller
-                || is_controller(&caller)
-                || is_authorized(&caller, Auth::Manage)
-            {
-                log!(INFO, "[{}] Updating provider: {}", caller, provider_id.0);
+            if provider.owner == caller {
+                if args.url.is_some() {
+                    ic_cdk::trap("You are not authorized to update the `url` field");
+                }
+                if let Some(auth) = args.auth {
+                    provider.auth = Some(auth);
+                }
+                s.rpc_providers.insert(provider_id, provider);
+            } else if is_controller(&caller) || is_authorized(&caller, Auth::Manage) {
                 if let Some(url) = args.url {
                     provider.url = url;
                 }
