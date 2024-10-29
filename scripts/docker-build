@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # vim: ft=bash
-# Build Solana RPC inside docker. This outputs ic-solana-provider.wasm.gz.
+# Build Solana inside docker. This outputs ic-solana-rpc.wasm.gz.
 
 set -euo pipefail
 
@@ -9,7 +9,7 @@ SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPTS_DIR/.."
 
 function title() {
-    echo "Build Solana RPC canister inside Docker"
+    echo "Build Solana inside Docker"
 }
 
 function usage() {
@@ -24,7 +24,7 @@ EOF
 function help() {
     cat << EOF
 
-This will create (and override) "./ic-solana-provider.wasm.gz".
+This will create (and override) "./ic-solana-rpc.wasm.gz".
 EOF
 }
 
@@ -35,8 +35,8 @@ function build() {
 
     # image name and build args, made global because they're used in
     # check_feature()
-    image_name="solana-rpc-docker-build"
-    docker_build_args=( --target "scratch_$canister" )
+    image_name="ic-solana-docker-build"
+    docker_build_args=( --target "scratch_${canister//-/_}" )
 
     docker_build_args+=(--tag "$image_name" .)
 
@@ -69,6 +69,14 @@ do
             help
             exit 0
             ;;
+        --rpc)
+            CANISTERS+=("ic-solana-rpc")
+            shift
+            ;;
+        --wallet)
+            CANISTERS+=("ic-solana-wallet")
+            shift
+            ;;
         *)
             echo "ERROR: unknown argument $1"
             usage
@@ -79,8 +87,9 @@ do
     esac
 done
 
+# build solana rpc by default
 if [ ${#CANISTERS[@]} -eq 0 ]; then
-    CANISTERS=("ic-solana-provider")
+    CANISTERS=("ic-solana-rpc")
 fi
 
 for canister in "${CANISTERS[@]}"
