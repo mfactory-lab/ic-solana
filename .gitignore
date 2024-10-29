@@ -26,3 +26,8 @@ dist/
 # others
 /tmp
 pocket-ic
+
+# built canisters
+*.wasm
+*.wasm.gz
+ic-test-state-machine

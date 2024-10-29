@@ -735,6 +735,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "camino"
+version = "1.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b96ec4966b5813e2c0507c1f86115c8c5abaadc3980879c3424042a02fd1ad3"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "candid"
 version = "0.10.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -777,6 +786,28 @@ checksum = "190baaad529bcfbde9e1a19022c42781bdb6ff9de25721abdb8fd98c0807730b"
 dependencies = [
  "libc",
  "thiserror",
+]
+
+[[package]]
+name = "cargo-platform"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24b1f0365a6c6bb4020cd05806fd0d33c44d38046b8bd7f0e40814b9763cabfc"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "cargo_metadata"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4acbb09d9ee8e23699b9634375c72795d095bf268439da88562cf9b501f181fa"
+dependencies = [
+ "camino",
+ "cargo-platform",
+ "semver",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1378,6 +1409,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d6ef0072f8a535281e4876be788938b528e9a1d43900b82c2569af7da799125"
 
 [[package]]
+name = "e2e"
+version = "0.1.0"
+dependencies = [
+ "candid",
+ "ic-cdk 0.16.0",
+ "ic-solana",
+]
+
+[[package]]
 name = "eager"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1571,6 +1611,18 @@ checksum = "534c5cf6194dfab3db3242765c03bbe257cf92f22b38f6bc0c58d59108a820ba"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "escargot"
+version = "0.5.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c000f23e9d459aef148b7267e02b03b94a0aaacf4ec64c65612f67e02f525fb6"
+dependencies = [
+ "log",
+ "once_cell",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2439,13 +2491,17 @@ dependencies = [
  "bincode",
  "bs58",
  "candid",
+ "flate2",
  "futures",
  "getrandom 0.2.15",
+ "hex",
  "ic-canister-log",
+ "ic-canisters-http-types",
  "ic-cdk 0.16.0",
  "ic-crypto-ed25519",
+ "ic-metrics-encoder",
  "ic-sha3",
- "ic-solana-common",
+ "proptest",
  "serde",
  "serde-big-array",
  "serde_bytes",
@@ -2455,21 +2511,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-solana-common"
-version = "0.2.0"
-dependencies = [
- "candid",
- "ic-canister-log",
- "ic-canisters-http-types",
- "ic-cdk 0.16.0",
- "ic-metrics-encoder",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "ic-solana-provider"
+name = "ic-solana-rpc"
 version = "0.2.0"
 dependencies = [
  "anyhow",
@@ -2484,8 +2526,8 @@ dependencies = [
  "ic-management-canister-types",
  "ic-metrics-encoder",
  "ic-solana",
- "ic-solana-common",
  "ic-stable-structures",
+ "ic-test-utilities-load-wasm",
  "ic-utils 0.39.0",
  "lazy_static",
  "pocket-ic",
@@ -2518,7 +2560,6 @@ dependencies = [
  "ic-management-canister-types",
  "ic-metrics-encoder",
  "ic-solana",
- "ic-solana-common",
  "ic-stable-structures",
  "ic-utils 0.39.0",
  "lazy_static",
@@ -2541,6 +2582,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03f3044466a69802de74e710dc0300b706a05696a0531c942ca856751a13b0db"
 dependencies = [
  "ic_principal",
+]
+
+[[package]]
+name = "ic-test-utilities-load-wasm"
+version = "0.9.0"
+source = "git+https://github.com/dfinity/ic?rev=release-2024-09-26_01-31-base#35153c7cb7b9d1da60472ca7e94c693e418f87bd"
+dependencies = [
+ "cargo_metadata",
+ "escargot",
 ]
 
 [[package]]
@@ -4328,6 +4378,9 @@ name = "semver"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "serde"
@@ -5792,15 +5845,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "test_canister"
-version = "0.1.0"
-dependencies = [
- "candid",
- "ic-cdk 0.16.0",
- "ic-solana",
 ]
 
 [[package]]
