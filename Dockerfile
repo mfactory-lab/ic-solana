@@ -1,90 +1,73 @@
+# Use this with
 #
-# Reproducible Builds
+#  docker build -t ic-solana .
+#  or use ./scripts/docker-build
 #
+# The docker image. To update, run `docker pull ubuntu` locally, and update the
+# sha256:... accordingly.
 
-FROM ubuntu:22.04 AS base
+FROM --platform=linux/amd64 ubuntu@sha256:bbf3d1baa208b7649d1d0264ef7d522e1dc0deeeaaf6085bf8e4618867f03494 as deps
+
 ENV TZ=UTC
-# Install basic tools
-RUN DEBIAN_FRONTEND=noninteractive apt update && apt install -y \
-    curl \
-    ca-certificates \
-    build-essential \
-    pkg-config \
-    libssl-dev \
-    llvm-dev \
-    liblmdb-dev \
-    clang \
-    cmake \
-    jq \
-    && rm -rf /var/lib/apt/lists/*
 
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    apt -yq update && \
+    apt -yqq install --no-install-recommends curl ca-certificates \
+        build-essential pkg-config libssl-dev llvm-dev liblmdb-dev clang cmake jq
 
-# Gets dfx version
-#
-# Note: This can be done in the builder but is slow because unrelated changes to dfx.json can cause a rebuild.
-FROM base AS tool_versions
-SHELL ["bash", "-c"]
-RUN mkdir -p config
-COPY dfx.json dfx.json
-RUN jq -r .dfx dfx.json > config/dfx_version
-
-
-# Install tools && warm up the build cache
-FROM base AS builder
-SHELL ["bash", "-c"]
-# Install dfx
-# Note: dfx is installed in `$HOME/.local/share/dfx/bin` but we can't reference `$HOME` here so we hardcode `/root`.
-COPY --from=tool_versions /config/*_version config/
-ENV PATH="/root/.local/share/dfx/bin:${PATH}"
-RUN DFXVM_INIT_YES=true DFX_VERSION="$(cat config/dfx_version)" sh -c "$(curl -fsSL https://sdk.dfinity.org/install.sh)" && dfx --version
-# Install Rust
-COPY ./rust-toolchain.toml .
+# Install Rust and Cargo in /opt
 ENV RUSTUP_HOME=/opt/rustup \
     CARGO_HOME=/cargo \
     PATH=/cargo/bin:$PATH
-COPY dev-tools.json dev-tools.json
-COPY scripts/setup scripts/setup-cargo-binstall scripts/setup-rust scripts/
-RUN scripts/setup rust cargo-binstall candid-extractor ic-wasm
-# Optional: Pre-build dependencies
+
+RUN mkdir -p ./scripts
+COPY ./scripts/bootstrap ./scripts/bootstrap
+COPY ./rust-toolchain.toml ./rust-toolchain.toml
+
+RUN ./scripts/bootstrap
+RUN curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+RUN wasm-pack --version
+
+# Pre-build all cargo dependencies. Because cargo doesn't have a build option
+# to build only the dependecies, we pretend that our project is a simple, empty
+# `lib.rs`. When we COPY the actual files we make sure to `touch` lib.rs so
+# that cargo knows to rebuild it with the new content.
 COPY Cargo.lock .
 COPY Cargo.toml .
-COPY src/signer/Cargo.toml src/signer/Cargo.toml
-COPY src/example_backend/Cargo.toml src/example_backend/Cargo.toml
-COPY src/shared/Cargo.toml src/shared/Cargo.toml
-RUN mkdir -p src/signer/src \
-    && touch src/signer/src/lib.rs \
-    && mkdir -p src/shared/src \
-    && touch src/shared/src/lib.rs \
-    && mkdir -p src/example_backend/src \
-    && touch src/example_backend/src/lib.rs \
-    && cargo build --locked --target wasm32-unknown-unknown \
+COPY src/ic-solana/Cargo.toml src/ic-solana/Cargo.toml
+COPY src/ic-solana-rpc/Cargo.toml src/ic-solana-rpc/Cargo.toml
+COPY src/ic-solana-wallet/Cargo.toml src/ic-solana-wallet/Cargo.toml
+COPY src/e2e/Cargo.toml src/e2e/Cargo.toml
+
+ENV CARGO_TARGET_DIR=/cargo_target
+COPY ./scripts/build ./scripts/build
+RUN mkdir -p src/ic-solana/src \
+    && touch src/ic-solana/src/lib.rs \
+    && mkdir -p src/ic-solana-rpc/src \
+    && touch src/ic-solana-rpc/src/lib.rs \
+    && mkdir -p src/ic-solana-wallet/src \
+    && touch src/ic-solana-wallet/src/lib.rs \
+    && mkdir -p src/e2e/src \
+    && touch src/e2e/src/lib.rs \
+    && ./scripts/build --only-dependencies --all \
     && rm -rf src
 
+FROM deps as build_ic_solana_rpc
 
-# Builds canister: example_backend
-FROM builder AS build-example_backend
-COPY src src
-COPY dfx.json dfx.json
-COPY canister_ids.json canister_ids.json
-RUN touch src/*/src/*.rs
-RUN dfx build --ic example_backend
-RUN cp .dfx/ic/canisters/example_backend/example_backend.wasm /example_backend.wasm.gz
-RUN sha256sum /example_backend.wasm.gz
+COPY . .
+RUN touch src/*/src/lib.rs
+RUN ./scripts/build --rpc
+RUN sha256sum /ic-solana-rpc.wasm.gz
 
-FROM scratch AS example_backend
-COPY --from=build-example_backend /example_backend.wasm.gz /
+FROM deps as build_ic_solana_wallet
 
-# Builds canister: signer
-FROM builder AS build-signer
-COPY src src
-COPY dfx.json dfx.json
-COPY canister_ids.json canister_ids.json
-COPY scripts/build.signer.sh scripts/build.signer.args.sh scripts/
-RUN touch src/*/src/*.rs
-RUN dfx build --ic signer
-RUN cp out/signer.wasm.gz out/signer.args.did /
-RUN sha256sum /signer.wasm.gz /signer.args.did
+COPY . .
+RUN touch src/*/src/lib.rs
+RUN ./scripts/build --wallet
+RUN sha256sum /ic-solana-wallet.wasm.gz
 
-FROM scratch AS signer
-COPY --from=build-signer /signer.wasm.gz /
-COPY --from=build-signer /signer.args.did /
+FROM scratch AS scratch_ic_solana_rpc
+COPY --from=build_ic_solana_rpc /ic-solana-rpc.wasm.gz /
+
+FROM scratch AS scratch_ic_solana_wallet
+COPY --from=build_ic_solana_wallet /ic-solana-wallet.wasm.gz /
