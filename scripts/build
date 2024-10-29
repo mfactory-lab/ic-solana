@@ -1,31 +1,160 @@
 #!/usr/bin/env bash
 
-CANISTER=ic-solana-provider
-CANISTER_WASM=target/wasm32-unknown-unknown/release/$(echo $CANISTER | tr '-' '_').wasm
+set -euo pipefail
+set -x
 
-# Build the canister
-cargo build --release --target wasm32-unknown-unknown --package $CANISTER
+IC_WASM_VERSION="0.9.0"
 
-# Extract the did file
-candid-extractor $CANISTER_WASM > ./src/$CANISTER/$CANISTER.did
+# Make sure we always run from the root
+SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPTS_DIR/.."
 
-# optimize wasm file
-# ic-wasm $CANISTER_WASM -o $CANISTER_WASM metadata candid:service -f $DID_PATH -v public
+#########
+# USAGE #
+#########
 
-gzip --no-name --force $CANISTER_WASM
-cp $CANISTER_WASM.gz ./src/$CANISTER/$CANISTER.wasm.gz
+function title() {
+    echo "Builds Solana Canisters"
+}
 
-## Deploy the solana canister and set the schnorr canister id
-#dfx deploy $CANISTER --argument "(record {demo = opt true})" --mode=reinstall -y
-#
-## Get the canister id
-#CANISTER_ID=$(dfx canister id $CANISTER)
-#
-#echo "Solana canister id: $CANISTER_ID"
-#
-## Deploy the test canister
-#dfx deploy test_canister --argument "( \"${CANISTER_ID}\" )" --mode=reinstall -y
-#
-#echo "Test canister id: $CANISTER_ID"
-#
-#echo "Done"
+function usage() {
+    cat << EOF
+
+Usage:
+  $0 [--only-dependencies] [--rpc] [--wallet]
+
+Options:
+  --only-dependencies   only build rust dependencies (no js build, no wasm optimization)
+  --rpc                 build the rpc canister
+  --wallet              build the wallet canister
+EOF
+}
+
+function help() {
+    cat << EOF
+
+Builds the Solana RPC or Solana Wallet canister.
+
+NOTE: This requires a working rust toolchain as well as ic-wasm.
+EOF
+
+}
+
+ONLY_DEPS=
+CANISTERS=()
+
+while [[ $# -gt 0  ]]
+do
+    case "$1" in
+        -h|--help)
+            title
+            usage
+            help
+            exit 0
+            ;;
+        --only-dependencies)
+            ONLY_DEPS=1
+            shift
+            ;;
+        --all)
+            CANISTERS+=("ic-solana-rpc" "ic-solana-wallet")
+            shift
+            ;;
+        --rpc)
+            CANISTERS+=("ic-solana-rpc")
+            shift
+            ;;
+        --wallet)
+            CANISTERS+=("ic-solana-wallet")
+            shift
+            ;;
+        *)
+            echo "ERROR: unknown argument $1"
+            usage
+            echo
+            echo "Use 'build --help' for more information"
+            exit 1
+            ;;
+    esac
+done
+
+# build rpc by default
+if [ ${#CANISTERS[@]} -eq 0 ]; then
+    CANISTERS=("ic-solana-rpc")
+fi
+
+# Checking for dependencies
+if [[ ! "$(command -v ic-wasm)" || "$(ic-wasm --version)" != "ic-wasm $IC_WASM_VERSION" ]]
+then
+    echo "could not find ic-wasm $IC_WASM_VERSION"
+    echo "ic-wasm version $IC_WASM_VERSION is needed, please run the following command:"
+    echo "  cargo install ic-wasm --version $IC_WASM_VERSION"
+    exit 1
+fi
+
+# Builds a single canister
+# build_canister CANISTER EXTRA_BUILD_ARGS...
+# CANISTER: possible values: [ic-solana-rpc, ic-solana-wallet]
+# EXTRA_BUILD_ARGS: extra arguments supplied to cargo when building the canister
+function build_canister() {
+    local canister=$1
+    shift
+    local extra_build_args=("$@")
+
+    echo "Building $canister"
+    echo
+
+    SRC_DIR="$PWD/src/$canister"
+    TARGET="wasm32-unknown-unknown"
+    # standardize source references
+    CARGO_HOME="${CARGO_HOME:-"$HOME/.cargo"}"
+    RUSTFLAGS="--remap-path-prefix $CARGO_HOME=/cargo -C link-args=-zstack-size=3000000"
+
+    cargo_build_args=(
+        --manifest-path "$SRC_DIR/Cargo.toml"
+        --target "$TARGET"
+        --release
+        --locked
+        -j1
+        )
+    # XXX: for bash > 4.4, empty arrays are considered unset, so do some substitution
+    cargo_build_args+=(${extra_build_args[@]+"${extra_build_args[@]}"})
+
+    echo Running cargo build "${cargo_build_args[@]}"
+    echo RUSTFLAGS: "$RUSTFLAGS"
+
+    RUSTFLAGS="$RUSTFLAGS" cargo build "${cargo_build_args[@]}"
+
+    if [ "$ONLY_DEPS" != "1" ]
+    then
+        CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$SRC_DIR/../../target/}"
+
+      # Optimize WASM and set metadata
+      ic-wasm \
+          "$CARGO_TARGET_DIR/$TARGET/release/${canister//-/_}.wasm" \
+          -o "./$canister.wasm" \
+          shrink
+
+      ic-wasm "$canister.wasm" -o "$canister.wasm" metadata candid:service -f "$SRC_DIR/$canister.did" -v public
+
+      # indicate support for certificate version 1 and 2 in the canister metadata
+      ic-wasm "$canister.wasm" -o "$canister.wasm" metadata supported_certificate_versions -d "1,2" -v public
+
+      if [ "$canister" == "ic-solana-rpc" ]
+      then
+        ic-wasm "$canister.wasm" -o "$canister.wasm" metadata candid:args -d "(opt InitArgs)" -v public
+      fi
+
+      if [ "$canister" == "ic-solana-wallet" ]
+      then
+        ic-wasm "$canister.wasm" -o "$canister.wasm" metadata candid:args -d "(opt InitArgs)" -v public
+      fi
+
+      gzip --no-name --force "$canister.wasm"
+    fi
+}
+
+for canister in "${CANISTERS[@]}"
+do
+    build_canister "$canister"
+done
