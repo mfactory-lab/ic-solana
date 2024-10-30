@@ -1195,7 +1195,7 @@ impl RpcClient {
         &self,
         tx: Transaction,
         config: RpcSimulateTransactionConfig,
-    ) -> RpcResult<RpcSimulateTransactionResult> {
+    ) -> RpcResult<OptionalContext<RpcSimulateTransactionResult>> {
         let serialized = tx.serialize();
 
         let raw_tx = match config.encoding {

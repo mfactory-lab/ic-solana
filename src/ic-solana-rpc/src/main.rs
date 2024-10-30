@@ -795,10 +795,8 @@ pub async fn sol_simulate_transaction(
 ) -> RpcResult<RpcSimulateTransactionResult> {
     let client = rpc_client(source, config);
     let tx = Transaction::from_str(&raw_transaction).expect("Invalid transaction");
-    client
-        .simulate_transaction(tx, params.unwrap_or_default())
-        .await
-        .map(Into::into)
+    let res = client.simulate_transaction(tx, params.unwrap_or_default()).await?;
+    Ok(res.parse_value().into())
 }
 
 ///
