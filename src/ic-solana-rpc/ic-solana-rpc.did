@@ -45,11 +45,7 @@ type HttpResponse = record {
   headers : vec record { text; text };
   status_code : nat16;
 };
-type InitArgs = record {
-  schnorr_key : opt text;
-  managers : opt vec principal;
-  demo : opt bool;
-};
+type InitArgs = record { managers : opt vec principal; demo : opt bool };
 type JsonRpcError = record { code : int64; message : text };
 type Legacy = variant { legacy };
 type Memcmp = record {
@@ -304,7 +300,13 @@ type RpcSendTransactionConfig = record {
   max_retries : opt nat64;
   preflight_commitment : opt CommitmentLevel;
 };
-type RpcServices = variant { Custom : vec RpcApi; Provider : vec text };
+type RpcServices = variant {
+  Mainnet;
+  Custom : vec RpcApi;
+  Testnet;
+  Devnet;
+  Provider : vec text;
+};
 type RpcSignatureStatusConfig = record { search_transaction_history : bool };
 type RpcSignaturesForAddressConfig = record {
   min_context_slot : opt nat64;
