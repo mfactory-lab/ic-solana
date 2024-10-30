@@ -1,9 +1,11 @@
 #![allow(dead_code)]
 
 mod mock;
+mod utils;
 
 pub use mock::*;
 use {
+    crate::setup::utils::{assert_reply, load_wasm_by_name},
     candid::{encode_args, utils::ArgumentEncoder, CandidType, Decode, Encode, Principal},
     ic_canisters_http_types::{HttpRequest, HttpResponse},
     ic_cdk::api::management_canister::main::CanisterId,
@@ -17,75 +19,22 @@ use {
         state::InitArgs,
         types::{RegisterProviderArgs, UpdateProviderArgs},
     },
-    ic_test_utilities_load_wasm::load_wasm,
     pocket_ic::{
         common::rest::{CanisterHttpResponse, MockCanisterHttpResponse, RawMessageId},
-        CanisterSettings, PocketIc, WasmResult,
+        CanisterSettings, PocketIc,
     },
-    rand::distributions::{Distribution, Standard},
     serde::de::DeserializeOwned,
     std::{marker::PhantomData, sync::Arc, time::Duration},
 };
 
-const DEFAULT_CALLER_TEST_ID: Principal = Principal::from_slice(&[0x9d, 0xf7, 0x01]);
-const DEFAULT_CONTROLLER_TEST_ID: Principal = Principal::from_slice(&[0x9d, 0xf7, 0x02]);
-pub const ADDITIONAL_TEST_ID: Principal = Principal::from_slice(&[0x9d, 0xf7, 0x03]);
+const CONTROLLER_ID: Principal = Principal::from_slice(&[0x9d, 0xf7, 0x02]);
+const CALLER_ID: Principal = Principal::from_slice(&[0x9d, 0xf7, 0x01]);
+pub const SOME_CALLER_ID: Principal = Principal::from_slice(&[0x9d, 0xf7, 0x03]);
+
 const INITIAL_CYCLES: u128 = 100_000_000_000_000_000;
 const MAX_TICKS: usize = 10;
 
 pub const MOCK_RAW_TX: &str ="4hXTCkRzt9WyecNzV1XPgCDfGAZzQKNxLXgynz5QDuWWPSAZBZSHptvWRL3BjCvzUXRdKvHL2b7yGrRQcWyaqsaBCncVG7BFggS8w9snUts67BSh3EqKpXLUm5UMHfD7ZBe9GhARjbNQMLJ1QD3Spr6oMTBU6EhdB4RD8CP2xUxr2u3d6fos36PD98XS6oX8TQjLpsMwncs5DAMiD4nNnR8NBfyghGCWvCVifVwvA8B8TJxE1aiyiv2L429BCWfyzAme5sZW8rDb14NeCQHhZbtNqfXhcp2tAnaAT";
-
-// The following secrets and their corresponding pubkeys have some funds in the devnet cluster.
-pub const SECRET1: [u8; 64] = [
-    201, 151, 232, 219, 29, 78, 185, 179, 104, 50, 186, 43, 6, 42, 140, 196, 114, 22, 49, 40, 233, 30, 7, 12, 78, 27,
-    185, 87, 208, 213, 143, 157, 131, 153, 99, 40, 121, 85, 91, 41, 95, 59, 33, 44, 51, 213, 148, 229, 38, 18, 43, 86,
-    174, 88, 90, 142, 20, 111, 151, 247, 215, 211, 234, 94,
-];
-
-pub const SECRET2: [u8; 64] = [
-    251, 176, 190, 6, 118, 110, 35, 115, 34, 199, 117, 26, 113, 184, 159, 70, 99, 208, 216, 190, 165, 159, 26, 221,
-    183, 167, 81, 153, 208, 152, 17, 108, 201, 195, 126, 216, 48, 140, 206, 211, 127, 237, 43, 153, 6, 55, 239, 6, 147,
-    185, 60, 71, 45, 31, 170, 109, 42, 97, 217, 193, 21, 234, 131, 118,
-];
-
-pub const PUBKEY1: &str = "9ri4mUToddwCc6jg1GTL5sobkkFxjUzjZ6CZ6L91LzAR";
-pub const PUBKEY2: &str = "EabqyjABpFwUGhw2t2HVPGavjD1uqGm6ciMPhBRrdTxh";
-
-pub fn load_wasm_by_name(name: &str) -> Vec<u8> {
-    load_wasm(std::env::var("CARGO_MANIFEST_DIR").unwrap(), name, &[])
-}
-
-pub fn load_wasm_using_env_var(env_var: &str) -> Vec<u8> {
-    let wasm_path = std::env::var(env_var)
-        .unwrap_or_else(|e| panic!("The wasm path must be set using the env variable {} ({})", env_var, e));
-    std::fs::read(&wasm_path).unwrap_or_else(|e| {
-        panic!(
-            "failed to load Wasm file from path {} (env var {}): {}",
-            wasm_path, env_var, e
-        )
-    })
-}
-
-fn assert_reply(result: WasmResult) -> Vec<u8> {
-    match result {
-        WasmResult::Reply(bytes) => bytes,
-        result => {
-            panic!("Expected a successful reply, got {:?}", result)
-        }
-    }
-}
-
-pub fn random<T>() -> T
-where
-    Standard: Distribution<T>,
-{
-    rand::random()
-}
-
-pub fn random_principal() -> Principal {
-    let random_bytes = random::<u32>().to_ne_bytes();
-    Principal::from_slice(&random_bytes)
-}
 
 #[derive(Clone)]
 pub struct SolanaRpcSetup {
@@ -105,15 +54,15 @@ impl SolanaRpcSetup {
     pub fn new() -> Self {
         Self::new_with_args(InitArgs {
             demo: Some(true),
-            managers: Some(vec![DEFAULT_CONTROLLER_TEST_ID]),
+            managers: Some(vec![CONTROLLER_ID]),
         })
     }
 
     pub fn new_with_args(args: InitArgs) -> Self {
         let env = Arc::new(PocketIc::new());
 
-        let caller = DEFAULT_CALLER_TEST_ID;
-        let controller = DEFAULT_CONTROLLER_TEST_ID;
+        let caller = CALLER_ID;
+        let controller = CONTROLLER_ID;
         let canister_id = env.create_canister_with_settings(
             None,
             Some(CanisterSettings {
@@ -198,24 +147,6 @@ impl SolanaRpcSetup {
     pub fn get_metrics(&self) -> Metrics {
         self.call_query("getMetrics", ())
     }
-
-    // pub fn mock_api_keys(self) -> Self {
-    //     self.clone().as_controller().update_api_keys(
-    //         &PROVIDERS
-    //             .iter()
-    //             .filter_map(|provider| {
-    //                 Some((
-    //                     provider.provider_id,
-    //                     match provider.access {
-    //                         RpcAccess::Authenticated { .. } => Some(MOCK_API_KEY.to_string()),
-    //                         RpcAccess::Unauthenticated { .. } => None?,
-    //                     },
-    //                 ))
-    //             })
-    //             .collect::<Vec<_>>(),
-    //     );
-    //     self
-    // }
 
     pub fn http_get_logs(&self, priority: &str) -> Vec<LogEntry> {
         let request = HttpRequest {

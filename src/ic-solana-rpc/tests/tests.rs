@@ -1,7 +1,7 @@
 mod setup;
 
 use {
-    crate::setup::ADDITIONAL_TEST_ID,
+    crate::setup::SOME_CALLER_ID,
     candid::{utils::ArgumentEncoder, CandidType},
     ic_solana::{
         metrics::{MetricRpcHost, Metrics},
@@ -9,16 +9,16 @@ use {
         rpc_client::{RpcConfig, RpcResult, RpcServices},
         types::{
             tagged::{
-                EncodedConfirmedTransactionWithStatusMeta, RpcKeyedAccount, RpcTokenAccountBalance, UiAccount,
-                UiConfirmedBlock,
+                EncodedConfirmedTransactionWithStatusMeta, RpcKeyedAccount, RpcSimulateTransactionResult,
+                RpcTokenAccountBalance, UiAccount, UiConfirmedBlock,
             },
             Cluster, EpochInfo, EpochSchedule, RpcAccountBalance, RpcAccountInfoConfig, RpcBlockCommitment,
             RpcBlockConfig, RpcBlockProduction, RpcBlockhash, RpcConfirmedTransactionStatusWithSignature,
             RpcContactInfo, RpcIdentity, RpcInflationGovernor, RpcInflationRate, RpcInflationReward,
             RpcLargestAccountsConfig, RpcLargestAccountsFilter, RpcLeaderSchedule, RpcPerfSample, RpcPrioritizationFee,
-            RpcSignatureStatusConfig, RpcSimulateTransactionConfig, RpcSimulateTransactionResult, RpcSnapshotSlotInfo,
-            RpcSupply, RpcTokenAccountsFilter, RpcVersionInfo, RpcVoteAccountStatus, TransactionDetails,
-            TransactionStatus, UiDataSliceConfig, UiTokenAmount, UiTransactionEncoding,
+            RpcSignatureStatusConfig, RpcSimulateTransactionConfig, RpcSnapshotSlotInfo, RpcSupply,
+            RpcTokenAccountsFilter, RpcVersionInfo, RpcVoteAccountStatus, TransactionDetails, TransactionStatus,
+            UiDataSliceConfig, UiTokenAmount, UiTransactionEncoding,
         },
     },
     ic_solana_rpc::{auth::Auth, state::InitArgs, types::RegisterProviderArgs},
@@ -56,27 +56,6 @@ fn should_canonicalize_json_response() {
     .collect::<Vec<_>>();
     assert!(responses.windows(2).all(|w| w[0] == w[1]));
 }
-
-// #[test]
-// fn eth_get_block_by_number_should_be_consistent_when_total_difficulty_inconsistent() {
-//     let setup = EvmRpcSetup::new().mock_api_keys();
-//     let response = setup.eth_get_block_by_number(
-//         RpcServices::EthMainnet(Some(vec![
-//             EthMainnetService::Ankr,
-//             EthMainnetService::PublicNode,
-//         ])),
-//         None,
-//         evm_rpc_types::BlockTag::Latest,
-//     )
-//         .mock_http_once(MockOutcallBuilder::new(200, r#"{"jsonrpc":"2.0","result":{"baseFeePerGas":"0xd7232aa34","difficulty":"0x0","extraData":"0x546974616e2028746974616e6275696c6465722e78797a29","gasLimit":"0x1c9c380","gasUsed":"0xa768c4","hash":"0xc3674be7b9d95580d7f23c03d32e946f2b453679ee6505e3a778f003c5a3cfae","logsBloom":"0x3e6b8420e1a13038902c24d6c2a9720a7ad4860cdc870cd5c0490011e43631134f608935bd83171247407da2c15d85014f9984608c03684c74aad48b20bc24022134cdca5f2e9d2dee3b502a8ccd39eff8040b1d96601c460e119c408c620b44fa14053013220847045556ea70484e67ec012c322830cf56ef75e09bd0db28a00f238adfa587c9f80d7e30d3aba2863e63a5cad78954555966b1055a4936643366a0bb0b1bac68d0e6267fc5bf8304d404b0c69041125219aa70562e6a5a6362331a414a96d0716990a10161b87dd9568046a742d4280014975e232b6001a0360970e569d54404b27807d7a44c949ac507879d9d41ec8842122da6772101bc8b","miner":"0x388c818ca8b9251b393131c08a736a67ccb19297","mixHash":"0x516a58424d4883a3614da00a9c6f18cd5cd54335a08388229a993a8ecf05042f","nonce":"0x0000000000000000","number":"0x11db01d","parentHash":"0x43325027f6adf9befb223f8ae80db057daddcd7b48e41f60cd94bfa8877181ae","receiptsRoot":"0x66934c3fd9c547036fe0e56ad01bc43c84b170be7c4030a86805ddcdab149929","sha3Uncles":"0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347","size":"0xcd35","stateRoot":"0x13552447dd62f11ad885f21a583c4fa34144efe923c7e35fb018d6710f06b2b6","timestamp":"0x656f96f3","totalDifficulty":"0xc70d815d562d3cfa955","withdrawalsRoot":"0xecae44b2c53871003c5cc75285995764034c9b5978a904229d36c1280b141d48"},"id":0}"#))
-//         .mock_http_once(MockOutcallBuilder::new(200, r#"{"jsonrpc":"2.0","result":{"baseFeePerGas":"0xd7232aa34","difficulty":"0x0","extraData":"0x546974616e2028746974616e6275696c6465722e78797a29","gasLimit":"0x1c9c380","gasUsed":"0xa768c4","hash":"0xc3674be7b9d95580d7f23c03d32e946f2b453679ee6505e3a778f003c5a3cfae","logsBloom":"0x3e6b8420e1a13038902c24d6c2a9720a7ad4860cdc870cd5c0490011e43631134f608935bd83171247407da2c15d85014f9984608c03684c74aad48b20bc24022134cdca5f2e9d2dee3b502a8ccd39eff8040b1d96601c460e119c408c620b44fa14053013220847045556ea70484e67ec012c322830cf56ef75e09bd0db28a00f238adfa587c9f80d7e30d3aba2863e63a5cad78954555966b1055a4936643366a0bb0b1bac68d0e6267fc5bf8304d404b0c69041125219aa70562e6a5a6362331a414a96d0716990a10161b87dd9568046a742d4280014975e232b6001a0360970e569d54404b27807d7a44c949ac507879d9d41ec8842122da6772101bc8b","miner":"0x388c818ca8b9251b393131c08a736a67ccb19297","mixHash":"0x516a58424d4883a3614da00a9c6f18cd5cd54335a08388229a993a8ecf05042f","nonce":"0x0000000000000000","number":"0x11db01d","parentHash":"0x43325027f6adf9befb223f8ae80db057daddcd7b48e41f60cd94bfa8877181ae","receiptsRoot":"0x66934c3fd9c547036fe0e56ad01bc43c84b170be7c4030a86805ddcdab149929","sha3Uncles":"0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347","size":"0xcd35","stateRoot":"0x13552447dd62f11ad885f21a583c4fa34144efe923c7e35fb018d6710f06b2b6","timestamp":"0x656f96f3","withdrawalsRoot":"0xecae44b2c53871003c5cc75285995764034c9b5978a904229d36c1280b141d48"},"id":0}"#))
-//         .wait()
-//         .expect_consistent()
-//         .unwrap();
-//
-//     assert_eq!(response.number, 18_722_845_u32.into());
-//     assert_eq!(response.total_difficulty, None);
-// }
 
 #[test]
 fn test_get_account_info() {
@@ -719,9 +698,9 @@ fn test_simulate_transaction() {
         r#"{"jsonrpc":"2.0","result":{"context":{"slot":218},"value":{"err":null,"accounts":null,"logs":["Program 83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri invoke [1]","Program 83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri consumed 2366 of 1400000 compute units","Program return: 83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri KgAAAAAAAAA=","Program 83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri success"],"returnData":{"data":["Kg==","base64"],"programId":"83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri"},"unitsConsumed":2366}},"id":1}"#,
     )
     .unwrap();
-
-    println!("{:#?}", res);
-    // assert!(res.logs.is_some());
+    assert!(res.logs.is_some());
+    assert!(res.return_data.is_some());
+    assert_eq!(res.units_consumed, Some(2366))
 }
 
 #[test]
@@ -747,25 +726,25 @@ fn should_allow_manager_to_authorize_and_deauthorize_user() {
     setup
         .clone()
         .as_controller()
-        .authorize(ADDITIONAL_TEST_ID, Auth::RegisterProvider)
+        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
         .wait();
     let principals = setup.get_authorized(Auth::RegisterProvider);
-    assert!(principals.contains(&ADDITIONAL_TEST_ID));
+    assert!(principals.contains(&SOME_CALLER_ID));
     setup
         .clone()
         .as_controller()
-        .deauthorize(ADDITIONAL_TEST_ID, Auth::RegisterProvider)
+        .deauthorize(SOME_CALLER_ID, Auth::RegisterProvider)
         .wait();
     let principals = setup.get_authorized(Auth::RegisterProvider);
-    assert!(!principals.contains(&ADDITIONAL_TEST_ID));
+    assert!(!principals.contains(&SOME_CALLER_ID));
 }
 
 #[test]
 #[should_panic(expected = "Unauthorized")]
 fn should_not_allow_caller_without_access_authorize_users() {
     SolanaRpcSetup::new()
-        .as_caller(ADDITIONAL_TEST_ID)
-        .authorize(ADDITIONAL_TEST_ID, Auth::RegisterProvider)
+        .as_caller(SOME_CALLER_ID)
+        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
         .wait();
 }
 
@@ -773,8 +752,8 @@ fn should_not_allow_caller_without_access_authorize_users() {
 #[should_panic(expected = "Unauthorized")]
 fn should_not_allow_caller_without_access_deauthorize_users() {
     SolanaRpcSetup::new()
-        .as_caller(ADDITIONAL_TEST_ID)
-        .deauthorize(ADDITIONAL_TEST_ID, Auth::RegisterProvider)
+        .as_caller(SOME_CALLER_ID)
+        .deauthorize(SOME_CALLER_ID, Auth::RegisterProvider)
         .wait();
 }
 
@@ -804,13 +783,13 @@ fn should_allow_caller_with_access_register_provider() {
     setup
         .clone()
         .as_controller()
-        .authorize(ADDITIONAL_TEST_ID, Auth::RegisterProvider)
+        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
         .wait();
 
     let provider_id = "test_mainnet1".to_string();
     setup
         .clone()
-        .as_caller(ADDITIONAL_TEST_ID)
+        .as_caller(SOME_CALLER_ID)
         .register_provider(RegisterProviderArgs {
             id: provider_id.clone(),
             url: Cluster::Mainnet.url().into(),
@@ -821,7 +800,7 @@ fn should_allow_caller_with_access_register_provider() {
     assert!(providers.contains(&provider_id));
     setup
         .clone()
-        .as_caller(ADDITIONAL_TEST_ID)
+        .as_caller(SOME_CALLER_ID)
         .unregister_provider(&provider_id)
         .wait();
     let providers = setup.get_providers();
@@ -832,7 +811,7 @@ fn should_allow_caller_with_access_register_provider() {
 #[should_panic(expected = "Unauthorized")]
 fn should_not_allow_caller_without_access_to_register_provider() {
     SolanaRpcSetup::new()
-        .as_caller(ADDITIONAL_TEST_ID)
+        .as_caller(SOME_CALLER_ID)
         .register_provider(RegisterProviderArgs {
             id: "test_mainnet1".to_string(),
             url: Cluster::Mainnet.url().into(),
@@ -845,7 +824,7 @@ fn should_not_allow_caller_without_access_to_register_provider() {
 #[should_panic(expected = "Unauthorized")]
 fn should_not_allow_caller_without_access_to_unregister_provider() {
     SolanaRpcSetup::new()
-        .as_caller(ADDITIONAL_TEST_ID)
+        .as_caller(SOME_CALLER_ID)
         .unregister_provider("mainnet")
         .wait();
 }
@@ -862,7 +841,7 @@ fn should_retrieve_logs() {
     setup
         .clone()
         .as_controller()
-        .authorize(ADDITIONAL_TEST_ID, Auth::RegisterProvider)
+        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
         .wait();
 
     assert_eq!(setup.http_get_logs("DEBUG"), vec![]);
@@ -870,7 +849,7 @@ fn should_retrieve_logs() {
         format!(
             "Authorizing `{:?}` for principal: {}",
             Auth::RegisterProvider,
-            ADDITIONAL_TEST_ID
+            SOME_CALLER_ID
         )
         .as_str()
     ));
