@@ -12,9 +12,7 @@ pub const PUBKEY_BYTES: usize = 32;
 /// Maximum string length of a base58 encoded pubkey
 const MAX_BASE58_LEN: usize = 44;
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, CandidType,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, CandidType)]
 pub struct Pubkey(pub(crate) [u8; PUBKEY_BYTES]);
 
 #[derive(Error, Debug, Serialize, Clone, PartialEq, Eq)]
@@ -50,9 +48,7 @@ impl FromStr for Pubkey {
         if s.len() > MAX_BASE58_LEN {
             return Err(ParsePubkeyError::WrongSize);
         }
-        let pubkey_vec = bs58::decode(s)
-            .into_vec()
-            .map_err(|_| ParsePubkeyError::Invalid)?;
+        let pubkey_vec = bs58::decode(s).into_vec().map_err(|_| ParsePubkeyError::Invalid)?;
         if pubkey_vec.len() != mem::size_of::<Pubkey>() {
             Err(ParsePubkeyError::WrongSize)
         } else {

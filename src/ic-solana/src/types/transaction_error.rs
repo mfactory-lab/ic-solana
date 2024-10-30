@@ -1,4 +1,5 @@
 use {
+    crate::types::InstructionError,
     candid::{CandidType, Deserialize},
     serde::Serialize,
 };
@@ -46,7 +47,7 @@ pub enum TransactionError {
     /// An error occurred while processing an instruction. The first element of the tuple
     /// indicates the instruction index in which the error occurred.
     #[error("Error processing Instruction {0}: {1}")]
-    InstructionError(u8, String),
+    InstructionError(u8, InstructionError),
 
     /// Loader call chain is too deep
     #[error("Loader call chain is too deep")]
@@ -138,9 +139,7 @@ pub enum TransactionError {
     DuplicateInstruction(u8),
 
     /// Transaction results in an account with insufficient funds for rent
-    #[error(
-        "Transaction results in an account ({account_index}) with insufficient funds for rent"
-    )]
+    #[error("Transaction results in an account ({account_index}) with insufficient funds for rent")]
     InsufficientFundsForRent { account_index: u8 },
 
     /// Transaction exceeded max loaded accounts data size cap

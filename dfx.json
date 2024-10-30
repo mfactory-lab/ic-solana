@@ -1,24 +1,35 @@
 {
-  "dfx": "0.23.0",
   "canisters": {
-    "ic-solana-provider": {
+    "rpc": {
       "type": "rust",
-      "package": "ic-solana-provider",
-      "candid": "src/ic-solana-provider/ic-solana-provider.did",
-      "gzip": true
+      "package": "ic-solana-rpc",
+      "candid": "src/ic-solana-rpc/ic-solana-rpc.did",
+      "gzip": true,
+      "optimize": "cycles"
     },
-    "test_canister": {
+    "wallet": {
       "type": "rust",
-      "package": "test_canister",
-      "candid": "src/test_canister/test_canister.did",
+      "package": "ic-solana-wallet",
+      "candid": "src/ic-solana-wallet/ic-solana-wallet.did",
+      "gzip": true,
+      "optimize": "cycles"
+    },
+    "e2e": {
+      "dependencies": [
+        "rpc",
+        "wallet"
+      ],
+      "type": "rust",
+      "package": "e2e",
+      "candid": "src/e2e/e2e.did",
       "gzip": true
     }
   },
-  "networks": {
-    "local": {
-      "bind": "localhost:4943",
-      "type": "ephemeral"
+  "defaults": {
+    "build": {
+      "packtool": ""
     }
   },
+  "dfx": "0.24.1",
   "version": 1
 }

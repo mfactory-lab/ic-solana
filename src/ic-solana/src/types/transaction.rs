@@ -2,7 +2,7 @@ use {
     super::UiInnerInstructions,
     crate::{
         types::{
-            account::{ParsedAccount, UiTokenAmount},
+            account::{AccountKey, UiTokenAmount},
             message::{Message, UiMessage},
             pubkey::Pubkey,
             reward::Rewards,
@@ -126,7 +126,7 @@ pub enum Legacy {
     Legacy,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum TransactionVersion {
     #[serde(rename = "legacy")]
@@ -135,20 +135,27 @@ pub enum TransactionVersion {
     Number(u8),
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq, CandidType)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionBinaryEncoding {
+    #[serde(rename = "base58")]
     Base58,
+    #[serde(rename = "base64")]
     Base64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum UiTransactionEncoding {
+    #[serde(rename = "binary")]
     Binary, // Legacy. Retained for RPC backwards compatibility
-    Base64,
+    #[serde(rename = "base58")]
     Base58,
+    #[serde(rename = "base64")]
+    Base64,
+    #[serde(rename = "json")]
     Json,
+    #[serde(rename = "jsonParsed")]
     JsonParsed,
 }
 
@@ -160,27 +167,22 @@ impl Display for UiTransactionEncoding {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
+#[derive(Debug, Default, Clone, Copy, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionDetails {
+    #[default]
     #[serde(rename = "full")]
     Full,
     #[serde(rename = "signatures")]
     Signatures,
-    #[serde(rename = "none")]
-    None,
     #[serde(rename = "accounts")]
     Accounts,
-}
-
-impl Default for TransactionDetails {
-    fn default() -> Self {
-        Self::Full
-    }
+    #[serde(rename = "none")]
+    None,
 }
 
 /// A duplicate representation of a Transaction for pretty JSON serialization
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTransaction {
     pub signatures: Vec<String>,
@@ -191,10 +193,11 @@ pub struct UiTransaction {
 #[serde(rename_all = "camelCase")]
 pub struct UiAccountsList {
     pub signatures: Vec<String>,
-    pub account_keys: Vec<ParsedAccount>,
+    #[serde(rename = "accountKeys")]
+    pub account_keys: Vec<AccountKey>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum EncodedTransaction {
     LegacyBinary(String), // Old way of expressing base-58, retained for RPC backwards compatibility
@@ -206,8 +209,11 @@ pub enum EncodedTransaction {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionConfirmationStatus {
+    #[serde(rename = "processed")]
     Processed,
+    #[serde(rename = "confirmed")]
     Confirmed,
+    #[serde(rename = "finalized")]
     Finalized,
 }
 
@@ -218,6 +224,7 @@ pub struct TransactionStatus {
     pub confirmations: Option<usize>,  // None = rooted
     pub status: TransactionResult<()>, // legacy field
     pub err: Option<TransactionError>,
+    #[serde(default, rename = "confirmationStatus", skip_serializing_if = "Option::is_none")]
     pub confirmation_status: Option<TransactionConfirmationStatus>,
 }
 
@@ -230,8 +237,7 @@ impl TransactionStatus {
                 *status != TransactionConfirmationStatus::Processed
             } else {
                 // These fallback cases handle TransactionStatus RPC responses from older software
-                self.confirmations.is_some() && self.confirmations.unwrap() > 1
-                    || self.confirmations.is_none()
+                self.confirmations.is_some() && self.confirmations.unwrap() > 1 || self.confirmations.is_none()
             }
         } else {
             true
@@ -267,49 +273,21 @@ pub struct UiTransactionStatusMeta {
     pub pre_balances: Vec<u64>,
     #[serde(rename = "postBalances")]
     pub post_balances: Vec<u64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "innerInstructions"
-    )]
+    #[serde(default, rename = "innerInstructions", skip_serializing_if = "Option::is_none")]
     pub inner_instructions: Option<Vec<UiInnerInstructions>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "logMessages"
-    )]
+    #[serde(default, rename = "logMessages", skip_serializing_if = "Option::is_none")]
     pub log_messages: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "preTokenBalances"
-    )]
+    #[serde(default, rename = "preTokenBalances", skip_serializing_if = "Option::is_none")]
     pub pre_token_balances: Option<Vec<UiTransactionTokenBalance>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "postTokenBalances"
-    )]
+    #[serde(default, rename = "postTokenBalances", skip_serializing_if = "Option::is_none")]
     pub post_token_balances: Option<Vec<UiTransactionTokenBalance>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rewards: Option<Rewards>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "loadedAddresses"
-    )]
+    #[serde(default, rename = "loadedAddresses", skip_serializing_if = "Option::is_none")]
     pub loaded_addresses: Option<UiLoadedAddresses>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "returnData"
-    )]
+    #[serde(default, rename = "returnData", skip_serializing_if = "Option::is_none")]
     pub return_data: Option<UiTransactionReturnData>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        rename = "computeUnitsConsumed"
-    )]
+    #[serde(default, rename = "computeUnitsConsumed", skip_serializing_if = "Option::is_none")]
     pub compute_units_consumed: Option<u64>,
 }
 
@@ -346,11 +324,11 @@ pub struct UiTransactionTokenBalance {
     pub ui_token_amount: UiTokenAmount,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub owner: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "programId")]
+    #[serde(default, rename = "programId", skip_serializing_if = "Option::is_none")]
     pub program_id: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EncodedTransactionWithStatusMeta {
     pub transaction: EncodedTransaction,
@@ -359,7 +337,7 @@ pub struct EncodedTransactionWithStatusMeta {
     pub version: Option<TransactionVersion>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, CandidType)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EncodedConfirmedTransactionWithStatusMeta {
     pub slot: Slot,
@@ -383,25 +361,22 @@ mod tests {
 
     fn create_sample_transaction() -> Transaction {
         let pk = PrivateKey::deserialize_raw(&[
-            255, 101, 36, 24, 124, 23, 167, 21, 132, 204, 155, 5, 185, 58, 121, 75, 156, 227, 116,
-            193, 215, 38, 142, 22, 8, 14, 229, 239, 119, 93, 5, 218,
+            255, 101, 36, 24, 124, 23, 167, 21, 132, 204, 155, 5, 185, 58, 121, 75, 156, 227, 116, 193, 215, 38, 142,
+            22, 8, 14, 229, 239, 119, 93, 5, 218,
         ])
         .unwrap();
 
         let pubkey = Pubkey::from(pk.public_key().serialize_raw());
 
         let to = Pubkey::from([
-            1, 1, 1, 4, 5, 6, 7, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 7, 6, 5, 4,
-            1, 1, 1,
+            1, 1, 1, 4, 5, 6, 7, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 7, 6, 5, 4, 1, 1, 1,
         ]);
 
         let program_id = Pubkey::from([
-            2, 2, 2, 4, 5, 6, 7, 8, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 8, 7, 6, 5, 4,
-            2, 2, 2,
+            2, 2, 2, 4, 5, 6, 7, 8, 9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 9, 8, 7, 6, 5, 4, 2, 2, 2,
         ]);
         let account_metas = vec![AccountMeta::new(pubkey, true), AccountMeta::new(to, false)];
-        let instruction =
-            Instruction::new_with_bincode(program_id, &(1u8, 2u8, 3u8), account_metas);
+        let instruction = Instruction::new_with_bincode(program_id, &(1u8, 2u8, 3u8), account_metas);
 
         let message = Message::new_with_blockhash(&[instruction], None, &BlockHash::default());
 
@@ -444,15 +419,36 @@ mod tests {
 
         let test_json = serde_json::to_string(&test_tx).unwrap();
 
-        let test_tx_2: EncodedConfirmedTransactionWithStatusMeta =
-            serde_json::from_str(&test_json).unwrap();
+        let test_tx_2: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(&test_json).unwrap();
 
         assert_eq!(test_tx, test_tx_2); // This test fails because TransactionVersion is not serialized as a string, but as a null
 
-        let _: EncodedConfirmedTransactionWithStatusMeta =
-            serde_json::from_str(legacy_version_json).unwrap();
+        let _: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(legacy_version_json).unwrap();
 
-        let _: EncodedConfirmedTransactionWithStatusMeta =
-            serde_json::from_str(numbered_version_json).unwrap();
+        let _: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(numbered_version_json).unwrap();
+
+        let test_tx = EncodedConfirmedTransactionWithStatusMeta {
+            slot: 325448256,
+            block_time: Some(1726125580),
+            transaction: EncodedTransactionWithStatusMeta {
+                transaction: EncodedTransaction::Accounts(UiAccountsList {
+                    signatures: vec![
+                        "vAjYpEH66M59GMVqsrmZdymmXHn8SRhUvehrcpfcEnQaNPpQg1k9w22FhQNjLSfzSAQDG3uVzpN8wS1qRnLUH6S"
+                            .to_string(),
+                    ],
+                    account_keys: vec![AccountKey {
+                        pubkey: "".to_string(),
+                        writable: false,
+                        signer: false,
+                        source: None,
+                    }],
+                }),
+                meta: None,
+                version: Some(TransactionVersion::Legacy(Legacy::Legacy)),
+            },
+        };
+
+        let test_json = serde_json::to_string(&test_tx).unwrap();
+        let _: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(&test_json).unwrap();
     }
 }

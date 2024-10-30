@@ -55,6 +55,12 @@ impl CommitmentConfig {
     }
 }
 
+impl From<CommitmentLevel> for CommitmentConfig {
+    fn from(commitment: CommitmentLevel) -> Self {
+        Self { commitment }
+    }
+}
+
 impl FromStr for CommitmentConfig {
     type Err = ParseCommitmentLevelError;
 

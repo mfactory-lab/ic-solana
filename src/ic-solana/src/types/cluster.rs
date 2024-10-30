@@ -30,17 +30,15 @@ impl FromStr for Cluster {
 
                 let mut ws_url = Url::parse(http_url)?;
                 if let Some(port) = ws_url.port() {
-                    ws_url.set_port(Some(port + 1))
+                    ws_url
+                        .set_port(Some(port + 1))
                         .map_err(|_| anyhow!("Unable to set port"))?;
                 }
                 if ws_url.scheme() == "https" {
-                    ws_url.set_scheme("wss")
-                        .map_err(|_| anyhow!("Unable to set scheme"))?;
+                    ws_url.set_scheme("wss").map_err(|_| anyhow!("Unable to set scheme"))?;
                 } else {
-                    ws_url.set_scheme("ws")
-                        .map_err(|_| anyhow!("Unable to set scheme"))?;
+                    ws_url.set_scheme("ws").map_err(|_| anyhow!("Unable to set scheme"))?;
                 }
-
 
                 Ok(Cluster::Custom(http_url.to_string(), ws_url.to_string()))
             }
@@ -66,6 +64,12 @@ impl std::fmt::Display for Cluster {
 }
 
 impl Cluster {
+    pub fn host_str(&self) -> Option<String> {
+        Url::parse(self.url())
+            .ok()
+            .and_then(|u| u.host_str().map(|host| host.to_string()))
+    }
+
     pub fn url(&self) -> &str {
         match self {
             Cluster::Devnet => "https://api.devnet.solana.com",
@@ -76,6 +80,7 @@ impl Cluster {
             Cluster::Custom(url, _ws_url) => url,
         }
     }
+
     pub fn ws_url(&self) -> &str {
         match self {
             Cluster::Devnet => "wss://api.devnet.solana.com",

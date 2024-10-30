@@ -1,7 +1,7 @@
 #!/usr/bin/make
 
 POCKET_IC_BIN := $(shell pwd)/pocket-ic
-IC_SOLANA_PROVIDER_WASM := ./target/wasm32-unknown-unknown/release/ic_solana_provider.wasm.gz
+IC_SOLANA_RPC_WASM := ./target/wasm32-unknown-unknown/release/ic_solana_rpc.wasm.gz
 
 .DEFAULT_GOAL: help
 
@@ -12,17 +12,21 @@ help: ## Show this help
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+.PHONY: bootstrap
+bootstrap: ## Bootstrap
+	./scripts/bootstrap
+
 .PHONY: start
 start: ## Start the canisters
 	@RUST_BACKTRACE=1 dfx start --clean
 
 .PHONY: build
 build: ## Build all canisters
-	@./scripts/build
+	./scripts/build
 
-.PHONY: deploy
-deploy: build ## Deploy all canisters
-	@./scripts/build
+.PHONY: did
+did: ## Generate did
+	./scripts/did $(filter-out $@,$(MAKECMDGOALS))
 
 .PHONY: examples
 examples: ## Run examples
@@ -30,7 +34,7 @@ examples: ## Run examples
 
 .PHONY: metrics
 metrics: ## Fetch metrics
-	@dfx canister call ic-solana-provider getMetrics '()'
+	@dfx canister call ic-solana-rpc getMetrics '()'
 
 .PHONY: test
 test: build ## Run tests
@@ -39,9 +43,7 @@ test: build ## Run tests
 		echo "Pocket IC binary not found. Fetching..."; \
 		$(MAKE) fetch-pocket-ic; \
 	fi
-	@IC_SOLANA_PROVIDER_PATH=$(IC_SOLANA_PROVIDER_WASM) \
-	   POCKET_IC_BIN=$(POCKET_IC_BIN) \
-	   cargo test $(TEST) --no-fail-fast -- $(if $(TEST_NAME),$(TEST_NAME),) --nocapture
+	cargo test $(TEST) --no-fail-fast -- $(if $(TEST_NAME),$(TEST_NAME),) --nocapture
 
 .PHONY: test-e2e
 test-e2e: build ## Run end-to-end tests
@@ -59,5 +61,5 @@ clean: ## Remove build artifacts and dependencies
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-%::
-	@true
+%:
+	@:
