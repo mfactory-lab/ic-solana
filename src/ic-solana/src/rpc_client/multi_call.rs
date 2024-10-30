@@ -1,7 +1,9 @@
 use {
-    crate::rpc_client::types::{ConsensusStrategy, RpcApi, RpcError, RpcResult},
+    crate::{
+        logs::INFO,
+        rpc_client::types::{ConsensusStrategy, RpcApi, RpcError, RpcResult},
+    },
     ic_canister_log::log,
-    ic_solana_common::logs::INFO,
     serde::Serialize,
     std::{
         collections::{BTreeMap, BTreeSet},

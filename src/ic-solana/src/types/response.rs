@@ -1,7 +1,7 @@
 use {
     crate::types::{
-        EncodedTransactionWithStatusMeta, Epoch, FeeCalculator, Rewards, Slot, TransactionConfirmationStatus,
-        TransactionError, UiAccount, UiInnerInstructions, UiTokenAmount, UiTransactionReturnData, UnixTimestamp,
+        EncodedTransactionWithStatusMeta, Epoch, Rewards, Slot, TransactionConfirmationStatus, TransactionError,
+        UiAccount, UiInnerInstructions, UiTokenAmount, UiTransactionReturnData, UnixTimestamp,
     },
     candid::CandidType,
     serde::{Deserialize, Serialize},
@@ -14,7 +14,7 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OptionalContext<T> {
-    Context(Response<T>),
+    Context(RpcResponse<T>),
     NoContext(T),
 }
 
@@ -32,6 +32,7 @@ impl<T> OptionalContext<T> {
 pub struct RpcResponseContext {
     pub slot: Slot,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "apiVersion")]
     pub api_version: Option<String>,
 }
 
@@ -45,7 +46,7 @@ impl RpcResponseContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Response<T> {
+pub struct RpcResponse<T> {
     pub context: RpcResponseContext,
     pub value: T,
 }
@@ -54,44 +55,16 @@ pub struct Response<T> {
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockCommitment<T = [u64; 32]> {
     pub commitment: Option<T>,
+    #[serde(rename = "totalStake")]
     pub total_stake: u64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RpcBlockhashFeeCalculator {
-    pub blockhash: String,
-    pub fee_calculator: FeeCalculator,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockhash {
     pub blockhash: String,
+    #[serde(rename = "lastValidBlockHeight")]
     pub last_valid_block_height: u64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RpcFees {
-    pub blockhash: String,
-    pub fee_calculator: FeeCalculator,
-    pub last_valid_slot: Slot,
-    pub last_valid_block_height: u64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Fees {
-    pub blockhash: [u8; 32],
-    pub fee_calculator: FeeCalculator,
-    pub last_valid_block_height: u64,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RpcFeeCalculator {
-    pub fee_calculator: FeeCalculator,
 }
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, CandidType)]
@@ -101,6 +74,7 @@ pub struct RpcInflationGovernor {
     pub terminal: f64,
     pub taper: f64,
     pub foundation: f64,
+    #[serde(rename = "foundationTerm")]
     pub foundation_term: f64,
 }
 
@@ -168,8 +142,10 @@ pub struct RpcBlockProduction {
 #[serde(rename_all = "kebab-case")]
 pub struct RpcVersionInfo {
     /// The current version of solana-core
+    #[serde(rename = "solana-core")]
     pub solana_core: String,
     /// first 4 bytes of the FeatureSet identifier
+    #[serde(rename = "feature-set")]
     pub feature_set: Option<u32>,
 }
 
@@ -208,28 +184,35 @@ pub struct RpcVoteAccountStatus {
 #[serde(rename_all = "camelCase")]
 pub struct RpcVoteAccountInfo {
     /// Vote account address, as base-58 encoded string
+    #[serde(rename = "votePubkey")]
     pub vote_pubkey: String,
 
     /// The validator identity, as base-58 encoded string
+    #[serde(rename = "nodePubkey")]
     pub node_pubkey: String,
 
     /// The current stake, in lamports, delegated to this vote account
+    #[serde(rename = "activatedStake")]
     pub activated_stake: u64,
 
     /// An 8-bit integer used as a fraction (commission/MAX_U8) for rewards payout
     pub commission: u8,
 
     /// Whether this account is staked for the current epoch
+    #[serde(rename = "epochVoteAccount")]
     pub epoch_vote_account: bool,
 
     /// Latest history of earned credits for up to `MAX_RPC_VOTE_ACCOUNT_INFO_EPOCH_CREDITS_HISTORY` epochs
     ///   each tuple is (Epoch, credits, prev_credits)
+    #[serde(rename = "epochCredits")]
     pub epoch_credits: Vec<(Epoch, u64, u64)>,
 
     /// The most recent slot voted on by this vote account (0 if no votes exist)
+    #[serde(rename = "lastVote")]
     pub last_vote: u64,
 
     /// Current root slot for this vote account (0 if no root slot exists)
+    #[serde(rename = "rootSlot")]
     pub root_slot: Slot,
 }
 
@@ -256,7 +239,9 @@ pub struct RpcAccountBalance {
 pub struct RpcSupply {
     pub total: u64,
     pub circulating: u64,
+    #[serde(rename = "nonCirculating")]
     pub non_circulating: u64,
+    #[serde(rename = "nonCirculatingAccounts")]
     pub non_circulating_accounts: Vec<String>,
 }
 
@@ -280,28 +265,36 @@ pub struct RpcStakeActivation {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EncodedConfirmedBlock {
+    #[serde(rename = "previousBlockhash")]
     pub previous_blockhash: String,
     pub blockhash: String,
+    #[serde(rename = "parentSlot")]
     pub parent_slot: Slot,
     pub transactions: Vec<EncodedTransactionWithStatusMeta>,
     pub rewards: Rewards,
+    #[serde(rename = "blockTime")]
     pub block_time: Option<UnixTimestamp>,
+    #[serde(rename = "blockHeight")]
     pub block_height: Option<u64>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EncodedConfirmedBlockWithoutTransactions {
+    #[serde(rename = "previousBlockhash")]
     pub previous_blockhash: String,
     pub blockhash: String,
+    #[serde(rename = "parentSlot")]
     pub parent_slot: Slot,
     pub signatures: Vec<String>,
     pub rewards: Rewards,
+    #[serde(rename = "blockTime")]
     pub block_time: Option<UnixTimestamp>,
+    #[serde(rename = "blockHeight")]
     pub block_height: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcTokenAccountBalance {
     pub address: String,
@@ -316,7 +309,9 @@ pub struct RpcConfirmedTransactionStatusWithSignature {
     pub slot: Slot,
     pub err: Option<TransactionError>,
     pub memo: Option<String>,
+    #[serde(rename = "blockTime")]
     pub block_time: Option<UnixTimestamp>,
+    #[serde(rename = "confirmationStatus")]
     pub confirmation_status: Option<TransactionConfirmationStatus>,
 }
 
@@ -324,9 +319,13 @@ pub struct RpcConfirmedTransactionStatusWithSignature {
 #[serde(rename_all = "camelCase")]
 pub struct RpcPerfSample {
     pub slot: Slot,
+    #[serde(rename = "numTransactions")]
     pub num_transactions: u64,
+    #[serde(rename = "numNonVoteTransactions")]
     pub num_non_vote_transactions: Option<u64>,
+    #[serde(rename = "numSlots")]
     pub num_slots: u64,
+    #[serde(rename = "samplePeriodSecs")]
     pub sample_period_secs: u16,
 }
 
@@ -334,9 +333,11 @@ pub struct RpcPerfSample {
 #[serde(rename_all = "camelCase")]
 pub struct RpcInflationReward {
     pub epoch: Epoch,
+    #[serde(rename = "effectiveSlot")]
     pub effective_slot: Slot,
-    pub amount: u64,            // lamports
-    pub post_balance: u64,      // lamports
+    pub amount: u64, // lamports
+    #[serde(rename = "postBalance")]
+    pub post_balance: u64, // lamports
     pub commission: Option<u8>, // Vote an account commission when the reward was credited
 }
 
@@ -350,6 +351,7 @@ pub struct RpcSnapshotSlotInfo {
 #[serde(rename_all = "camelCase")]
 pub struct RpcPrioritizationFee {
     pub slot: Slot,
+    #[serde(rename = "prioritizationFee")]
     pub prioritization_fee: u64,
 }
 

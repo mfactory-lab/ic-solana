@@ -1,6 +1,5 @@
 use {
-    super::CandidValue,
-    crate::types::{pubkey::Pubkey, Epoch},
+    crate::types::{pubkey::Pubkey, CandidValue, Epoch},
     base64::{prelude::BASE64_STANDARD, Engine},
     candid::{CandidType, Deserialize},
     serde::Serialize,
@@ -8,7 +7,7 @@ use {
 };
 
 /// An Account with data that is stored on a chain
-#[derive(Deserialize, PartialEq, Eq, Clone, Default, CandidType, Debug)]
+#[derive(PartialEq, Eq, Clone, Default, Debug, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct Account {
     /// lamports in the account
@@ -33,6 +32,7 @@ pub struct UiAccount {
     pub data: UiAccountData,
     pub owner: String,
     pub executable: bool,
+    #[serde(rename = "rentEpoch")]
     pub rent_epoch: Epoch,
     pub space: Option<u64>,
 }
@@ -73,18 +73,23 @@ impl UiAccountData {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, CandidType)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum UiAccountEncoding {
+    #[serde(rename = "binary")]
     Binary, // Legacy. Retained for RPC backwards compatibility
+    #[serde(rename = "base58")]
     Base58,
+    #[serde(rename = "base64")]
+    #[default]
     Base64,
+    #[serde(rename = "jsonParsed")]
     JsonParsed,
     #[serde(rename = "base64+zstd")]
     Base64Zstd,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct ParsedAccount {
     pub program: String,
@@ -92,7 +97,23 @@ pub struct ParsedAccount {
     pub space: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountKey {
+    pub pubkey: String,
+    pub writable: bool,
+    pub signer: bool,
+    pub source: Option<AccountKeySource>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub enum AccountKeySource {
+    Transaction,
+    LookupTable,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTokenAmount {
     pub amount: String,

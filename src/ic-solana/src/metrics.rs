@@ -1,4 +1,5 @@
 use {
+    crate::request::RpcRequest,
     candid::{CandidType, Deserialize},
     std::{cell::RefCell, collections::HashMap},
 };
@@ -157,6 +158,12 @@ impl MetricLabels for MetricAuth {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, CandidType, Deserialize)]
 pub struct MetricRpcMethod(pub String);
 
+impl From<RpcRequest> for MetricRpcMethod {
+    fn from(req: RpcRequest) -> Self {
+        MetricRpcMethod(req.to_string())
+    }
+}
+
 impl MetricLabels for MetricRpcMethod {
     fn metric_labels(&self) -> Vec<(&str, &str)> {
         vec![("method", &self.0)]
@@ -166,7 +173,13 @@ impl MetricLabels for MetricRpcMethod {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, CandidType, Deserialize)]
 pub struct MetricRpcHost(pub String);
 
-impl<'a> From<&'a str> for MetricRpcHost {
+impl From<String> for MetricRpcHost {
+    fn from(hostname: String) -> Self {
+        MetricRpcHost(hostname)
+    }
+}
+
+impl From<&str> for MetricRpcHost {
     fn from(hostname: &str) -> Self {
         MetricRpcHost(hostname.to_string())
     }
@@ -181,8 +194,8 @@ impl MetricLabels for MetricRpcHost {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, CandidType, Deserialize)]
 pub struct MetricHttpStatusCode(pub String);
 
-impl From<u32> for MetricHttpStatusCode {
-    fn from(value: u32) -> Self {
+impl From<u16> for MetricHttpStatusCode {
+    fn from(value: u16) -> Self {
         MetricHttpStatusCode(value.to_string())
     }
 }

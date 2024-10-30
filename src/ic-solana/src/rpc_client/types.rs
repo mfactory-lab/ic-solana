@@ -28,9 +28,9 @@ pub struct JsonRpcResponse<T> {
     pub id: u64,
 }
 
-impl<T> From<JsonRpcResponse<T>> for RpcResult<T> {
-    fn from(response: JsonRpcResponse<T>) -> Self {
-        match (response.result, response.error) {
+impl<T> JsonRpcResponse<T> {
+    pub fn into_rpc_result(self) -> RpcResult<T> {
+        match (self.result, self.error) {
             (Some(result), _) => Ok(result),
             (None, Some(error)) => Err(error.into()),
             (None, None) => Err(RpcError::Text(
@@ -38,9 +38,28 @@ impl<T> From<JsonRpcResponse<T>> for RpcResult<T> {
             )),
         }
     }
+    pub fn into_optional_rpc_result(self) -> RpcResult<Option<T>> {
+        match (self.result, self.error) {
+            (Some(result), _) => Ok(Some(result)),
+            (None, Some(error)) => Err(error.into()),
+            (None, None) => Ok(None),
+        }
+    }
 }
 
-pub type RpcResult<T> = anyhow::Result<T, RpcError>;
+impl<T> From<JsonRpcResponse<T>> for RpcResult<Option<T>> {
+    fn from(value: JsonRpcResponse<T>) -> Self {
+        value.into_optional_rpc_result()
+    }
+}
+
+impl<T> From<JsonRpcResponse<T>> for RpcResult<T> {
+    fn from(value: JsonRpcResponse<T>) -> Self {
+        value.into_rpc_result()
+    }
+}
+
+pub type RpcResult<T> = Result<T, RpcError>;
 
 #[derive(Clone, Eq, PartialEq, PartialOrd, Ord, CandidType, Deserialize)]
 pub struct RpcApi {
@@ -49,6 +68,12 @@ pub struct RpcApi {
 }
 
 impl RpcApi {
+    pub fn new(network: impl ToString) -> Self {
+        Self {
+            network: network.to_string(),
+            headers: None,
+        }
+    }
     pub fn cluster(&self) -> Cluster {
         Cluster::from_str(&self.network).expect("Failed to parse cluster url")
     }
@@ -112,19 +137,20 @@ impl From<serde_json::Error> for RpcError {
 
 #[derive(Clone, Debug, PartialEq, Eq, CandidType, Deserialize)]
 pub enum RpcServices {
+    Mainnet,
+    Testnet,
+    Devnet,
+    // TODO: for tests only ?
+    Localnet,
     Provider(Vec<String>),
     Custom(Vec<RpcApi>),
 }
 
-#[derive(Clone, PartialEq, Eq, Ord, PartialOrd, CandidType, Deserialize)]
-pub enum RpcService {
-    Provider(String),
-    Custom(RpcApi),
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Default, CandidType, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct RpcConfig {
+    #[serde(rename = "responseSizeEstimate")]
     pub response_size_estimate: Option<u64>,
+
+    #[serde(rename = "responseConsensus")]
     pub response_consensus: Option<ConsensusStrategy>,
 }

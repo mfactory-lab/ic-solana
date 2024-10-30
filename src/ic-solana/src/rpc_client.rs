@@ -1,14 +1,8 @@
 use {
     crate::{
+        add_metric_entry,
         constants::*,
         request::RpcRequest,
-        response::{
-            OptionalContext, Response, RpcAccountBalance, RpcBlockCommitment, RpcBlockProduction, RpcBlockhash,
-            RpcConfirmedTransactionStatusWithSignature, RpcContactInfo, RpcIdentity, RpcInflationGovernor,
-            RpcInflationRate, RpcInflationReward, RpcKeyedAccount, RpcLeaderSchedule, RpcPerfSample,
-            RpcPrioritizationFee, RpcSimulateTransactionResult, RpcSnapshotSlotInfo, RpcSupply, RpcTokenAccountBalance,
-            RpcVersionInfo, RpcVoteAccountStatus,
-        },
         rpc_client::multi_call::{MultiCallError, MultiCallResults},
         types::{
             CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, Epoch, EpochInfo, EpochSchedule, Pubkey,
@@ -26,11 +20,6 @@ use {
     ic_cdk::api::management_canister::http_request::{
         http_request, CanisterHttpRequestArgument, HttpHeader, HttpMethod, TransformContext,
     },
-    ic_solana_common::{
-        add_metric_entry,
-        logs::DEBUG,
-        metrics::{MetricRpcHost, MetricRpcMethod},
-    },
     serde::{de::DeserializeOwned, Serialize},
     serde_json::{json, Value},
     std::{
@@ -41,38 +30,40 @@ use {
     },
 };
 
+mod compression;
 mod multi_call;
 mod types;
 
+use crate::{
+    logs::DEBUG,
+    metrics::{MetricRpcHost, MetricRpcMethod},
+    rpc_client::compression::decompress_if_needed,
+    types::{
+        response::{
+            OptionalContext, RpcAccountBalance, RpcBlockCommitment, RpcBlockProduction, RpcBlockhash,
+            RpcConfirmedTransactionStatusWithSignature, RpcContactInfo, RpcIdentity, RpcInflationGovernor,
+            RpcInflationRate, RpcInflationReward, RpcKeyedAccount, RpcLeaderSchedule, RpcPerfSample,
+            RpcPrioritizationFee, RpcResponse, RpcSimulateTransactionResult, RpcSnapshotSlotInfo, RpcSupply,
+            RpcVersionInfo, RpcVoteAccountStatus,
+        },
+        tagged::RpcTokenAccountBalance,
+    },
+};
 pub use types::*;
 
 thread_local! {
     static NEXT_ID: RefCell<u64> = RefCell::default();
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub struct RpcClientConfig {
     pub response_consensus: Option<ConsensusStrategy>,
     pub response_size_estimate: Option<u64>,
     pub request_cost_calculator: Option<RequestCostCalculator>,
     pub host_validator: Option<HostValidator>,
     pub transform_context: Option<TransformContext>,
+    pub use_compression: bool,
     pub is_demo_active: bool,
-    pub extra_response_bytes: u64,
-}
-
-impl Default for RpcClientConfig {
-    fn default() -> Self {
-        Self {
-            response_consensus: None,
-            response_size_estimate: None,
-            request_cost_calculator: None,
-            host_validator: None,
-            transform_context: None,
-            is_demo_active: false,
-            extra_response_bytes: 2 * 1024, // 2KB
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -87,6 +78,12 @@ impl RpcClient {
             providers: providers.into().into_iter().collect(),
             config: config.unwrap_or_default(),
         }
+    }
+
+    fn response_size_estimate(&self, estimate: u64) -> u64 {
+        self.config
+            .response_size_estimate
+            .unwrap_or(estimate + HEADER_SIZE_LIMIT)
     }
 
     fn consensus_strategy(&self) -> ConsensusStrategy {
@@ -114,6 +111,7 @@ impl RpcClient {
     ///
     /// # Arguments
     ///
+    /// * `provider` - RPC API provider.
     /// * `payload` - JSON payload to be sent in the HTTP request.
     /// * `max_response_bytes` - The maximal size of the response in bytes. If None, 2MiB will be the limit.
     ///
@@ -131,14 +129,22 @@ impl RpcClient {
         let cluster = provider.cluster();
         let url = cluster.url();
 
+        // Ensure "Content-Type: application/json" is present
         let mut headers = provider.headers.clone().unwrap_or_default();
         if !headers
             .iter()
-            .any(|header| header.name.to_lowercase() == "content-type")
+            .any(|header| header.name.eq_ignore_ascii_case("Content-Type"))
         {
             headers.push(HttpHeader {
-                name: "content-type".to_string(),
+                name: "Content-Type".to_string(),
                 value: "application/json".to_string(),
+            });
+        }
+
+        if self.config.use_compression {
+            headers.push(HttpHeader {
+                name: "Accept-Encoding".to_string(),
+                value: "gzip, deflate".to_string(),
             });
         }
 
@@ -146,7 +152,7 @@ impl RpcClient {
 
         let request = CanisterHttpRequestArgument {
             url: url.to_string(),
-            max_response_bytes: max_response_bytes.map(|n| n + self.config.extra_response_bytes),
+            max_response_bytes,
             method: HttpMethod::POST,
             headers,
             body: Some(body),
@@ -169,8 +175,8 @@ impl RpcClient {
         let rpc_host = MetricRpcHost(host.to_string());
         let rpc_method = MetricRpcMethod(Self::find_rpc_method_name(payload).to_string());
 
-        if let Some(is_blocked) = self.config.host_validator {
-            if is_blocked(host) {
+        if let Some(is_allowed) = self.config.host_validator {
+            if !is_allowed(host) {
                 add_metric_entry!(err_host_not_allowed, rpc_host.clone(), 1);
                 return Err(RpcError::Text(format!("Disallowed RPC service host: {}", host)));
             }
@@ -198,22 +204,34 @@ impl RpcClient {
 
         match http_request(request, cycles_cost).await {
             Ok((response,)) => {
-                let body_len = response.body.len();
-                let body_str = std::str::from_utf8(&response.body).map_err(|e| RpcError::ParseError(e.to_string()))?;
+                let bytes = if self.config.use_compression {
+                    decompress_if_needed(response.body)?
+                } else {
+                    response.body
+                };
+                let body = std::str::from_utf8(&bytes).map_err(|e| RpcError::ParseError(e.to_string()))?;
 
                 log!(
                     DEBUG,
                     "Got response (with {} bytes): {} from url: {} with status: {}",
-                    body_len,
-                    body_str,
+                    body.len(),
+                    body,
                     url,
                     response.status
                 );
 
-                let status: u32 = response.status.0.try_into().unwrap_or(0);
-                add_metric_entry!(responses, (rpc_method, rpc_host, status.into()), 1);
+                // JSON-RPC responses over HTTP should have a 2xx status code,
+                // even if the contained JsonRpcResult is an error.
+                // If the server is not available, it will sometimes (wrongly) return HTML that will fail to parse as JSON.
+                let http_status: u16 = response.status.0.try_into().expect("Invalid http status code");
+                // TODO: investigate
+                // if !is_successful_http_code(&status) {
+                //     return Err(RpcError::JsonRpcError { status, body }.into());
+                // }
 
-                Ok(response.body)
+                add_metric_entry!(responses, (rpc_method, rpc_host, http_status.into()), 1);
+
+                Ok(bytes)
             }
             Err(error) => {
                 add_metric_entry!(err_http_outcall, (rpc_method, rpc_host), 1);
@@ -243,7 +261,12 @@ impl RpcClient {
         max_response_bytes: Option<u64>,
     ) -> RpcResult<JsonRpcResponse<R>> {
         let payload = method.build_json(self.next_request_id(), params);
-        let results = self.parallel_call(&payload, max_response_bytes).await;
+        let results = self
+            .parallel_call(
+                &payload,
+                max_response_bytes.map(|estimate| self.response_size_estimate(estimate)),
+            )
+            .await;
         let bytes = Self::process_result(
             method,
             MultiCallResults::from_non_empty_iter(self.providers.iter().cloned().zip(results.into_iter()))
@@ -267,7 +290,12 @@ impl RpcClient {
                 .collect(),
         );
 
-        let results = self.parallel_call(&payload, max_response_bytes).await;
+        let results = self
+            .parallel_call(
+                &payload,
+                max_response_bytes.map(|estimate| self.response_size_estimate(estimate)),
+            )
+            .await;
 
         let bytes = Self::process_result(
             Self::find_rpc_method_name(&payload),
@@ -288,11 +316,11 @@ impl RpcClient {
         &self,
         pubkey: &Pubkey,
         config: Option<RpcAccountInfoConfig>,
-    ) -> RpcResult<Response<Option<UiAccount>>> {
+    ) -> RpcResult<RpcResponse<Option<UiAccount>>> {
         self.call(
             RpcRequest::GetAccountInfo,
-            json!([pubkey.to_string(), config]),
-            self.config.response_size_estimate.or(Some(MAX_PDA_ACCOUNT_DATA_LENGTH)),
+            (pubkey.to_string(), config),
+            Some(MAX_PDA_ACCOUNT_DATA_LENGTH),
         )
         .await?
         .into()
@@ -309,7 +337,7 @@ impl RpcClient {
         pubkey: &Pubkey,
         config: Option<RpcContextConfig>,
     ) -> RpcResult<OptionalContext<u64>> {
-        self.call(RpcRequest::GetBalance, json!([pubkey.to_string(), config]), Some(156))
+        self.call(RpcRequest::GetBalance, (pubkey.to_string(), config), Some(156))
             .await?
             .into()
     }
@@ -323,8 +351,8 @@ impl RpcClient {
     pub async fn get_block(&self, slot: Slot, config: Option<RpcBlockConfig>) -> RpcResult<UiConfirmedBlock> {
         self.call(
             RpcRequest::GetBlock,
-            json!([slot, config]),
-            self.config.response_size_estimate.or(Some(GET_BLOCK_SIZE_ESTIMATE)),
+            (slot, config.unwrap_or_default()),
+            Some(GET_BLOCK_SIZE_ESTIMATE),
         )
         .await?
         .into()
@@ -339,7 +367,7 @@ impl RpcClient {
     pub async fn get_block_commitment(&self, slot: Slot) -> RpcResult<RpcBlockCommitment> {
         self.call(
             RpcRequest::GetBlockCommitment,
-            json!([slot]),
+            (slot,),
             Some(GET_BLOCK_COMMITMENT_SIZE_ESTIMATE),
         )
         .await?
@@ -353,13 +381,9 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getBlockHeight
     ///
     pub async fn get_block_height(&self, config: Option<RpcContextConfig>) -> RpcResult<u64> {
-        self.call(
-            RpcRequest::GetBlockHeight,
-            json!([config.unwrap_or_default()]),
-            Some(45),
-        )
-        .await?
-        .into()
+        self.call(RpcRequest::GetBlockHeight, (config.unwrap_or_default(),), Some(45))
+            .await?
+            .into()
     }
 
     ///
@@ -370,11 +394,11 @@ impl RpcClient {
     ///
     pub async fn get_block_production(
         &self,
-        config: RpcBlockProductionConfig,
+        config: Option<RpcBlockProductionConfig>,
     ) -> RpcResult<OptionalContext<RpcBlockProduction>> {
         self.call(
             RpcRequest::GetBlockProduction,
-            json!([config]),
+            (config,),
             Some(GET_BLOCK_PRODUCTION_SIZE_ESTIMATE),
         )
         .await?
@@ -388,7 +412,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getBlockTime
     ///
     pub async fn get_block_time(&self, slot: Slot) -> RpcResult<UnixTimestamp> {
-        self.call(RpcRequest::GetBlockTime, json!([slot]), Some(45))
+        self.call(RpcRequest::GetBlockTime, (slot,), Some(GET_BLOCK_TIME_SIZE_ESTIMATE))
             .await?
             .into()
     }
@@ -405,13 +429,12 @@ impl RpcClient {
         end_slot: Option<Slot>,
         commitment_config: Option<CommitmentConfig>,
     ) -> RpcResult<Vec<u64>> {
-        let params = if end_slot.is_some() {
+        let params: Value = if end_slot.is_some() {
             json!([start_slot, end_slot, commitment_config])
         } else {
             json!([start_slot, commitment_config])
         };
 
-        // Total response size estimation
         let end_slot = end_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE);
         let limit = end_slot.saturating_sub(start_slot);
 
@@ -452,7 +475,7 @@ impl RpcClient {
 
         self.call(
             RpcRequest::GetBlocksWithLimit,
-            json!([start_slot, limit, commitment_config]),
+            (start_slot, limit, commitment_config),
             Some(Self::get_block_range_max_response_bytes(start_slot, limit)),
         )
         .await?
@@ -476,13 +499,9 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getEpochInfo
     ///
     pub async fn get_epoch_info(&self, config: Option<RpcContextConfig>) -> RpcResult<EpochInfo> {
-        self.call(
-            RpcRequest::GetEpochInfo,
-            json!([config]),
-            Some(GET_EPOCH_INFO_SIZE_ESTIMATE),
-        )
-        .await?
-        .into()
+        self.call(RpcRequest::GetEpochInfo, (config,), Some(GET_EPOCH_INFO_SIZE_ESTIMATE))
+            .await?
+            .into()
     }
 
     ///
@@ -492,13 +511,9 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getEpochSchedule
     ///
     pub async fn get_epoch_schedule(&self) -> RpcResult<EpochSchedule> {
-        self.call(
-            RpcRequest::GetEpochSchedule,
-            Value::Null,
-            Some(GET_EPOCH_SCHEDULE_SIZE_ESTIMATE),
-        )
-        .await?
-        .into()
+        self.call(RpcRequest::GetEpochSchedule, (), Some(GET_EPOCH_SCHEDULE_SIZE_ESTIMATE))
+            .await?
+            .into()
     }
 
     ///
@@ -507,8 +522,12 @@ impl RpcClient {
     /// Method relies on the `getFeeForMessage` RPC call to get the fee for a message:
     ///   https://solana.com/docs/rpc/http/getFeeForMessage
     ///
-    pub async fn get_fee_for_message(&self, message: String, config: Option<RpcContextConfig>) -> RpcResult<u64> {
-        self.call(RpcRequest::GetFeeForMessage, json!([message, config]), Some(128))
+    pub async fn get_fee_for_message(
+        &self,
+        message: String,
+        config: Option<RpcContextConfig>,
+    ) -> RpcResult<OptionalContext<u64>> {
+        self.call(RpcRequest::GetFeeForMessage, (message, config), Some(128))
             .await?
             .into()
     }
@@ -520,7 +539,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getFirstAvailableBlock
     ///
     pub async fn get_first_available_block(&self) -> RpcResult<u64> {
-        self.call::<_, u64>(RpcRequest::GetFirstAvailableBlock, Value::Null, Some(128))
+        self.call::<_, u64>(RpcRequest::GetFirstAvailableBlock, (), Some(128))
             .await?
             .into()
     }
@@ -532,9 +551,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getGenesisHash
     ///
     pub async fn get_genesis_hash(&self) -> RpcResult<String> {
-        self.call(RpcRequest::GetGenesisHash, Value::Null, Some(128))
-            .await?
-            .into()
+        self.call(RpcRequest::GetGenesisHash, (), Some(128)).await?.into()
     }
 
     ///
@@ -601,11 +618,11 @@ impl RpcClient {
     pub async fn get_inflation_reward(
         &self,
         addresses: &[Pubkey],
-        config: RpcEpochConfig,
+        config: Option<RpcEpochConfig>,
     ) -> RpcResult<Vec<Option<RpcInflationReward>>> {
         self.call(
             RpcRequest::GetInflationReward,
-            json!([addresses, config]),
+            (addresses, config),
             Some(40 + 153 * addresses.len() as u64),
         )
         .await?
@@ -622,7 +639,7 @@ impl RpcClient {
         &self,
         config: Option<RpcLargestAccountsConfig>,
     ) -> RpcResult<OptionalContext<Vec<RpcAccountBalance>>> {
-        self.call(RpcRequest::GetLargestAccounts, json!([config]), Some(128 * 20))
+        self.call(RpcRequest::GetLargestAccounts, (config,), Some(128 * 20))
             .await?
             .into()
     }
@@ -637,7 +654,7 @@ impl RpcClient {
         &self,
         config: Option<RpcContextConfig>,
     ) -> RpcResult<OptionalContext<RpcBlockhash>> {
-        self.call(RpcRequest::GetLatestBlockhash, json!([config]), Some(156))
+        self.call(RpcRequest::GetLatestBlockhash, (config,), Some(156))
             .await?
             .into()
     }
@@ -653,7 +670,7 @@ impl RpcClient {
         epoch: Epoch,
         config: Option<RpcLeaderScheduleConfig>,
     ) -> RpcResult<RpcLeaderSchedule> {
-        self.call(RpcRequest::GetLeaderSchedule, json!([epoch, config]), None)
+        self.call(RpcRequest::GetLeaderSchedule, (epoch, config), None)
             .await?
             .into()
     }
@@ -665,9 +682,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getMaxRetransmitSlot
     ///
     pub async fn get_max_retransmit_slot(&self) -> RpcResult<u64> {
-        self.call(RpcRequest::GetMaxRetransmitSlot, Value::Null, None)
-            .await?
-            .into()
+        self.call(RpcRequest::GetMaxRetransmitSlot, (), None).await?.into()
     }
 
     ///
@@ -677,9 +692,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getMaxShredInsertSlot
     ///
     pub async fn get_max_shred_insert_slot(&self) -> RpcResult<u64> {
-        self.call(RpcRequest::GetMaxShredInsertSlot, Value::Null, None)
-            .await?
-            .into()
+        self.call(RpcRequest::GetMaxShredInsertSlot, (), None).await?.into()
     }
 
     ///
@@ -691,13 +704,9 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getRecentPerformanceSamples
     ///
     pub async fn get_recent_performance_samples(&self, limit: u64) -> RpcResult<Vec<RpcPerfSample>> {
-        self.call(
-            RpcRequest::GetRecentPerformanceSamples,
-            json!([limit]),
-            Some(256 * limit),
-        )
-        .await?
-        .into()
+        self.call(RpcRequest::GetRecentPerformanceSamples, (limit,), Some(256 * limit))
+            .await?
+            .into()
     }
 
     ///
@@ -709,7 +718,7 @@ impl RpcClient {
     pub async fn get_recent_prioritization_fees(&self, addresses: &[Pubkey]) -> RpcResult<Vec<RpcPrioritizationFee>> {
         self.call(
             RpcRequest::GetRecentPrioritizationFees,
-            json!([addresses]),
+            (addresses,),
             Some(128 * addresses.len() as u64),
         )
         .await?
@@ -729,7 +738,7 @@ impl RpcClient {
     ) -> RpcResult<OptionalContext<UiTokenAmount>> {
         self.call(
             RpcRequest::GetTokenAccountBalance,
-            json!([pubkey.to_string(), commitment_config]),
+            (pubkey.to_string(), commitment_config),
             Some(256),
         )
         .await?
@@ -750,10 +759,8 @@ impl RpcClient {
     ) -> RpcResult<OptionalContext<Vec<RpcKeyedAccount>>> {
         self.call(
             RpcRequest::GetTokenAccountsByDelegate,
-            json!([pubkey.to_string(), filter, config]),
-            self.config
-                .response_size_estimate
-                .or(Some(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE)),
+            (pubkey.to_string(), filter, config),
+            Some(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE),
         )
         .await?
         .into()
@@ -773,10 +780,8 @@ impl RpcClient {
     ) -> RpcResult<OptionalContext<Vec<RpcKeyedAccount>>> {
         self.call(
             RpcRequest::GetTokenAccountsByOwner,
-            json!([pubkey.to_string(), filter, config]),
-            self.config
-                .response_size_estimate
-                .or(Some(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE)),
+            (pubkey.to_string(), filter, config),
+            Some(GET_TOKEN_ACCOUNTS_SIZE_ESTIMATE),
         )
         .await?
         .into()
@@ -795,10 +800,8 @@ impl RpcClient {
     ) -> RpcResult<OptionalContext<Vec<RpcTokenAccountBalance>>> {
         self.call(
             RpcRequest::GetTokenLargestAccounts,
-            json!([mint.to_string(), commitment_config]),
-            self.config
-                .response_size_estimate
-                .or(Some(GET_TOKEN_LARGEST_ACCOUNTS_SIZE_ESTIMATE)),
+            (mint.to_string(), commitment_config),
+            Some(GET_TOKEN_LARGEST_ACCOUNTS_SIZE_ESTIMATE),
         )
         .await?
         .into()
@@ -817,10 +820,8 @@ impl RpcClient {
     ) -> RpcResult<OptionalContext<UiTokenAmount>> {
         self.call(
             RpcRequest::GetTokenSupply,
-            json!([mint.to_string(), commitment_config]),
-            self.config
-                .response_size_estimate
-                .or(Some(GET_TOKEN_SUPPLY_SIZE_ESTIMATE)),
+            (mint.to_string(), commitment_config),
+            Some(GET_TOKEN_SUPPLY_SIZE_ESTIMATE),
         )
         .await?
         .into()
@@ -842,10 +843,10 @@ impl RpcClient {
     /// Method relies on the `getVoteAccounts` RPC call to get the voting accounts:
     ///   https://solana.com/docs/rpc/http/getVoteAccounts
     ///
-    pub async fn get_vote_accounts(&self, config: RpcGetVoteAccountsConfig) -> RpcResult<RpcVoteAccountStatus> {
+    pub async fn get_vote_accounts(&self, config: Option<RpcGetVoteAccountsConfig>) -> RpcResult<RpcVoteAccountStatus> {
         self.call(
             RpcRequest::GetVoteAccounts,
-            [config],
+            (config,),
             Some(GET_VOTE_ACCOUNTS_SIZE_ESTIMATE),
         )
         .await?
@@ -863,7 +864,7 @@ impl RpcClient {
         blockhash: String,
         config: Option<RpcContextConfig>,
     ) -> RpcResult<OptionalContext<bool>> {
-        self.call(RpcRequest::IsBlockhashValid, json!([blockhash, config]), Some(128))
+        self.call(RpcRequest::IsBlockhashValid, (blockhash, config), Some(128))
             .await?
             .into()
     }
@@ -875,7 +876,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getSlot
     ///
     pub async fn get_slot(&self, config: Option<RpcContextConfig>) -> RpcResult<Slot> {
-        self.call(RpcRequest::GetSlot, json!([config]), Some(128)).await?.into()
+        self.call(RpcRequest::GetSlot, (config,), Some(128)).await?.into()
     }
 
     ///
@@ -885,9 +886,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/getSlotLeader
     ///
     pub async fn get_slot_leader(&self, config: Option<RpcContextConfig>) -> RpcResult<String> {
-        self.call(RpcRequest::GetSlotLeader, json!([config]), Some(128))
-            .await?
-            .into()
+        self.call(RpcRequest::GetSlotLeader, (config,), Some(128)).await?.into()
     }
 
     ///
@@ -896,7 +895,7 @@ impl RpcClient {
     /// Method relies on the `getSlotLeaders` RPC call to get the slot leaders:
     ///   https://solana.com/docs/rpc/http/getSlotLeaders
     ///
-    pub async fn get_slot_leaders(&self, start_slot: u64, limit: Option<u64>) -> RpcResult<String> {
+    pub async fn get_slot_leaders(&self, start_slot: u64, limit: Option<u64>) -> RpcResult<Vec<String>> {
         let limit = limit.unwrap_or(MAX_GET_SLOT_LEADERS);
 
         if limit > MAX_GET_SLOT_LEADERS {
@@ -911,7 +910,7 @@ impl RpcClient {
 
         self.call(
             RpcRequest::GetSlotLeaders,
-            json!([start_slot, limit]),
+            (start_slot, limit),
             Some(max_response_bytes),
         )
         .await?
@@ -924,8 +923,8 @@ impl RpcClient {
     /// Method relies on the `getStakeMinimumDelegation` RPC call to get the supply:
     ///   https://solana.com/docs/rpc/http/getStakeMinimumDelegation
     ///
-    pub async fn get_stake_minimum_delegation(&self, config: Option<CommitmentConfig>) -> RpcResult<Response<u64>> {
-        self.call(RpcRequest::GetStakeMinimumDelegation, json!([config]), Some(128))
+    pub async fn get_stake_minimum_delegation(&self, config: Option<CommitmentConfig>) -> RpcResult<RpcResponse<u64>> {
+        self.call(RpcRequest::GetStakeMinimumDelegation, (config,), Some(128))
             .await?
             .into()
     }
@@ -936,8 +935,8 @@ impl RpcClient {
     /// Method relies on the `getSupply` RPC call to get the supply:
     ///   https://solana.com/docs/rpc/http/getSupply
     ///
-    pub async fn get_supply(&self, config: RpcSupplyConfig) -> RpcResult<RpcSupply> {
-        self.call(RpcRequest::GetSupply, json!([config]), Some(GET_SUPPLY_SIZE_ESTIMATE))
+    pub async fn get_supply(&self, config: Option<RpcSupplyConfig>) -> RpcResult<RpcResponse<RpcSupply>> {
+        self.call(RpcRequest::GetSupply, (config,), Some(GET_SUPPLY_SIZE_ESTIMATE))
             .await?
             .into()
     }
@@ -955,7 +954,7 @@ impl RpcClient {
     ) -> RpcResult<u64> {
         self.call(
             RpcRequest::GetMinimumBalanceForRentExemption,
-            json!([data_len, config]),
+            (data_len, config),
             Some(64),
         )
         .await?
@@ -972,13 +971,11 @@ impl RpcClient {
         &self,
         pubkeys: Vec<Pubkey>,
         config: Option<RpcAccountInfoConfig>,
-    ) -> RpcResult<Vec<UiAccount>> {
+    ) -> RpcResult<OptionalContext<Vec<UiAccount>>> {
         self.call(
             RpcRequest::GetMultipleAccounts,
-            json!([pubkeys, config]),
-            self.config
-                .response_size_estimate
-                .or(Some(pubkeys.len() as u64 * MAX_PDA_ACCOUNT_DATA_LENGTH)),
+            (&pubkeys, config),
+            Some(pubkeys.len() as u64 * MAX_PDA_ACCOUNT_DATA_LENGTH),
         )
         .await?
         .into()
@@ -993,12 +990,12 @@ impl RpcClient {
     pub async fn get_program_accounts(
         &self,
         program_id: &Pubkey,
-        config: RpcProgramAccountsConfig,
+        config: Option<RpcProgramAccountsConfig>,
     ) -> RpcResult<Vec<RpcKeyedAccount>> {
         self.call(
             RpcRequest::GetProgramAccounts,
-            json!([program_id.to_string(), config]),
-            self.config.response_size_estimate,
+            (program_id.to_string(), config.unwrap_or_default()),
+            Some(100 * MAX_PDA_ACCOUNT_DATA_LENGTH),
         )
         .await?
         .into()
@@ -1011,9 +1008,7 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/minimumLedgerSlot
     ///
     pub async fn minimum_ledger_slot(&self) -> RpcResult<Slot> {
-        self.call(RpcRequest::MinimumLedgerSlot, Value::Null, Some(64))
-            .await?
-            .into()
+        self.call(RpcRequest::MinimumLedgerSlot, (), Some(64)).await?.into()
     }
 
     ///
@@ -1023,13 +1018,9 @@ impl RpcClient {
     ///   https://solana.com/docs/rpc/http/requestAirdrop
     ///
     pub async fn request_airdrop(&self, pubkey: &Pubkey, lamports: u64) -> RpcResult<String> {
-        self.call(
-            RpcRequest::RequestAirdrop,
-            json!([pubkey.to_string(), lamports]),
-            Some(156),
-        )
-        .await?
-        .into()
+        self.call(RpcRequest::RequestAirdrop, (pubkey.to_string(), lamports), Some(156))
+            .await?
+            .into()
     }
 
     ///
@@ -1042,13 +1033,13 @@ impl RpcClient {
     pub async fn get_signatures_for_address(
         &self,
         pubkey: &Pubkey,
-        config: RpcSignaturesForAddressConfig,
+        config: Option<RpcSignaturesForAddressConfig>,
     ) -> RpcResult<Vec<RpcConfirmedTransactionStatusWithSignature>> {
-        let default_limit = 1000;
+        let limit = config.as_ref().and_then(|c| c.limit).unwrap_or(1000) as u64;
         self.call(
             RpcRequest::GetSignaturesForAddress,
-            json!([pubkey.to_string(), config]),
-            Some(SIGNATURE_RESPONSE_SIZE_ESTIMATE * config.limit.unwrap_or(default_limit) as u64),
+            (pubkey.to_string(), config),
+            Some(SIGNATURE_RESPONSE_SIZE_ESTIMATE * limit),
         )
         .await?
         .into()
@@ -1073,12 +1064,11 @@ impl RpcClient {
             ));
         }
 
-        // Estimate 256 bytes per transaction status to account for errors and metadata
         let max_response_bytes = signatures.len() as u64 * TRANSACTION_STATUS_RESPONSE_SIZE_ESTIMATE;
 
         self.call(
             RpcRequest::GetSignatureStatuses,
-            json!([signatures, config]),
+            (signatures, config),
             Some(max_response_bytes),
         )
         .await?
@@ -1095,26 +1085,24 @@ impl RpcClient {
         &self,
         signature: &Signature,
         config: Option<RpcTransactionConfig>,
-    ) -> RpcResult<EncodedConfirmedTransactionWithStatusMeta> {
+    ) -> RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>> {
         self.call(
             RpcRequest::GetTransaction,
-            json!([signature, config]),
-            self.config
-                .response_size_estimate
-                .or(Some(TRANSACTION_RESPONSE_SIZE_ESTIMATE)),
+            (signature.to_string(), config.unwrap_or_default()),
+            Some(TRANSACTION_RESPONSE_SIZE_ESTIMATE),
         )
         .await?
-        .into()
+        .into_optional_rpc_result()
     }
 
     ///
-    /// Returns the current Transaction count from the ledger.
+    /// Returns the current transactions count from the ledger.
     ///
     /// Method relies on the `getTransactionCount` RPC call to get the transaction count:
     ///   https://solana.com/docs/rpc/http/getTransactionCount
     ///
     pub async fn get_transaction_count(&self, config: Option<RpcContextConfig>) -> RpcResult<u64> {
-        self.call(RpcRequest::GetTransactionCount, json!([config]), Some(128))
+        self.call(RpcRequest::GetTransactionCount, (config,), Some(128))
             .await?
             .into()
     }
@@ -1130,22 +1118,20 @@ impl RpcClient {
     ///    {"jsonrpc":"2.0","id":2,"method":"getTransaction","params":["2"]}
     /// ]' http://localhost:8899
     ///
-    pub async fn get_transactions(
+    pub async fn get_transactions<T: DeserializeOwned>(
         &self,
         signatures: Vec<&str>,
         config: Option<RpcTransactionConfig>,
-    ) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>> {
+    ) -> RpcResult<HashMap<String, RpcResult<Option<T>>>> {
         let requests = signatures
             .iter()
-            .map(|signature| (RpcRequest::GetTransaction, json!([signature, config])))
+            .map(|signature| (RpcRequest::GetTransaction, (signature, config)))
             .collect::<Vec<_>>();
 
         let response = self
-            .batch_call::<_, EncodedConfirmedTransactionWithStatusMeta>(
+            .batch_call::<_, T>(
                 &requests,
-                self.config
-                    .response_size_estimate
-                    .or_else(|| Some(signatures.len() as u64 * TRANSACTION_RESPONSE_SIZE_ESTIMATE)),
+                Some(signatures.len() as u64 * TRANSACTION_RESPONSE_SIZE_ESTIMATE),
             )
             .await?;
 
@@ -1191,7 +1177,7 @@ impl RpcClient {
         };
 
         let response: RpcResult<String> = self
-            .call(RpcRequest::SendTransaction, json!([raw_tx, config]), Some(156))
+            .call(RpcRequest::SendTransaction, (raw_tx, config), Some(156))
             .await?
             .into();
 
@@ -1222,22 +1208,9 @@ impl RpcClient {
             }
         };
 
-        let response: RpcResult<RpcSimulateTransactionResult> = self
-            .call(RpcRequest::SimulateTransaction, json!([raw_tx, config]), None)
+        self.call(RpcRequest::SimulateTransaction, (raw_tx, config), None)
             .await?
-            .into();
-
-        response
-    }
-
-    ///
-    /// Calculate the max response bytes for the provided block range.
-    ///
-    fn get_block_range_max_response_bytes(start_slot: u64, limit: u64) -> u64 {
-        let end_slot = start_slot.saturating_add(limit);
-        let max_slot_str_len = end_slot.to_string().len() as u64;
-        let commas_size = if limit > 0 { limit - 1 } else { 0 };
-        36 + (max_slot_str_len * limit) + commas_size
+            .into()
     }
 
     ///
@@ -1271,6 +1244,16 @@ impl RpcClient {
     }
 
     ///
+    /// Calculate the max response bytes for the provided block range.
+    ///
+    fn get_block_range_max_response_bytes(start_slot: u64, limit: u64) -> u64 {
+        let end_slot = start_slot.saturating_add(limit);
+        let max_slot_str_len = end_slot.to_string().len() as u64;
+        let commas_size = if limit > 0 { limit - 1 } else { 0 };
+        36 + (max_slot_str_len * limit) + commas_size
+    }
+
+    ///
     /// Extracts the JSON-RPC `method` name from the request payload.
     ///
     /// This function searches for the `method` field within the provided JSON-RPC
@@ -1279,7 +1262,7 @@ impl RpcClient {
     /// - **Single Request**: Retrieves the `method` directly from the payload.
     /// - **Batch Request**: Retrieves the `method` from the first request in the batch.
     ///
-    /// If the `method` field is not found in either case returns `"unknown"`.
+    /// If the `method` field is not found, in either case returns `"unknown"`.
     ///
     fn find_rpc_method_name(payload: &Value) -> &str {
         payload
@@ -1289,3 +1272,36 @@ impl RpcClient {
             .unwrap_or("unknown")
     }
 }
+
+// TODO:
+// pub fn is_response_too_large(code: &RejectionCode, message: &str) -> bool {
+//     code == &RejectionCode::SysFatal && (message.contains("size limit") || message.contains("length limit"))
+// }
+//
+// #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+// pub struct ResponseSizeEstimate(u64);
+//
+// impl ResponseSizeEstimate {
+//     pub fn new(num_bytes: u64) -> Self {
+//         assert!(num_bytes > 0);
+//         assert!(num_bytes <= MAX_PAYLOAD_SIZE);
+//         Self(num_bytes)
+//     }
+//
+//     /// Describes the expected (90th percentile) number of bytes in the HTTP response body.
+//     /// This number should be lower than `MAX_PAYLOAD_SIZE`.
+//     pub fn get(self) -> u64 {
+//         self.0
+//     }
+//
+//     /// Returns a higher estimate for the payload size.
+//     pub fn adjust(self) -> Self {
+//         Self(self.0.max(1024).saturating_mul(2).min(MAX_PAYLOAD_SIZE))
+//     }
+// }
+//
+// impl std::fmt::Display for ResponseSizeEstimate {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "{}", self.0)
+//     }
+// }

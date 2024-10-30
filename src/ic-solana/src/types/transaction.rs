@@ -2,7 +2,7 @@ use {
     super::UiInnerInstructions,
     crate::{
         types::{
-            account::{ParsedAccount, UiTokenAmount},
+            account::{AccountKey, UiTokenAmount},
             message::{Message, UiMessage},
             pubkey::Pubkey,
             reward::Rewards,
@@ -126,7 +126,7 @@ pub enum Legacy {
     Legacy,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum TransactionVersion {
     #[serde(rename = "legacy")]
@@ -135,20 +135,27 @@ pub enum TransactionVersion {
     Number(u8),
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq, CandidType)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionBinaryEncoding {
+    #[serde(rename = "base58")]
     Base58,
+    #[serde(rename = "base64")]
     Base64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq, CandidType)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum UiTransactionEncoding {
+    #[serde(rename = "binary")]
     Binary, // Legacy. Retained for RPC backwards compatibility
-    Base64,
+    #[serde(rename = "base58")]
     Base58,
+    #[serde(rename = "base64")]
+    Base64,
+    #[serde(rename = "json")]
     Json,
+    #[serde(rename = "jsonParsed")]
     JsonParsed,
 }
 
@@ -164,14 +171,18 @@ impl Display for UiTransactionEncoding {
 #[serde(rename_all = "camelCase")]
 pub enum TransactionDetails {
     #[default]
+    #[serde(rename = "full")]
     Full,
+    #[serde(rename = "signatures")]
     Signatures,
-    None,
+    #[serde(rename = "accounts")]
     Accounts,
+    #[serde(rename = "none")]
+    None,
 }
 
 /// A duplicate representation of a Transaction for pretty JSON serialization
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTransaction {
     pub signatures: Vec<String>,
@@ -182,10 +193,11 @@ pub struct UiTransaction {
 #[serde(rename_all = "camelCase")]
 pub struct UiAccountsList {
     pub signatures: Vec<String>,
-    pub account_keys: Vec<ParsedAccount>,
+    #[serde(rename = "accountKeys")]
+    pub account_keys: Vec<AccountKey>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum EncodedTransaction {
     LegacyBinary(String), // Old way of expressing base-58, retained for RPC backwards compatibility
@@ -197,8 +209,11 @@ pub enum EncodedTransaction {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum TransactionConfirmationStatus {
+    #[serde(rename = "processed")]
     Processed,
+    #[serde(rename = "confirmed")]
     Confirmed,
+    #[serde(rename = "finalized")]
     Finalized,
 }
 
@@ -209,6 +224,7 @@ pub struct TransactionStatus {
     pub confirmations: Option<usize>,  // None = rooted
     pub status: TransactionResult<()>, // legacy field
     pub err: Option<TransactionError>,
+    #[serde(default, rename = "confirmationStatus", skip_serializing_if = "Option::is_none")]
     pub confirmation_status: Option<TransactionConfirmationStatus>,
 }
 
@@ -253,29 +269,32 @@ pub struct UiTransactionStatusMeta {
     pub err: Option<TransactionError>,
     pub status: TransactionResult<()>, // This field is deprecated.  See https://github.com/solana-labs/solana/issues/9302
     pub fee: u64,
+    #[serde(rename = "preBalances")]
     pub pre_balances: Vec<u64>,
+    #[serde(rename = "postBalances")]
     pub post_balances: Vec<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "innerInstructions", skip_serializing_if = "Option::is_none")]
     pub inner_instructions: Option<Vec<UiInnerInstructions>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "logMessages", skip_serializing_if = "Option::is_none")]
     pub log_messages: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "preTokenBalances", skip_serializing_if = "Option::is_none")]
     pub pre_token_balances: Option<Vec<UiTransactionTokenBalance>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "postTokenBalances", skip_serializing_if = "Option::is_none")]
     pub post_token_balances: Option<Vec<UiTransactionTokenBalance>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rewards: Option<Rewards>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "loadedAddresses", skip_serializing_if = "Option::is_none")]
     pub loaded_addresses: Option<UiLoadedAddresses>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "returnData", skip_serializing_if = "Option::is_none")]
     pub return_data: Option<UiTransactionReturnData>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "computeUnitsConsumed", skip_serializing_if = "Option::is_none")]
     pub compute_units_consumed: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTransactionReturnData {
+    #[serde(rename = "programId")]
     pub program_id: String,
     pub data: (String, UiReturnDataEncoding),
 }
@@ -283,6 +302,7 @@ pub struct UiTransactionReturnData {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum UiReturnDataEncoding {
+    #[serde(rename = "base64")]
     Base64,
 }
 
@@ -297,16 +317,18 @@ pub struct UiLoadedAddresses {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiTransactionTokenBalance {
+    #[serde(rename = "accountIndex")]
     pub account_index: u8,
     pub mint: String,
+    #[serde(rename = "uiTokenAmount")]
     pub ui_token_amount: UiTokenAmount,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub owner: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "programId", skip_serializing_if = "Option::is_none")]
     pub program_id: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EncodedTransactionWithStatusMeta {
     pub transaction: EncodedTransaction,
@@ -315,12 +337,13 @@ pub struct EncodedTransactionWithStatusMeta {
     pub version: Option<TransactionVersion>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, CandidType)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EncodedConfirmedTransactionWithStatusMeta {
     pub slot: Slot,
     #[serde(flatten)]
     pub transaction: EncodedTransactionWithStatusMeta,
+    #[serde(rename = "blockTime")]
     pub block_time: Option<UnixTimestamp>,
 }
 
@@ -403,5 +426,29 @@ mod tests {
         let _: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(legacy_version_json).unwrap();
 
         let _: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(numbered_version_json).unwrap();
+
+        let test_tx = EncodedConfirmedTransactionWithStatusMeta {
+            slot: 325448256,
+            block_time: Some(1726125580),
+            transaction: EncodedTransactionWithStatusMeta {
+                transaction: EncodedTransaction::Accounts(UiAccountsList {
+                    signatures: vec![
+                        "vAjYpEH66M59GMVqsrmZdymmXHn8SRhUvehrcpfcEnQaNPpQg1k9w22FhQNjLSfzSAQDG3uVzpN8wS1qRnLUH6S"
+                            .to_string(),
+                    ],
+                    account_keys: vec![AccountKey {
+                        pubkey: "".to_string(),
+                        writable: false,
+                        signer: false,
+                        source: None,
+                    }],
+                }),
+                meta: None,
+                version: Some(TransactionVersion::Legacy(Legacy::Legacy)),
+            },
+        };
+
+        let test_json = serde_json::to_string(&test_tx).unwrap();
+        let _: EncodedConfirmedTransactionWithStatusMeta = serde_json::from_str(&test_json).unwrap();
     }
 }

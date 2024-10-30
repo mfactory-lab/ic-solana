@@ -1,7 +1,7 @@
 use {
     crate::{
         types::{
-            account::ParsedAccount,
+            account::AccountKey,
             blockhash::BlockHash,
             compiled_keys::CompiledKeys,
             instruction::{CompiledInstruction, Instruction},
@@ -128,11 +128,32 @@ pub struct MessageHeader {
     pub num_readonly_unsigned_accounts: u8,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum UiMessage {
+    #[serde(rename = "parsed")]
     Parsed(UiParsedMessage),
+    #[serde(rename = "raw")]
     Raw(UiRawMessage),
+}
+
+/// Tagged version of UiMessage
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, CandidType)]
+#[serde(rename_all = "camelCase")]
+pub enum UiMessageTagged {
+    #[serde(rename = "parsed")]
+    Parsed(UiParsedMessage),
+    #[serde(rename = "raw")]
+    Raw(UiRawMessage),
+}
+
+impl From<UiMessage> for UiMessageTagged {
+    fn from(ui_message: UiMessage) -> Self {
+        match ui_message {
+            UiMessage::Parsed(parsed) => Self::Parsed(parsed),
+            UiMessage::Raw(raw) => Self::Raw(raw),
+        }
+    }
 }
 
 /// A duplicate representation of a Message, in parsed format, for pretty JSON serialization
@@ -140,7 +161,7 @@ pub enum UiMessage {
 #[serde(rename_all = "camelCase")]
 pub struct UiParsedMessage {
     #[serde(rename = "accountKeys")]
-    pub account_keys: Vec<ParsedAccount>,
+    pub account_keys: Vec<AccountKey>,
     #[serde(rename = "recentBlockhash")]
     pub recent_blockhash: String,
     pub instructions: Vec<UiInstruction>,
@@ -194,4 +215,29 @@ fn compile_instruction(ix: &Instruction, keys: &[Pubkey]) -> CompiledInstruction
 
 fn compile_instructions(ixs: &[Instruction], keys: &[Pubkey]) -> Vec<CompiledInstruction> {
     ixs.iter().map(|ix| compile_instruction(ix, keys)).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::types::UiParsedMessage,
+        candid::{Decode, Encode},
+    };
+
+    #[test]
+    fn test_candid_serialize() {
+        let msg = UiMessageTagged::Parsed(UiParsedMessage {
+            account_keys: vec![],
+            recent_blockhash: "".to_string(),
+            instructions: vec![],
+            address_table_lookups: None,
+        });
+
+        let encoded = Encode!(&msg).unwrap();
+
+        let decoded = Decode!(&encoded, UiMessageTagged).unwrap();
+
+        assert_eq!(msg, decoded);
+    }
 }

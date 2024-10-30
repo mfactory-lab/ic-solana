@@ -22,7 +22,7 @@ impl Sink for PrintProxySink {
     }
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, serde::Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, serde::Serialize)]
 pub enum Priority {
     Info,
     Debug,
@@ -58,7 +58,7 @@ impl FromStr for Sort {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, serde::Serialize)]
 pub struct LogEntry {
     pub timestamp: u64,
     pub priority: Priority,
@@ -175,9 +175,9 @@ mod tests {
     proptest! {
         #[test]
         fn logs_always_fit_in_message(
-            number_of_entries in (1..100_usize),
-            entry_size in (1..10000_usize),
-            max_body_size in (100..10000_usize)
+            number_of_entries in 1..100_usize,
+            entry_size in 1..10000_usize,
+            max_body_size in 100..10000_usize
         ) {
             let mut entries: Vec<LogEntry> = vec![];
             for _ in 0..number_of_entries {

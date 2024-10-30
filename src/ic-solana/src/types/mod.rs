@@ -7,11 +7,12 @@ pub mod commitment;
 pub mod compiled_keys;
 pub mod config;
 pub mod epoch;
-pub mod fee_calculator;
+pub mod fees;
 pub mod filter;
 pub mod instruction;
 pub mod message;
 pub mod pubkey;
+pub mod response;
 pub mod reward;
 pub mod signature;
 pub mod tagged;
@@ -19,9 +20,9 @@ pub mod transaction;
 pub mod transaction_error;
 
 pub use {
-    account::*, block::*, blockhash::*, candid_value::*, cluster::*, commitment::*, config::*, epoch::*,
-    fee_calculator::*, filter::*, instruction::*, message::*, pubkey::*, reward::*, signature::*, tagged::*,
-    transaction::*, transaction_error::*,
+    account::*, block::*, blockhash::*, candid_value::*, cluster::*, commitment::*, config::*, epoch::*, fees::*,
+    filter::*, instruction::*, message::*, pubkey::*, response::*, reward::*, signature::*, transaction::*,
+    transaction_error::*,
 };
 
 /// The unit of time a given leader schedule is honored.

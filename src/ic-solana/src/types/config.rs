@@ -1,13 +1,11 @@
 use {
-    crate::{
+    crate::types::{
+        account::UiAccountEncoding,
+        commitment::CommitmentLevel,
+        filter::RpcFilterType,
         response::RpcBlockProductionRange,
-        types::{
-            account::UiAccountEncoding,
-            commitment::{CommitmentConfig, CommitmentLevel},
-            filter::RpcFilterType,
-            transaction::{TransactionDetails, UiTransactionEncoding},
-            Epoch, Slot,
-        },
+        transaction::{TransactionDetails, UiTransactionEncoding},
+        Epoch, Slot,
     },
     candid::CandidType,
     serde::{Deserialize, Serialize},
@@ -23,6 +21,7 @@ pub struct UiDataSliceConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSignatureStatusConfig {
+    #[serde(rename = "searchTransactionHistory")]
     pub search_transaction_history: bool,
 }
 
@@ -32,9 +31,11 @@ pub struct RpcSendTransactionConfig {
     #[serde(default)]
     /// When true, skip the preflight transaction checks.
     /// Default: false
+    #[serde(rename = "skipPreflight")]
     pub skip_preflight: bool,
     /// Commitment level to use for preflight.
     /// Default: `Finalized`
+    #[serde(rename = "preflightCommitment")]
     pub preflight_commitment: Option<CommitmentLevel>,
     /// Encoding used for the transaction data.
     /// Default: `Base64`
@@ -42,8 +43,10 @@ pub struct RpcSendTransactionConfig {
     /// Maximum number of times for the RPC node to retry sending the transaction to the leader.
     /// If this parameter is not provided, the RPC node will retry the transaction until it is
     /// finalized or until the blockhash expires.
+    #[serde(rename = "maxRetries")]
     pub max_retries: Option<usize>,
     /// Set the minimum slot at which to perform preflight transaction checks.
+    #[serde(rename = "minContextSlot")]
     pub min_context_slot: Option<Slot>,
 }
 
@@ -57,51 +60,51 @@ pub struct RpcSimulateTransactionAccountsConfig {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSimulateTransactionConfig {
-    #[serde(default)]
+    #[serde(default, rename = "sigVerify")]
     pub sig_verify: bool,
-    #[serde(default)]
+    #[serde(default, rename = "replaceRecentBlockhash")]
     pub replace_recent_blockhash: bool,
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
     pub encoding: Option<UiTransactionEncoding>,
     pub accounts: Option<RpcSimulateTransactionAccountsConfig>,
+    #[serde(rename = "minContextSlot")]
     pub min_context_slot: Option<Slot>,
-    #[serde(default)]
+    #[serde(default, rename = "innerInstructions")]
     pub inner_instructions: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcRequestAirdropConfig {
+    #[serde(rename = "recentBlockhash")]
     pub recent_blockhash: Option<String>, // base-58 encoded blockhash
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcLeaderScheduleConfig {
     pub identity: Option<String>, // validator identity, as a base-58 encoded string
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockProductionConfig {
     pub identity: Option<String>, // validator identity, as a base-58 encoded string
     pub range: Option<RpcBlockProductionRange>, // current epoch if `None`
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcGetVoteAccountsConfig {
+    #[serde(rename = "votePubkey")]
     pub vote_pubkey: Option<String>, // validator vote address, as a base-58 encoded string
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(rename = "keepUnstakedDelinquents")]
     pub keep_unstaked_delinquents: Option<bool>,
+    #[serde(rename = "delinquentSlotDistance")]
     pub delinquent_slot_distance: Option<u64>,
 }
 
@@ -131,17 +134,15 @@ pub enum RpcLargestAccountsFilter {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcLargestAccountsConfig {
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
     pub filter: Option<RpcLargestAccountsFilter>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcSupplyConfig {
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
-    #[serde(default)]
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(default, rename = "excludeNonCirculatingAccountsList")]
     pub exclude_non_circulating_accounts_list: bool,
 }
 
@@ -149,8 +150,8 @@ pub struct RpcSupplyConfig {
 #[serde(rename_all = "camelCase")]
 pub struct RpcEpochConfig {
     pub epoch: Option<Epoch>,
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(rename = "minContextSlot")]
     pub min_context_slot: Option<Slot>,
 }
 
@@ -166,9 +167,10 @@ pub enum RpcAccountIndex {
 #[serde(rename_all = "camelCase")]
 pub struct RpcAccountInfoConfig {
     pub encoding: Option<UiAccountEncoding>,
+    #[serde(rename = "dataSlice")]
     pub data_slice: Option<UiDataSliceConfig>,
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(rename = "minContextSlot")]
     pub min_context_slot: Option<Slot>,
 }
 
@@ -176,8 +178,15 @@ pub struct RpcAccountInfoConfig {
 #[serde(rename_all = "camelCase")]
 pub struct RpcProgramAccountsConfig {
     pub filters: Option<Vec<RpcFilterType>>,
-    #[serde(flatten)]
-    pub account_config: RpcAccountInfoConfig,
+    // #[serde(flatten)]
+    // pub account_config: RpcAccountInfoConfig,
+    pub encoding: Option<UiAccountEncoding>,
+    #[serde(rename = "dataSlice")]
+    pub data_slice: Option<UiDataSliceConfig>,
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(rename = "minContextSlot")]
+    pub min_context_slot: Option<Slot>,
+    #[serde(rename = "withContext")]
     pub with_context: Option<bool>,
 }
 
@@ -192,42 +201,42 @@ pub enum RpcTransactionLogsFilter {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcTransactionLogsConfig {
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub enum RpcTokenAccountsFilter {
+    #[serde(rename = "mint")]
     Mint(String),
+    #[serde(rename = "programId")]
     ProgramId(String),
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RpcSignatureSubscribeConfig {
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
-    pub enable_received_notification: Option<bool>,
-}
+// #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+// #[serde(rename_all = "camelCase")]
+// pub struct RpcSignatureSubscribeConfig {
+//     pub commitment: Option<CommitmentLevel>,
+//     #[serde(rename = "enableReceivedNotification")]
+//     pub enable_received_notification: Option<bool>,
+// }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum RpcBlockSubscribeFilter {
-    All,
-    MentionsAccountOrProgram(String),
-}
+// #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+// #[serde(rename_all = "camelCase")]
+// pub enum RpcBlockSubscribeFilter {
+//     All,
+//     MentionsAccountOrProgram(String),
+// }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RpcBlockSubscribeConfig {
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
-    pub encoding: Option<UiTransactionEncoding>,
-    pub transaction_details: Option<TransactionDetails>,
-    pub show_rewards: Option<bool>,
-    pub max_supported_transaction_version: Option<u8>,
-}
+// #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+// #[serde(rename_all = "camelCase")]
+// pub struct RpcBlockSubscribeConfig {
+//     pub commitment: Option<CommitmentLevel>,
+//     pub encoding: Option<UiTransactionEncoding>,
+//     pub transaction_details: Option<TransactionDetails>,
+//     pub show_rewards: Option<bool>,
+//     pub max_supported_transaction_version: Option<u8>,
+// }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
@@ -235,8 +244,8 @@ pub struct RpcSignaturesForAddressConfig {
     pub before: Option<String>, // Signature as base-58 string
     pub until: Option<String>,  // Signature as base-58 string
     pub limit: Option<usize>,
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(rename = "minContextSlot")]
     pub min_context_slot: Option<Slot>,
 }
 
@@ -273,10 +282,11 @@ pub trait EncodingConfig {
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockConfig {
     pub encoding: Option<UiTransactionEncoding>,
+    #[serde(rename = "transactionDetails")]
     pub transaction_details: Option<TransactionDetails>,
     pub rewards: Option<bool>,
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(rename = "maxSupportedTransactionVersion")]
     pub max_supported_transaction_version: Option<u8>,
 }
 
@@ -309,7 +319,7 @@ impl RpcBlockConfig {
         }
     }
 
-    pub fn rewards_with_commitment(commitment: Option<CommitmentConfig>) -> Self {
+    pub fn rewards_with_commitment(commitment: Option<CommitmentLevel>) -> Self {
         Self {
             transaction_details: Some(TransactionDetails::None),
             commitment,
@@ -324,13 +334,23 @@ impl From<RpcBlockConfig> for RpcEncodingConfigWrapper<RpcBlockConfig> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcTransactionConfig {
     pub encoding: Option<UiTransactionEncoding>,
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(rename = "maxSupportedTransactionVersion")]
     pub max_supported_transaction_version: Option<u8>,
+}
+
+impl Default for RpcTransactionConfig {
+    fn default() -> Self {
+        Self {
+            encoding: None,
+            commitment: None,
+            max_supported_transaction_version: Some(0),
+        }
+    }
 }
 
 impl EncodingConfig for RpcTransactionConfig {
@@ -361,7 +381,7 @@ impl RpcBlocksConfigWrapper {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcContextConfig {
-    #[serde(flatten)]
-    pub commitment: Option<CommitmentConfig>,
+    pub commitment: Option<CommitmentLevel>,
+    #[serde(rename = "minContextSlot")]
     pub min_context_slot: Option<Slot>,
 }
