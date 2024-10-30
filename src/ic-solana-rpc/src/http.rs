@@ -12,25 +12,31 @@ use {
     },
     ic_canisters_http_types::{HttpRequest, HttpResponse, HttpResponseBuilder},
     ic_cdk::api::management_canister::http_request::TransformContext,
-    ic_solana::rpc_client::{RpcClient, RpcClientConfig, RpcConfig, RpcServices},
+    ic_solana::{
+        constants::HTTP_MAX_SIZE,
+        logs::{Log, Priority, Sort},
+        rpc_client::{RpcApi, RpcClient, RpcClientConfig, RpcConfig, RpcServices},
+        types::Cluster,
+    },
 };
-
-const DEFAULT_MAX_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 
 ///
 /// Create an [RpcClient] based on the provided configuration.
 ///
 pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
     let providers = match source {
-        RpcServices::Provider(providers) => providers
-            .iter()
-            .map(|pid| {
-                let provider =
-                    find_provider(pid).unwrap_or_else(|| ic_cdk::trap(&format!("Provider {} not found", pid)));
-                provider.api()
-            })
-            .collect(),
-        RpcServices::Custom(apis) => apis,
+        RpcServices::Mainnet | RpcServices::Testnet | RpcServices::Devnet | RpcServices::Localnet => {
+            let cluster = match source {
+                RpcServices::Mainnet => Cluster::Mainnet,
+                RpcServices::Testnet => Cluster::Testnet,
+                RpcServices::Devnet => Cluster::Devnet,
+                RpcServices::Localnet => Cluster::Localnet,
+                _ => unreachable!(),
+            };
+            vec![get_provider_rpc_api(&cluster.to_string())]
+        }
+        RpcServices::Provider(ids) => ids.iter().map(|id| get_provider_rpc_api(id)).collect(),
+        RpcServices::Custom(apis) => apis, // Use the custom APIs directly
     };
 
     let config = config.unwrap_or_default();
@@ -42,17 +48,24 @@ pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
             request_cost_calculator: Some(|req| {
                 let cycles_cost = get_http_request_cost(
                     req.body.as_ref().map_or(0, |bytes| bytes.len() as u64),
-                    req.max_response_bytes.unwrap_or(DEFAULT_MAX_RESPONSE_BYTES),
+                    req.max_response_bytes.unwrap_or(HTTP_MAX_SIZE),
                 );
                 (cycles_cost, get_cost_with_collateral(cycles_cost))
             }),
             host_validator: Some(|host| validate_hostname(host).is_ok()),
             transform_context: Some(TransformContext::from_name("__transform_json_rpc".to_owned(), vec![])),
             is_demo_active: s.is_demo_active,
-            extra_response_bytes: 0,
+            use_compression: false,
         };
         RpcClient::new(providers, Some(config))
     })
+}
+
+/// Retrieve the [RpcApi] from a provider ID.
+fn get_provider_rpc_api(provider_id: &str) -> RpcApi {
+    find_provider(provider_id)
+        .unwrap_or_else(|| ic_cdk::trap(&format!("Unknown provider `{}`", provider_id)))
+        .api()
 }
 
 /// Calculates the cost of sending a JSON-RPC request using HTTP outcalls.
@@ -90,10 +103,7 @@ pub fn serve_metrics(
 }
 
 pub fn serve_logs(request: HttpRequest) -> HttpResponse {
-    use {
-        ic_solana_common::logs::{Log, Priority, Sort},
-        std::str::FromStr,
-    };
+    use std::str::FromStr;
 
     let max_skip_timestamp = match request.raw_query_param("time") {
         Some(arg) => match u64::from_str(arg) {

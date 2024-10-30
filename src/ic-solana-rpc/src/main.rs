@@ -1,13 +1,4 @@
 use {
-    crate::{
-        auth::{do_authorize, do_deauthorize, require_manage_or_controller, require_register_provider, Auth},
-        constants::NODES_IN_SUBNET,
-        http::{get_http_request_cost, rpc_client, serve_logs, serve_metrics},
-        providers::{do_register_provider, do_unregister_provider, do_update_provider},
-        state::STATE,
-        types::{RegisterProviderArgs, UpdateProviderArgs},
-        utils::{parse_pubkey, parse_pubkeys, parse_signature, parse_signatures},
-    },
     candid::{candid_method, Principal},
     ic_canisters_http_types::{
         HttpRequest as AssetHttpRequest, HttpResponse as AssetHttpResponse, HttpResponseBuilder,
@@ -17,38 +8,38 @@ use {
         query, update,
     },
     ic_solana::{
+        metrics::{encode_metrics, read_metrics, Metrics},
         request::RpcRequest,
-        response::{
-            RpcAccountBalance, RpcBlockCommitment, RpcBlockProduction, RpcBlockhash,
-            RpcConfirmedTransactionStatusWithSignature, RpcContactInfo, RpcIdentity, RpcInflationGovernor,
-            RpcInflationRate, RpcInflationReward, RpcKeyedAccount, RpcLeaderSchedule, RpcPerfSample,
-            RpcPrioritizationFee, RpcSimulateTransactionResult, RpcSnapshotSlotInfo, RpcSupply, RpcVersionInfo,
-            RpcVoteAccountStatus,
-        },
         rpc_client::{RpcConfig, RpcResult, RpcServices},
         types::{
-            CandidValue, CommitmentConfig, EncodedConfirmedTransactionWithStatusMeta, EpochInfo, EpochSchedule,
-            RpcAccountInfoConfig, RpcBlockConfig, RpcContextConfig, RpcEpochConfig, RpcGetVoteAccountsConfig,
-            RpcLargestAccountsConfig, RpcLeaderScheduleConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig,
-            RpcSignatureStatusConfig, RpcSignaturesForAddressConfig, RpcSimulateTransactionConfig, RpcSupplyConfig,
-            RpcTokenAccountsFilter, RpcTransactionConfig, Slot, TaggedEncodedConfirmedTransactionWithStatusMeta,
-            TaggedRpcBlockProductionConfig, TaggedRpcKeyedAccount, TaggedRpcTokenAccountBalance,
-            TaggedUiConfirmedBlock, Transaction, TransactionStatus, UiAccount, UiTokenAmount,
+            response::{
+                RpcAccountBalance, RpcBlockCommitment, RpcBlockProduction, RpcBlockhash,
+                RpcConfirmedTransactionStatusWithSignature, RpcContactInfo, RpcIdentity, RpcInflationGovernor,
+                RpcInflationRate, RpcInflationReward, RpcLeaderSchedule, RpcPerfSample, RpcPrioritizationFee,
+                RpcSnapshotSlotInfo, RpcSupply, RpcVersionInfo, RpcVoteAccountStatus,
+            },
+            tagged::{
+                EncodedConfirmedTransactionWithStatusMeta, RpcBlockProductionConfig, RpcKeyedAccount,
+                RpcSimulateTransactionResult, RpcTokenAccountBalance, UiAccount, UiConfirmedBlock,
+            },
+            CandidValue, CommitmentConfig, CommitmentLevel, EpochInfo, EpochSchedule, RpcAccountInfoConfig,
+            RpcBlockConfig, RpcContextConfig, RpcEpochConfig, RpcGetVoteAccountsConfig, RpcLargestAccountsConfig,
+            RpcLeaderScheduleConfig, RpcProgramAccountsConfig, RpcSendTransactionConfig, RpcSignatureStatusConfig,
+            RpcSignaturesForAddressConfig, RpcSimulateTransactionConfig, RpcSupplyConfig, RpcTokenAccountsFilter,
+            RpcTransactionConfig, Slot, Transaction, TransactionStatus, UiTokenAmount,
         },
     },
-    ic_solana_common::metrics::{encode_metrics, read_metrics, Metrics},
-    state::{read_state, InitArgs},
+    ic_solana_rpc::{
+        auth::{do_authorize, do_deauthorize, require_manage_or_controller, require_register_provider, Auth},
+        constants::NODES_IN_SUBNET,
+        http::{get_http_request_cost, rpc_client, serve_logs, serve_metrics},
+        providers::{do_register_provider, do_unregister_provider, do_update_provider},
+        state::{read_state, InitArgs, STATE},
+        types::{RegisterProviderArgs, UpdateProviderArgs},
+        utils::{parse_pubkey, parse_pubkeys, parse_signature, parse_signatures},
+    },
     std::{collections::HashMap, str::FromStr},
 };
-
-pub mod auth;
-mod constants;
-mod http;
-mod memory;
-mod providers;
-pub mod state;
-pub mod types;
-mod utils;
 
 ///
 /// Returns all information associated with the account of the provided Pubkey.
@@ -63,8 +54,10 @@ pub async fn sol_get_account_info(
 ) -> RpcResult<Option<UiAccount>> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
-    let account_info = client.get_account_info(&pubkey, params).await?.value;
-    Ok(account_info)
+    client
+        .get_account_info(&pubkey, params)
+        .await
+        .map(|res| res.value.map(Into::into))
 }
 
 ///
@@ -80,8 +73,7 @@ pub async fn sol_get_balance(
 ) -> RpcResult<u64> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
-    let balance = client.get_balance(&pubkey, params).await?;
-    Ok(balance.parse_value())
+    client.get_balance(&pubkey, params).await.map(|ctx| ctx.parse_value())
 }
 
 ///
@@ -94,10 +86,9 @@ pub async fn sol_get_block(
     config: Option<RpcConfig>,
     slot: Slot,
     params: Option<RpcBlockConfig>,
-) -> RpcResult<TaggedUiConfirmedBlock> {
+) -> RpcResult<UiConfirmedBlock> {
     let client = rpc_client(source, config);
-    let block = client.get_block(slot, params).await?;
-    Ok(block.into())
+    client.get_block(slot, params).await.map(|ctx| ctx.into())
 }
 
 ///
@@ -136,10 +127,13 @@ pub async fn sol_get_block_height(
 pub async fn sol_get_block_production(
     source: RpcServices,
     config: Option<RpcConfig>,
-    params: TaggedRpcBlockProductionConfig,
+    params: Option<RpcBlockProductionConfig>,
 ) -> RpcResult<RpcBlockProduction> {
     let client = rpc_client(source, config);
-    Ok(client.get_block_production(params.into()).await?.parse_value())
+    client
+        .get_block_production(params.map(Into::into))
+        .await
+        .map(|ctx| ctx.parse_value())
 }
 
 ///
@@ -230,7 +224,10 @@ pub async fn sol_get_fee_for_message(
     params: Option<RpcContextConfig>,
 ) -> RpcResult<u64> {
     let client = rpc_client(source, config);
-    client.get_fee_for_message(message, params).await
+    client
+        .get_fee_for_message(message, params)
+        .await
+        .map(|ctx| ctx.parse_value())
 }
 
 ///
@@ -322,7 +319,7 @@ pub async fn sol_get_inflation_reward(
     source: RpcServices,
     config: Option<RpcConfig>,
     addresses: Vec<String>,
-    params: RpcEpochConfig,
+    params: Option<RpcEpochConfig>,
 ) -> RpcResult<Vec<Option<RpcInflationReward>>> {
     let client = rpc_client(source, config);
     let pubkeys = parse_pubkeys(addresses)?;
@@ -339,12 +336,11 @@ pub async fn sol_get_signatures_for_address(
     source: RpcServices,
     config: Option<RpcConfig>,
     pubkey: String,
-    params: RpcSignaturesForAddressConfig,
+    params: Option<RpcSignaturesForAddressConfig>,
 ) -> RpcResult<Vec<RpcConfirmedTransactionStatusWithSignature>> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
-    let result = client.get_signatures_for_address(&pubkey, params).await?;
-    Ok(result)
+    client.get_signatures_for_address(&pubkey, params).await
 }
 
 ///
@@ -385,7 +381,7 @@ pub async fn sol_get_slot_leaders(
     config: Option<RpcConfig>,
     start_slot: u64,
     limit: Option<u64>,
-) -> RpcResult<String> {
+) -> RpcResult<Vec<String>> {
     let client = rpc_client(source, config);
     client.get_slot_leaders(start_slot, limit).await
 }
@@ -412,10 +408,10 @@ pub async fn sol_get_stake_minimum_delegation(
 pub async fn sol_get_supply(
     source: RpcServices,
     config: Option<RpcConfig>,
-    params: RpcSupplyConfig,
+    params: Option<RpcSupplyConfig>,
 ) -> RpcResult<RpcSupply> {
     let client = rpc_client(source, config);
-    client.get_supply(params).await
+    Ok(client.get_supply(params).await?.value)
 }
 
 ///
@@ -427,11 +423,14 @@ pub async fn sol_get_token_account_balance(
     source: RpcServices,
     config: Option<RpcConfig>,
     pubkey: String,
-    params: Option<CommitmentConfig>,
+    commitment: Option<CommitmentLevel>,
 ) -> RpcResult<UiTokenAmount> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
-    Ok(client.get_token_account_balance(&pubkey, params).await?.parse_value())
+    Ok(client
+        .get_token_account_balance(&pubkey, commitment.map(Into::into))
+        .await?
+        .parse_value())
 }
 
 ///
@@ -445,7 +444,7 @@ pub async fn sol_get_token_accounts_by_delegate(
     pubkey: String,
     filter: RpcTokenAccountsFilter,
     params: Option<RpcAccountInfoConfig>,
-) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
+) -> RpcResult<Vec<RpcKeyedAccount>> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
     let accounts = client
@@ -466,7 +465,7 @@ pub async fn sol_get_token_accounts_by_owner(
     pubkey: String,
     filter: RpcTokenAccountsFilter,
     params: Option<RpcAccountInfoConfig>,
-) -> RpcResult<Vec<TaggedRpcKeyedAccount>> {
+) -> RpcResult<Vec<RpcKeyedAccount>> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
     let accounts = client
@@ -486,7 +485,7 @@ pub async fn sol_get_token_largest_accounts(
     config: Option<RpcConfig>,
     mint: String,
     params: Option<CommitmentConfig>,
-) -> RpcResult<Vec<TaggedRpcTokenAccountBalance>> {
+) -> RpcResult<Vec<RpcTokenAccountBalance>> {
     let client = rpc_client(source, config);
     let mint = parse_pubkey(&mint)?;
     let accounts = client.get_token_largest_accounts(&mint, params).await?.parse_value();
@@ -600,23 +599,25 @@ pub async fn sol_get_multiple_accounts(
 ) -> RpcResult<Vec<UiAccount>> {
     let client = rpc_client(source, config);
     let pubkeys = parse_pubkeys(addresses)?;
-    client.get_multiple_accounts(pubkeys, params).await
+    let res = client.get_multiple_accounts(pubkeys, params).await?.parse_value();
+    Ok(res.into_iter().map(Into::into).collect())
 }
 
 ///
 /// Returns all accounts owned by the provided program Pubkey.
 ///
-#[update(name = "sel_getProgramAccounts")]
-#[candid_method(rename = "sel_getProgramAccounts")]
+#[update(name = "sol_getProgramAccounts")]
+#[candid_method(rename = "sol_getProgramAccounts")]
 pub async fn sol_get_program_accounts(
     source: RpcServices,
     config: Option<RpcConfig>,
     program: String,
-    params: RpcProgramAccountsConfig,
+    params: Option<RpcProgramAccountsConfig>,
 ) -> RpcResult<Vec<RpcKeyedAccount>> {
     let pubkey = parse_pubkey(&program)?;
     let client = rpc_client(source, config);
-    client.get_program_accounts(&pubkey, params).await
+    let res = client.get_program_accounts(&pubkey, params).await?;
+    Ok(res.into_iter().map(Into::into).collect())
 }
 
 ///
@@ -677,15 +678,15 @@ pub async fn sol_get_transaction(
     config: Option<RpcConfig>,
     signature: String,
     params: Option<RpcTransactionConfig>,
-) -> RpcResult<TaggedEncodedConfirmedTransactionWithStatusMeta> {
+) -> RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>> {
     let client = rpc_client(source, config);
     let signature = parse_signature(&signature)?;
     let response = client.get_transaction(&signature, params).await?;
-    Ok(response.into())
+    Ok(response.map(|tx| tx.into()))
 }
 
 ///
-/// Returns the current Transaction count from the ledger.
+/// Returns the current number of transactions from the ledger.
 ///
 #[update(name = "sol_getTransactionCount")]
 #[candid_method(rename = "sol_getTransactionCount")]
@@ -716,7 +717,7 @@ pub async fn sol_get_version(source: RpcServices, config: Option<RpcConfig>) -> 
 pub async fn sol_get_vote_accounts(
     source: RpcServices,
     config: Option<RpcConfig>,
-    params: RpcGetVoteAccountsConfig,
+    params: Option<RpcGetVoteAccountsConfig>,
 ) -> RpcResult<RpcVoteAccountStatus> {
     let client = rpc_client(source, config);
     client.get_vote_accounts(params).await
@@ -760,8 +761,7 @@ pub async fn sol_request_airdrop(
 ) -> RpcResult<String> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
-    let signature = client.request_airdrop(&pubkey, lamports).await?;
-    Ok(signature)
+    client.request_airdrop(&pubkey, lamports).await
 }
 
 ///
@@ -795,7 +795,10 @@ pub async fn sol_simulate_transaction(
 ) -> RpcResult<RpcSimulateTransactionResult> {
     let client = rpc_client(source, config);
     let tx = Transaction::from_str(&raw_transaction).expect("Invalid transaction");
-    client.simulate_transaction(tx, params.unwrap_or_default()).await
+    client
+        .simulate_transaction(tx, params.unwrap_or_default())
+        .await
+        .map(Into::into)
 }
 
 ///
@@ -814,10 +817,8 @@ pub async fn sol_get_logs(
     params: Option<RpcSignaturesForAddressConfig>,
 ) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>> {
     let client = rpc_client(source, config);
-    let params = params.unwrap_or_default();
-    let commitment = params.commitment;
-
     let pubkey = parse_pubkey(&pubkey)?;
+    let commitment = params.as_ref().and_then(|p| p.commitment);
     let signatures = client.get_signatures_for_address(&pubkey, params).await?;
 
     client
@@ -893,12 +894,6 @@ fn update_provider(args: UpdateProviderArgs) {
     do_update_provider(ic_cdk::caller(), args)
 }
 
-#[update(guard = "require_manage_or_controller")]
-#[candid_method]
-fn authorize(principal: Principal, auth: Auth) -> bool {
-    do_authorize(principal, auth)
-}
-
 #[query(name = "getAuthorized")]
 #[candid_method(query, rename = "getAuthorized")]
 fn get_authorized(auth: Auth) -> Vec<Principal> {
@@ -911,6 +906,12 @@ fn get_authorized(auth: Auth) -> Vec<Principal> {
         }
         result
     })
+}
+
+#[update(guard = "require_manage_or_controller")]
+#[candid_method]
+fn authorize(principal: Principal, auth: Auth) -> bool {
+    do_authorize(principal, auth)
 }
 
 #[update(guard = "require_manage_or_controller")]
@@ -963,4 +964,7 @@ fn post_upgrade(_args: InitArgs) {
     // }
 }
 
+fn main() {}
+
+// Order dependent: do not move above any exposed canister method!
 ic_cdk::export_candid!();

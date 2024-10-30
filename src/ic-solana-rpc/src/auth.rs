@@ -5,7 +5,7 @@ use {
     },
     candid::{CandidType, Deserialize, Principal},
     ic_canister_log::log,
-    ic_solana_common::{add_metric_entry, logs::INFO, metrics::MetricAuth, sub_metric_entry},
+    ic_solana::{add_metric_entry, logs::INFO, metrics::MetricAuth, sub_metric_entry},
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
     std::{borrow::Cow, fmt::Display},
@@ -15,7 +15,6 @@ use {
 pub enum Auth {
     Manage,
     RegisterProvider,
-    // PriorityRpc,
     // FreeRpc,
 }
 
@@ -27,7 +26,6 @@ impl Display for Auth {
             match self {
                 Auth::Manage => "manage",
                 Auth::RegisterProvider => "register_provider",
-                // Auth::PriorityRpc => "PriorityRpc",
                 // Auth::FreeRpc => "FreeRpc",
             }
         )
@@ -109,17 +107,17 @@ pub fn require_manage_or_controller() -> Result<(), String> {
     } else {
         let auth = MetricAuth(Auth::Manage.to_string());
         add_metric_entry!(err_unauthorized, auth, 1);
-        Err("You are not authorized".to_string())
+        Err("Unauthorized".to_string())
     }
 }
 
 pub fn require_register_provider() -> Result<(), String> {
-    if is_authorized(&ic_cdk::caller(), Auth::RegisterProvider) {
+    if is_authorized(&ic_cdk::caller(), Auth::RegisterProvider) || require_manage_or_controller().is_ok() {
         Ok(())
     } else {
         let auth = MetricAuth(Auth::RegisterProvider.to_string());
         add_metric_entry!(err_unauthorized, auth, 1);
-        Err("You are not authorized".to_string())
+        Err("Unauthorized".to_string())
     }
 }
 

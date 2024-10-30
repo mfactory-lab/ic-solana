@@ -9,8 +9,7 @@ use {
     candid::{CandidType, Decode, Deserialize, Encode, Principal},
     ic_canister_log::log,
     ic_cdk::api::{is_controller, management_canister::http_request::HttpHeader},
-    ic_solana::rpc_client::RpcApi,
-    ic_solana_common::logs::INFO,
+    ic_solana::{logs::INFO, rpc_client::RpcApi},
     ic_stable_structures::{storable::Bound, Storable},
     serde::Serialize,
     std::borrow::Cow,
@@ -134,16 +133,17 @@ pub fn do_register_provider(caller: Principal, args: RegisterProviderArgs) {
     });
 }
 
-/// Unregisters provider. The caller must be the owner or administrator.
+/// Unregister provider. The caller must be the owner or administrator.
 pub fn do_unregister_provider(caller: Principal, provider_id: &str) -> bool {
+    let is_manager = is_authorized(&caller, Auth::Manage);
     mutate_state(|s| {
         let id = ProviderId::new(provider_id);
         if let Some(provider) = s.rpc_providers.get(&id) {
-            if provider.owner == caller || is_controller(&caller) || is_authorized(&caller, Auth::Manage) {
+            if provider.owner == caller || is_controller(&caller) || is_manager {
                 log!(INFO, "[{}] Unregistering provider: {:?}", caller, provider_id);
                 s.rpc_providers.remove(&id).is_some()
             } else {
-                ic_cdk::trap("You are not authorized");
+                ic_cdk::trap("Unauthorized");
             }
         } else {
             false
@@ -151,9 +151,10 @@ pub fn do_unregister_provider(caller: Principal, provider_id: &str) -> bool {
     })
 }
 
-/// Changes provider details. The caller must be the owner or administrator.
+/// Change provider details. The caller must be the owner or administrator.
 pub fn do_update_provider(caller: Principal, args: UpdateProviderArgs) {
     let provider_id = ProviderId::new(args.id);
+    let is_manager = is_authorized(&caller, Auth::Manage);
     mutate_state(|s| match s.rpc_providers.get(&provider_id) {
         Some(mut provider) => {
             if provider.owner == caller {
@@ -164,7 +165,7 @@ pub fn do_update_provider(caller: Principal, args: UpdateProviderArgs) {
                     provider.auth = Some(auth);
                 }
                 s.rpc_providers.insert(provider_id, provider);
-            } else if is_controller(&caller) || is_authorized(&caller, Auth::Manage) {
+            } else if is_controller(&caller) || is_manager {
                 if let Some(url) = args.url {
                     provider.url = url;
                 }
@@ -173,7 +174,7 @@ pub fn do_update_provider(caller: Principal, args: UpdateProviderArgs) {
                 }
                 s.rpc_providers.insert(provider_id, provider);
             } else {
-                ic_cdk::trap("You are not authorized");
+                ic_cdk::trap("Unauthorized");
             }
         }
         None => ic_cdk::trap("Provider not found"),

@@ -19,11 +19,10 @@ thread_local! {
 }
 
 /// Solana RPC canister initialization data.
-#[derive(Debug, Deserialize, CandidType, Clone)]
+#[derive(Clone, Debug, Default, Deserialize, CandidType)]
 pub struct InitArgs {
     pub demo: Option<bool>,
     pub managers: Option<Vec<Principal>>,
-    pub schnorr_key: Option<String>,
 }
 
 pub struct State {
@@ -44,6 +43,13 @@ impl State {
                     auth: None,
                 },
             );
+        }
+    }
+    pub fn is_authorized(&self, principal: &Principal, auth: Auth) -> bool {
+        if let Some(v) = self.auth.get(&PrincipalStorable(*principal)) {
+            v.is_authorized(auth)
+        } else {
+            false
         }
     }
 }
