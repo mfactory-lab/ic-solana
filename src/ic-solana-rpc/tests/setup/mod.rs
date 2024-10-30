@@ -3,29 +3,29 @@
 mod mock;
 mod utils;
 
-pub use mock::*;
-use {
-    crate::setup::utils::{assert_reply, load_wasm_by_name},
-    candid::{encode_args, utils::ArgumentEncoder, CandidType, Decode, Encode, Principal},
-    ic_canisters_http_types::{HttpRequest, HttpResponse},
-    ic_cdk::api::management_canister::main::CanisterId,
-    ic_solana::{
-        logs::{Log, LogEntry},
-        metrics::Metrics,
-        rpc_client::{RpcResult, RpcServices},
-    },
-    ic_solana_rpc::{
-        auth::Auth,
-        state::InitArgs,
-        types::{RegisterProviderArgs, UpdateProviderArgs},
-    },
-    pocket_ic::{
-        common::rest::{CanisterHttpResponse, MockCanisterHttpResponse, RawMessageId},
-        CanisterSettings, PocketIc,
-    },
-    serde::de::DeserializeOwned,
-    std::{marker::PhantomData, sync::Arc, time::Duration},
+use std::{marker::PhantomData, sync::Arc, time::Duration};
+
+use candid::{encode_args, utils::ArgumentEncoder, CandidType, Decode, Encode, Principal};
+use ic_canisters_http_types::{HttpRequest, HttpResponse};
+use ic_cdk::api::management_canister::main::CanisterId;
+use ic_solana::{
+    logs::{Log, LogEntry},
+    metrics::Metrics,
+    rpc_client::{RpcResult, RpcServices},
 };
+use ic_solana_rpc::{
+    auth::Auth,
+    state::InitArgs,
+    types::{RegisterProviderArgs, UpdateProviderArgs},
+};
+pub use mock::*;
+use pocket_ic::{
+    common::rest::{CanisterHttpResponse, MockCanisterHttpResponse, RawMessageId},
+    CanisterSettings, PocketIc,
+};
+use serde::de::DeserializeOwned;
+
+use crate::setup::utils::{assert_reply, load_wasm_by_name};
 
 const CONTROLLER_ID: Principal = Principal::from_slice(&[0x9d, 0xf7, 0x02]);
 const CALLER_ID: Principal = Principal::from_slice(&[0x9d, 0xf7, 0x01]);
@@ -124,7 +124,11 @@ impl SolanaRpcSetup {
         CallFlow::from_update(self.clone(), method, input)
     }
 
-    pub fn call_query<A: ArgumentEncoder, R: CandidType + DeserializeOwned>(&self, method: &str, args: A) -> R {
+    pub fn call_query<A: ArgumentEncoder, R: CandidType + DeserializeOwned>(
+        &self,
+        method: &str,
+        args: A,
+    ) -> R {
         let input = encode_args(args).unwrap();
         let candid = &assert_reply(
             self.env
@@ -292,12 +296,9 @@ impl<R: CandidType + DeserializeOwned> CallFlow<R> {
     }
 
     pub fn wait(self) -> R {
-        let candid = &assert_reply(
-            self.setup
-                .env
-                .await_call(self.message_id)
-                .unwrap_or_else(|err| panic!("error during update call to `{}()`: {}", self.method, err)),
-        );
+        let candid = &assert_reply(self.setup.env.await_call(self.message_id).unwrap_or_else(
+            |err| panic!("error during update call to `{}()`: {}", self.method, err),
+        ));
         Decode!(candid, R).expect("error while decoding Candid response from update call")
     }
 }

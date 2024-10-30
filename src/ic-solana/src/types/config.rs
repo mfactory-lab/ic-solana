@@ -1,14 +1,13 @@
-use {
-    crate::types::{
-        account::UiAccountEncoding,
-        commitment::CommitmentLevel,
-        filter::RpcFilterType,
-        response::RpcBlockProductionRange,
-        transaction::{TransactionDetails, UiTransactionEncoding},
-        Epoch, Slot,
-    },
-    candid::CandidType,
-    serde::{Deserialize, Serialize},
+use candid::CandidType;
+use serde::{Deserialize, Serialize};
+
+use crate::types::{
+    account::UiAccountEncoding,
+    commitment::CommitmentLevel,
+    filter::RpcFilterType,
+    response::RpcBlockProductionRange,
+    transaction::{TransactionDetails, UiTransactionEncoding},
+    Epoch, Slot,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
@@ -266,7 +265,9 @@ impl<T: EncodingConfig + Default + Copy> RpcEncodingConfigWrapper<T> {
 
     pub fn convert<U: EncodingConfig + From<T>>(&self) -> RpcEncodingConfigWrapper<U> {
         match self {
-            RpcEncodingConfigWrapper::Deprecated(encoding) => RpcEncodingConfigWrapper::Deprecated(*encoding),
+            RpcEncodingConfigWrapper::Deprecated(encoding) => {
+                RpcEncodingConfigWrapper::Deprecated(*encoding)
+            }
             RpcEncodingConfigWrapper::Current(config) => {
                 RpcEncodingConfigWrapper::Current(config.map(|config| config.into()))
             }

@@ -1,4 +1,7 @@
-use {serde::Serialize, serde_json::Value, std::fmt};
+use std::fmt;
+
+use serde::Serialize;
+use serde_json::Value;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum RpcRequest {
@@ -137,7 +140,8 @@ impl fmt::Display for RpcRequest {
 
 impl RpcRequest {
     pub fn build_json<P: Serialize>(&self, id: u64, params: P) -> Value {
-        serde_json::to_value(JsonRpcRequest::new(self, params, id)).expect("Failed to serialize request")
+        serde_json::to_value(JsonRpcRequest::new(self, params, id))
+            .expect("Failed to serialize request")
     }
 
     pub fn batch<P: Serialize>(requests: Vec<(Self, P, u64)>) -> Value {
@@ -171,7 +175,9 @@ impl<P: Serialize> JsonRpcRequest<P> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, serde_json::json};
+    use serde_json::json;
+
+    use super::*;
 
     #[test]
     fn test_build_request_json() {

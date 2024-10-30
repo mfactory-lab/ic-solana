@@ -1,10 +1,10 @@
-use {
-    crate::types::{pubkey::Pubkey, CandidValue, Epoch},
-    base64::{prelude::BASE64_STANDARD, Engine},
-    candid::{CandidType, Deserialize},
-    serde::Serialize,
-    std::str::FromStr,
-};
+use std::str::FromStr;
+
+use base64::{prelude::BASE64_STANDARD, Engine};
+use candid::{CandidType, Deserialize};
+use serde::Serialize;
+
+use crate::types::{pubkey::Pubkey, CandidValue, Epoch};
 
 /// An Account with data that is stored on a chain
 #[derive(PartialEq, Eq, Clone, Default, Debug, Deserialize, CandidType)]
@@ -67,7 +67,9 @@ impl UiAccountData {
             UiAccountData::Binary(blob, encoding) => match encoding {
                 UiAccountEncoding::Base58 => bs58::decode(blob).into_vec().ok(),
                 UiAccountEncoding::Base64 => BASE64_STANDARD.decode(blob).ok(),
-                UiAccountEncoding::Base64Zstd | UiAccountEncoding::Binary | UiAccountEncoding::JsonParsed => None,
+                UiAccountEncoding::Base64Zstd
+                | UiAccountEncoding::Binary
+                | UiAccountEncoding::JsonParsed => None,
             },
         }
     }

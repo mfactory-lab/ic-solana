@@ -1,8 +1,7 @@
-use {
-    crate::types::{Epoch, Slot},
-    candid::CandidType,
-    serde::{Deserialize, Serialize},
-};
+use candid::CandidType;
+use serde::{Deserialize, Serialize};
+
+use crate::types::{Epoch, Slot};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]

@@ -1,13 +1,13 @@
-use {
-    crate::{
-        auth::{Auth, AuthSet},
-        memory::{init_auth_memory, init_providers_memory, AuthMemory, ProvidersMemory},
-        providers::{ProviderId, RpcProvider},
-        types::PrincipalStorable,
-    },
-    candid::{CandidType, Deserialize, Principal},
-    ic_solana::types::Cluster,
-    std::cell::RefCell,
+use std::cell::RefCell;
+
+use candid::{CandidType, Deserialize, Principal};
+use ic_solana::types::Cluster;
+
+use crate::{
+    auth::{Auth, AuthSet},
+    memory::{init_auth_memory, init_providers_memory, AuthMemory, ProvidersMemory},
+    providers::{ProviderId, RpcProvider},
+    types::PrincipalStorable,
 };
 
 thread_local! {

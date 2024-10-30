@@ -1,12 +1,11 @@
 #![allow(dead_code)]
-use {
-    candid::{decode_args, encode_one, utils::ArgumentDecoder, Principal},
-    ic_solana_wallet::state::InitArgs,
-    lazy_static::lazy_static,
-    pocket_ic::{nonblocking::PocketIc, CanisterSettings, WasmResult},
-    rand::distributions::{Distribution, Standard},
-    std::sync::Arc,
-};
+use std::sync::Arc;
+
+use candid::{decode_args, encode_one, utils::ArgumentDecoder, Principal};
+use ic_solana_wallet::state::InitArgs;
+use lazy_static::lazy_static;
+use pocket_ic::{nonblocking::PocketIc, CanisterSettings, WasmResult};
+use rand::distributions::{Distribution, Standard};
 
 lazy_static! {
     pub static ref CONTROLLER_PRINCIPAL: Principal = random_principal();
@@ -38,15 +37,16 @@ const INIT_CYCLES: u128 = 2_000_000_000_000;
 
 // The following secrets and their corresponding pubkeys have some funds in the devnet cluster.
 pub const SECRET1: [u8; 64] = [
-    201, 151, 232, 219, 29, 78, 185, 179, 104, 50, 186, 43, 6, 42, 140, 196, 114, 22, 49, 40, 233, 30, 7, 12, 78, 27,
-    185, 87, 208, 213, 143, 157, 131, 153, 99, 40, 121, 85, 91, 41, 95, 59, 33, 44, 51, 213, 148, 229, 38, 18, 43, 86,
-    174, 88, 90, 142, 20, 111, 151, 247, 215, 211, 234, 94,
+    201, 151, 232, 219, 29, 78, 185, 179, 104, 50, 186, 43, 6, 42, 140, 196, 114, 22, 49, 40, 233,
+    30, 7, 12, 78, 27, 185, 87, 208, 213, 143, 157, 131, 153, 99, 40, 121, 85, 91, 41, 95, 59, 33,
+    44, 51, 213, 148, 229, 38, 18, 43, 86, 174, 88, 90, 142, 20, 111, 151, 247, 215, 211, 234, 94,
 ];
 
 pub const SECRET2: [u8; 64] = [
-    251, 176, 190, 6, 118, 110, 35, 115, 34, 199, 117, 26, 113, 184, 159, 70, 99, 208, 216, 190, 165, 159, 26, 221,
-    183, 167, 81, 153, 208, 152, 17, 108, 201, 195, 126, 216, 48, 140, 206, 211, 127, 237, 43, 153, 6, 55, 239, 6, 147,
-    185, 60, 71, 45, 31, 170, 109, 42, 97, 217, 193, 21, 234, 131, 118,
+    251, 176, 190, 6, 118, 110, 35, 115, 34, 199, 117, 26, 113, 184, 159, 70, 99, 208, 216, 190,
+    165, 159, 26, 221, 183, 167, 81, 153, 208, 152, 17, 108, 201, 195, 126, 216, 48, 140, 206, 211,
+    127, 237, 43, 153, 6, 55, 239, 6, 147, 185, 60, 71, 45, 31, 170, 109, 42, 97, 217, 193, 21,
+    234, 131, 118,
 ];
 
 pub const PUBKEY1: &str = "9ri4mUToddwCc6jg1GTL5sobkkFxjUzjZ6CZ6L91LzAR";
@@ -57,7 +57,8 @@ pub const DEVNET_PROVIDER_ID: &str = "devnet";
 pub const TESTNET_PROVIDER_ID: &str = "testnet";
 
 pub async fn init(pic: &PocketIc) -> Principal {
-    let (canister_id, wasm_module) = create_canister_with_id(pic, "IC_SOLANA_PROVIDER_PATH", *CANISTER_ID).await;
+    let (canister_id, wasm_module) =
+        create_canister_with_id(pic, "IC_SOLANA_PROVIDER_PATH", *CANISTER_ID).await;
 
     let args = InitArgs {
         // TODO: fixme
@@ -91,13 +92,18 @@ pub async fn create_canister(ic: &PocketIc, env_key: &str) -> (Principal, Vec<u8
 
     ic.add_cycles(canister_id, INIT_CYCLES).await;
 
-    let wasm_path = std::env::var_os(env_key).unwrap_or_else(|| panic!("Missing `{}` env variable", env_key));
+    let wasm_path =
+        std::env::var_os(env_key).unwrap_or_else(|| panic!("Missing `{}` env variable", env_key));
 
     let wasm_module = std::fs::read(wasm_path).unwrap();
     (canister_id, wasm_module)
 }
 
-pub async fn create_canister_with_id(ic: &PocketIc, env_key: &str, canister_id: Principal) -> (Principal, Vec<u8>) {
+pub async fn create_canister_with_id(
+    ic: &PocketIc,
+    env_key: &str,
+    canister_id: Principal,
+) -> (Principal, Vec<u8>) {
     ic.create_canister_with_id(
         Some(*CONTROLLER_PRINCIPAL),
         Some(CanisterSettings {
@@ -111,7 +117,8 @@ pub async fn create_canister_with_id(ic: &PocketIc, env_key: &str, canister_id: 
 
     ic.add_cycles(canister_id, INIT_CYCLES).await;
 
-    let wasm_path = std::env::var_os(env_key).unwrap_or_else(|| panic!("Missing `{}` env variable", env_key));
+    let wasm_path =
+        std::env::var_os(env_key).unwrap_or_else(|| panic!("Missing `{}` env variable", env_key));
 
     let wasm_module = std::fs::read(wasm_path).unwrap();
     (canister_id, wasm_module)
@@ -142,6 +149,8 @@ where
 {
     match data {
         WasmResult::Reply(data) => decode_args::<'a, Tuple>(data),
-        WasmResult::Reject(error_message) => Err(candid::Error::Custom(anyhow::anyhow!(error_message.clone()))),
+        WasmResult::Reject(error_message) => Err(candid::Error::Custom(anyhow::anyhow!(
+            error_message.clone()
+        ))),
     }
 }

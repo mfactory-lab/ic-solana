@@ -1,9 +1,9 @@
-use {
-    crate::{types::pubkey::Pubkey, utils::short_vec},
-    candid::CandidType,
-    serde::{de::Error, Deserialize, Serialize},
-    std::{fmt, fmt::Display, str::FromStr},
-};
+use std::{fmt, fmt::Display, str::FromStr};
+
+use candid::CandidType;
+use serde::{de::Error, Deserialize, Serialize};
+
+use crate::{types::pubkey::Pubkey, utils::short_vec};
 
 /// Reasons the runtime might have rejected an instruction.
 ///
@@ -114,7 +114,8 @@ pub enum InstructionError {
 
     /// The same account was multiply passed to an on-chain program's entrypoint, but the program
     /// modified them differently.  A program can only modify one instance of the account because
-    /// the runtime cannot determine which changes to pick or how to merge them if both are modified
+    /// the runtime cannot determine which changes to pick or how to merge them if both are
+    /// modified
     #[error("instruction modifications of multiply-passed account differ")]
     DuplicateAccountOutOfSync,
 
@@ -205,7 +206,6 @@ pub enum InstructionError {
     /// which can be dangerous because the error strings could change across
     /// Borsh versions. Only programs can use this error because they are
     /// consistent across Solana software versions.
-    ///
     #[error("Failed to serialize or deserialize account data: {0}")]
     BorshIoError(String),
 
@@ -260,7 +260,11 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    pub fn new_with_bincode<T: Serialize>(program_id: Pubkey, data: &T, accounts: Vec<AccountMeta>) -> Self {
+    pub fn new_with_bincode<T: Serialize>(
+        program_id: Pubkey,
+        data: &T,
+        accounts: Vec<AccountMeta>,
+    ) -> Self {
         let data = bincode::serialize(data).unwrap();
         Self {
             program_id,
@@ -283,7 +287,8 @@ impl Display for Instruction {
         write!(
             f,
             "{}",
-            bs58::encode(bincode::serialize(self).expect("Instruction serialization failed")).into_string()
+            bs58::encode(bincode::serialize(self).expect("Instruction serialization failed"))
+                .into_string()
         )
     }
 }
@@ -332,13 +337,14 @@ impl AccountMeta {
 /// A `CompiledInstruction` is a component of a multi-instruction [`Message`],
 /// which is the core of a Solana transaction. It is created during the
 /// construction of `Message`. Most users will not interact with it directly.
-///
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct CompiledInstruction {
-    /// Index into the transaction keys array indicating the program account that executes this instruction.
+    /// Index into the transaction keys array indicating the program account that executes this
+    /// instruction.
     pub program_id_index: u8,
-    /// Ordered indices into the transaction keys array indicating which accounts to pass to the program.
+    /// Ordered indices into the transaction keys array indicating which accounts to pass to the
+    /// program.
     #[serde(with = "short_vec")]
     pub accounts: Vec<u8>,
     /// The program input data.

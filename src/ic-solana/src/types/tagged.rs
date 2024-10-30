@@ -1,20 +1,18 @@
-//!
 //! This module contains tagged types for the types in the `super` module.
 //!
 //! Default implementations work with JSON serialization and deserialization, but
 //! the `CandidType` trait doesn't support flattened or untagged enums, so we have to copy and paste
 //! the "tagged" versions of structs to send them as candid types.
-//!
 
-use {
-    crate::types::{
-        CommitmentLevel, Epoch, Legacy, ParsedAccount, ParsedInstruction, Rewards, RpcBlockProductionRange, Slot,
-        TransactionBinaryEncoding, TransactionError, TransactionResult, UiAccountEncoding, UiAccountsList,
-        UiCompiledInstruction, UiLoadedAddresses, UiParsedMessage, UiPartiallyDecodedInstruction, UiRawMessage,
-        UiTokenAmount, UiTransactionReturnData, UiTransactionTokenBalance, UnixTimestamp,
-    },
-    candid::CandidType,
-    serde::{Deserialize, Serialize},
+use candid::CandidType;
+use serde::{Deserialize, Serialize};
+
+use crate::types::{
+    CommitmentLevel, Epoch, Legacy, ParsedAccount, ParsedInstruction, Rewards,
+    RpcBlockProductionRange, Slot, TransactionBinaryEncoding, TransactionError, TransactionResult,
+    UiAccountEncoding, UiAccountsList, UiCompiledInstruction, UiLoadedAddresses, UiParsedMessage,
+    UiPartiallyDecodedInstruction, UiRawMessage, UiTokenAmount, UiTransactionReturnData,
+    UiTransactionTokenBalance, UnixTimestamp,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, CandidType)]
@@ -95,7 +93,11 @@ pub struct UiConfirmedBlock {
     pub signatures: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rewards: Option<Rewards>,
-    #[serde(default, rename = "numRewardPartitions", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "numRewardPartitions",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub num_reward_partitions: Option<u64>,
     #[serde(rename = "blockTime")]
     pub block_time: Option<UnixTimestamp>,
@@ -301,7 +303,9 @@ pub struct EncodedConfirmedTransactionWithStatusMeta {
     pub block_time: Option<UnixTimestamp>,
 }
 
-impl From<super::EncodedConfirmedTransactionWithStatusMeta> for EncodedConfirmedTransactionWithStatusMeta {
+impl From<super::EncodedConfirmedTransactionWithStatusMeta>
+    for EncodedConfirmedTransactionWithStatusMeta
+{
     fn from(value: super::EncodedConfirmedTransactionWithStatusMeta) -> Self {
         let super::EncodedConfirmedTransactionWithStatusMeta {
             slot,
@@ -316,7 +320,9 @@ impl From<super::EncodedConfirmedTransactionWithStatusMeta> for EncodedConfirmed
     }
 }
 
-impl From<EncodedConfirmedTransactionWithStatusMeta> for super::EncodedConfirmedTransactionWithStatusMeta {
+impl From<EncodedConfirmedTransactionWithStatusMeta>
+    for super::EncodedConfirmedTransactionWithStatusMeta
+{
     fn from(value: EncodedConfirmedTransactionWithStatusMeta) -> Self {
         let EncodedConfirmedTransactionWithStatusMeta {
             slot,
@@ -401,27 +407,55 @@ impl From<TransactionVersion> for super::TransactionVersion {
 #[serde(rename_all = "camelCase")]
 pub struct UiTransactionStatusMeta {
     pub err: Option<TransactionError>,
-    pub status: TransactionResult<()>, // This field is deprecated.  See https://github.com/solana-labs/solana/issues/9302
+    pub status: TransactionResult<()>, /* This field is deprecated.  See https://github.com/solana-labs/solana/issues/9302 */
     pub fee: u64,
     #[serde(rename = "preBalances")]
     pub pre_balances: Vec<u64>,
     #[serde(rename = "postBalances")]
     pub post_balances: Vec<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "innerInstructions")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "innerInstructions"
+    )]
     pub inner_instructions: Option<Vec<UiInnerInstructions>>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "logMessages")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "logMessages"
+    )]
     pub log_messages: Option<Vec<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "preTokenBalances")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "preTokenBalances"
+    )]
     pub pre_token_balances: Option<Vec<UiTransactionTokenBalance>>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "postTokenBalances")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "postTokenBalances"
+    )]
     pub post_token_balances: Option<Vec<UiTransactionTokenBalance>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rewards: Option<Rewards>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "loadedAddresses")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "loadedAddresses"
+    )]
     pub loaded_addresses: Option<UiLoadedAddresses>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "returnData")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "returnData"
+    )]
     pub return_data: Option<UiTransactionReturnData>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "computeUnitsConsumed")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "computeUnitsConsumed"
+    )]
     pub compute_units_consumed: Option<u64>,
 }
 
@@ -501,7 +535,8 @@ impl From<UiTransactionStatusMeta> for super::UiTransactionStatusMeta {
 #[serde(rename_all = "camelCase")]
 pub enum EncodedTransaction {
     #[serde(rename = "legacyBinary")]
-    LegacyBinary(String), // Old way of expressing base-58, retained for RPC backwards compatibility
+    LegacyBinary(String), /* Old way of expressing base-58, retained for RPC backwards
+                           * compatibility */
     #[serde(rename = "binary")]
     Binary(String, TransactionBinaryEncoding),
     #[serde(rename = "json")]
@@ -541,7 +576,10 @@ pub struct UiTransaction {
 
 impl From<super::UiTransaction> for UiTransaction {
     fn from(value: super::UiTransaction) -> Self {
-        let super::UiTransaction { signatures, message } = value;
+        let super::UiTransaction {
+            signatures,
+            message,
+        } = value;
         Self {
             signatures,
             message: message.into(),
@@ -551,7 +589,10 @@ impl From<super::UiTransaction> for UiTransaction {
 
 impl From<UiTransaction> for super::UiTransaction {
     fn from(value: UiTransaction) -> Self {
-        let UiTransaction { signatures, message } = value;
+        let UiTransaction {
+            signatures,
+            message,
+        } = value;
         Self {
             signatures,
             message: message.into(),
@@ -652,7 +693,9 @@ impl From<UiParsedInstruction> for super::UiParsedInstruction {
     fn from(value: UiParsedInstruction) -> Self {
         match value {
             UiParsedInstruction::Parsed(parsed) => Self::Parsed(parsed),
-            UiParsedInstruction::PartiallyDecoded(partially_decoded) => Self::PartiallyDecoded(partially_decoded),
+            UiParsedInstruction::PartiallyDecoded(partially_decoded) => {
+                Self::PartiallyDecoded(partially_decoded)
+            }
         }
     }
 }
@@ -687,9 +730,12 @@ impl From<RpcSimulateTransactionResult> for super::RpcSimulateTransactionResult 
         Self {
             err: value.err,
             logs: value.logs,
-            accounts: value
-                .accounts
-                .map(|accounts| accounts.into_iter().map(|acc| acc.map(Into::into)).collect()),
+            accounts: value.accounts.map(|accounts| {
+                accounts
+                    .into_iter()
+                    .map(|acc| acc.map(Into::into))
+                    .collect()
+            }),
             units_consumed: value.units_consumed,
             return_data: value.return_data,
             inner_instructions: value
@@ -704,9 +750,12 @@ impl From<super::RpcSimulateTransactionResult> for RpcSimulateTransactionResult 
         Self {
             err: value.err,
             logs: value.logs,
-            accounts: value
-                .accounts
-                .map(|accounts| accounts.into_iter().map(|acc| acc.map(Into::into)).collect()),
+            accounts: value.accounts.map(|accounts| {
+                accounts
+                    .into_iter()
+                    .map(|acc| acc.map(Into::into))
+                    .collect()
+            }),
             units_consumed: value.units_consumed,
             return_data: value.return_data,
             inner_instructions: value
@@ -718,11 +767,10 @@ impl From<super::RpcSimulateTransactionResult> for RpcSimulateTransactionResult 
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        crate::{rpc_client::JsonRpcResponse, types::OptionalContext},
-        candid::{Decode, Encode},
-    };
+    use candid::{Decode, Encode};
+
+    use super::*;
+    use crate::{rpc_client::JsonRpcResponse, types::OptionalContext};
 
     #[test]
     fn test_transaction_serialize() {
@@ -786,8 +834,10 @@ mod tests {
             },
             "pubkey":"28YTZEwqtMHWrhWcvv34se7pjS7wctgqzCPB3gReCFKp"
         }]}, "id":1}"#;
-        let res =
-            serde_json::from_str::<JsonRpcResponse<OptionalContext<Vec<super::super::RpcKeyedAccount>>>>(json).unwrap();
+        let res = serde_json::from_str::<
+            JsonRpcResponse<OptionalContext<Vec<super::super::RpcKeyedAccount>>>,
+        >(json)
+        .unwrap();
 
         println!("{:#?}", res);
 

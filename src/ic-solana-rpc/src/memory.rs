@@ -1,14 +1,14 @@
-use {
-    crate::{
-        auth::AuthSet,
-        providers::{ProviderId, RpcProvider},
-        types::PrincipalStorable,
-    },
-    ic_stable_structures::{
-        memory_manager::{MemoryId, MemoryManager, VirtualMemory},
-        DefaultMemoryImpl, StableBTreeMap,
-    },
-    std::cell::RefCell,
+use std::cell::RefCell;
+
+use ic_stable_structures::{
+    memory_manager::{MemoryId, MemoryManager, VirtualMemory},
+    DefaultMemoryImpl, StableBTreeMap,
+};
+
+use crate::{
+    auth::AuthSet,
+    providers::{ProviderId, RpcProvider},
+    types::PrincipalStorable,
 };
 
 const AUTH_MEMORY_ID: MemoryId = MemoryId::new(1);

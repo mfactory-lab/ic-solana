@@ -1,31 +1,32 @@
 mod setup;
 
-use {
-    crate::setup::SOME_CALLER_ID,
-    candid::{utils::ArgumentEncoder, CandidType},
-    ic_solana::{
-        metrics::{MetricRpcHost, Metrics},
-        request::RpcRequest,
-        rpc_client::{RpcConfig, RpcResult, RpcServices},
-        types::{
-            tagged::{
-                EncodedConfirmedTransactionWithStatusMeta, RpcKeyedAccount, RpcSimulateTransactionResult,
-                RpcTokenAccountBalance, UiAccount, UiConfirmedBlock,
-            },
-            Cluster, EpochInfo, EpochSchedule, RpcAccountBalance, RpcAccountInfoConfig, RpcBlockCommitment,
-            RpcBlockConfig, RpcBlockProduction, RpcBlockhash, RpcConfirmedTransactionStatusWithSignature,
-            RpcContactInfo, RpcIdentity, RpcInflationGovernor, RpcInflationRate, RpcInflationReward,
-            RpcLargestAccountsConfig, RpcLargestAccountsFilter, RpcLeaderSchedule, RpcPerfSample, RpcPrioritizationFee,
-            RpcSignatureStatusConfig, RpcSimulateTransactionConfig, RpcSnapshotSlotInfo, RpcSupply,
-            RpcTokenAccountsFilter, RpcVersionInfo, RpcVoteAccountStatus, TransactionDetails, TransactionStatus,
-            UiDataSliceConfig, UiTokenAmount, UiTransactionEncoding,
+use std::collections::HashMap;
+
+use candid::{utils::ArgumentEncoder, CandidType};
+use ic_solana::{
+    metrics::{MetricRpcHost, Metrics},
+    request::RpcRequest,
+    rpc_client::{RpcConfig, RpcResult, RpcServices},
+    types::{
+        tagged::{
+            EncodedConfirmedTransactionWithStatusMeta, RpcKeyedAccount,
+            RpcSimulateTransactionResult, RpcTokenAccountBalance, UiAccount, UiConfirmedBlock,
         },
+        Cluster, EpochInfo, EpochSchedule, RpcAccountBalance, RpcAccountInfoConfig,
+        RpcBlockCommitment, RpcBlockConfig, RpcBlockProduction, RpcBlockhash,
+        RpcConfirmedTransactionStatusWithSignature, RpcContactInfo, RpcIdentity,
+        RpcInflationGovernor, RpcInflationRate, RpcInflationReward, RpcLargestAccountsConfig,
+        RpcLargestAccountsFilter, RpcLeaderSchedule, RpcPerfSample, RpcPrioritizationFee,
+        RpcSignatureStatusConfig, RpcSimulateTransactionConfig, RpcSnapshotSlotInfo, RpcSupply,
+        RpcTokenAccountsFilter, RpcVersionInfo, RpcVoteAccountStatus, TransactionDetails,
+        TransactionStatus, UiDataSliceConfig, UiTokenAmount, UiTransactionEncoding,
     },
-    ic_solana_rpc::{auth::Auth, state::InitArgs, types::RegisterProviderArgs},
-    serde::de::DeserializeOwned,
-    setup::{MockOutcallBuilder, SolanaRpcSetup, MOCK_RAW_TX},
-    std::collections::HashMap,
 };
+use ic_solana_rpc::{auth::Auth, state::InitArgs, types::RegisterProviderArgs};
+use serde::de::DeserializeOwned;
+use setup::{MockOutcallBuilder, SolanaRpcSetup, MOCK_RAW_TX};
+
+use crate::setup::SOME_CALLER_ID;
 
 fn call_update<A: ArgumentEncoder, R: DeserializeOwned + CandidType>(
     method: &str,
@@ -93,7 +94,10 @@ fn test_get_block() {
         (RpcServices::Mainnet, (), slot, conf),
         r#"{"jsonrpc":"2.0","result":{"blockHeight":278596380,"blockTime":1712339598,"blockhash":"DuDqV3wED1kmx8RarqTmzGbwjCdBCyswMu6vSuAJGmhQ","parentSlot":290304299,"previousBlockhash":"2MssJkEXpFZthuFFUMuy9ZKtPXvg4TnUWog1E3vq2QPd","signatures":["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"]},"id":1}"#,
     ).unwrap();
-    assert_eq!(res.blockhash, "DuDqV3wED1kmx8RarqTmzGbwjCdBCyswMu6vSuAJGmhQ");
+    assert_eq!(
+        res.blockhash,
+        "DuDqV3wED1kmx8RarqTmzGbwjCdBCyswMu6vSuAJGmhQ"
+    );
 
     // slot not found
     assert!(call_update::<_, UiConfirmedBlock>(
@@ -179,7 +183,10 @@ fn test_get_cluster_nodes() {
         r#"{"jsonrpc": "2.0","result":[{"gossip":"10.239.6.48:8001","pubkey":"9QzsJf7LPLj8GkXbYT3LFDKqsj2hHG7TA3xinJHu8epQ","rpc":"10.239.6.48:8899","tpu":"10.239.6.48:8856","version":"1.0.0 c375ce1f"}],"id":1}"#,
     )
     .unwrap();
-    assert_eq!(res[0].pubkey, "9QzsJf7LPLj8GkXbYT3LFDKqsj2hHG7TA3xinJHu8epQ");
+    assert_eq!(
+        res[0].pubkey,
+        "9QzsJf7LPLj8GkXbYT3LFDKqsj2hHG7TA3xinJHu8epQ"
+    );
 }
 
 #[test]
@@ -464,7 +471,10 @@ fn test_get_latest_blockhash() {
         r#"{"jsonrpc":"2.0","result":{"context":{"slot":2792},"value":{"blockhash":"EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N","lastValidBlockHeight":3090}},"id":1}"#,
     )
     .unwrap();
-    assert_eq!(res.blockhash, "EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N");
+    assert_eq!(
+        res.blockhash,
+        "EkSnNWid2cvwEVnVx9aBqawnmiCNiDgp3gUdkDPTKN1N"
+    );
 }
 
 #[test]
@@ -631,7 +641,11 @@ fn test_vote_accounts() {
 fn test_is_blockhash_valid() {
     let res = call_update::<_, bool>(
         "sol_isBlockhashValid",
-        (RpcServices::Mainnet, (), "J7rBdM6AecPDEZp8aPq5iPSNKVkU5Q76F3oAV4eW5wsW"),
+        (
+            RpcServices::Mainnet,
+            (),
+            "J7rBdM6AecPDEZp8aPq5iPSNKVkU5Q76F3oAV4eW5wsW",
+        ),
         r#"{"jsonrpc":"2.0","result":{"context":{"slot":2483},"value":true},"id":1}"#,
     )
     .unwrap();
@@ -717,7 +731,10 @@ fn should_get_valid_request_cost() {
 
 #[test]
 fn should_get_notes_in_subnet() {
-    assert_eq!(SolanaRpcSetup::new().call_query::<_, u32>("getNodesInSubnet", ()), 34);
+    assert_eq!(
+        SolanaRpcSetup::new().call_query::<_, u32>("getNodesInSubnet", ()),
+        34
+    );
 }
 
 #[test]
@@ -772,7 +789,11 @@ fn should_allow_manager_to_register_and_unregister_providers() {
         .wait();
     let providers = setup.get_providers();
     assert!(providers.contains(&provider_id));
-    setup.clone().as_controller().unregister_provider(&provider_id).wait();
+    setup
+        .clone()
+        .as_controller()
+        .unregister_provider(&provider_id)
+        .wait();
     let providers = setup.get_providers();
     assert!(!providers.contains(&provider_id));
 }

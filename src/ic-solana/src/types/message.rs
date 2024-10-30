@@ -1,17 +1,16 @@
-use {
-    crate::{
-        types::{
-            account::AccountKey,
-            blockhash::BlockHash,
-            compiled_keys::CompiledKeys,
-            instruction::{CompiledInstruction, Instruction},
-            pubkey::Pubkey,
-            UiCompiledInstruction, UiInstruction,
-        },
-        utils::short_vec,
+use candid::CandidType;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    types::{
+        account::AccountKey,
+        blockhash::BlockHash,
+        compiled_keys::CompiledKeys,
+        instruction::{CompiledInstruction, Instruction},
+        pubkey::Pubkey,
+        UiCompiledInstruction, UiInstruction,
     },
-    candid::CandidType,
-    serde::{Deserialize, Serialize},
+    utils::short_vec,
 };
 
 /// Bit mask that indicates whether a serialized message is versioned.
@@ -47,7 +46,11 @@ impl Message {
         Self::new_with_blockhash(instructions, payer, &BlockHash::default())
     }
 
-    pub fn new_with_blockhash(instructions: &[Instruction], payer: Option<&Pubkey>, blockhash: &BlockHash) -> Self {
+    pub fn new_with_blockhash(
+        instructions: &[Instruction],
+        payer: Option<&Pubkey>,
+        blockhash: &BlockHash,
+    ) -> Self {
         let compiled_keys = CompiledKeys::compile(instructions, payer.cloned());
         let (header, account_keys) = compiled_keys
             .try_into_message_components()
@@ -88,7 +91,9 @@ impl Message {
     }
 
     pub fn program_id(&self, instruction_index: usize) -> Option<&Pubkey> {
-        Some(&self.account_keys[self.instructions.get(instruction_index)?.program_id_index as usize])
+        Some(
+            &self.account_keys[self.instructions.get(instruction_index)?.program_id_index as usize],
+        )
     }
 
     pub fn program_index(&self, instruction_index: usize) -> Option<usize> {
@@ -165,7 +170,11 @@ pub struct UiParsedMessage {
     #[serde(rename = "recentBlockhash")]
     pub recent_blockhash: String,
     pub instructions: Vec<UiInstruction>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "addressTableLookups")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "addressTableLookups"
+    )]
     pub address_table_lookups: Option<Vec<UiAddressTableLookup>>,
 }
 
@@ -179,11 +188,16 @@ pub struct UiRawMessage {
     #[serde(rename = "recentBlockhash")]
     pub recent_blockhash: String,
     pub instructions: Vec<UiCompiledInstruction>,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "addressTableLookups")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "addressTableLookups"
+    )]
     pub address_table_lookups: Option<Vec<UiAddressTableLookup>>,
 }
 
-/// A duplicate representation of a MessageAddressTableLookup, in raw format, for pretty JSON serialization
+/// A duplicate representation of a MessageAddressTableLookup, in raw format, for pretty JSON
+/// serialization
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct UiAddressTableLookup {
@@ -219,11 +233,10 @@ fn compile_instructions(ixs: &[Instruction], keys: &[Pubkey]) -> Vec<CompiledIns
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        crate::types::UiParsedMessage,
-        candid::{Decode, Encode},
-    };
+    use candid::{Decode, Encode};
+
+    use super::*;
+    use crate::types::UiParsedMessage;
 
     #[test]
     fn test_candid_serialize() {

@@ -1,7 +1,6 @@
-use {
-    crate::types::Slot,
-    serde::{Deserialize, Serialize},
-};
+use serde::{Deserialize, Serialize};
+
+use crate::types::Slot;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

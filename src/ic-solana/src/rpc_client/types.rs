@@ -1,14 +1,14 @@
-use {
-    crate::types::Cluster,
-    candid::{CandidType, Deserialize},
-    ic_cdk::api::{
-        call::RejectionCode,
-        management_canister::http_request::{CanisterHttpRequestArgument, HttpHeader},
-    },
-    serde::Serialize,
-    std::{fmt::Debug, str::FromStr},
-    thiserror::Error,
+use std::{fmt::Debug, str::FromStr};
+
+use candid::{CandidType, Deserialize};
+use ic_cdk::api::{
+    call::RejectionCode,
+    management_canister::http_request::{CanisterHttpRequestArgument, HttpHeader},
 };
+use serde::Serialize;
+use thiserror::Error;
+
+use crate::types::Cluster;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Deserialize, CandidType)]
 pub enum ConsensusStrategy {
@@ -95,7 +95,10 @@ pub enum RpcError {
     ValidationError(String),
 
     #[error("HTTP outcall error: (code: {code:?}): {message}")]
-    HttpOutcallError { code: RejectionCode, message: String },
+    HttpOutcallError {
+        code: RejectionCode,
+        message: String,
+    },
 
     #[error("JSON-RPC error: {0}")]
     JsonRpcError(JsonRpcError),
@@ -110,7 +113,9 @@ pub enum RpcError {
     Text(String),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, CandidType, Serialize, Deserialize, Error)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, CandidType, Serialize, Deserialize, Error,
+)]
 #[error("JSON-RPC error (code: {code}): {message}")]
 pub struct JsonRpcError {
     pub code: i64,

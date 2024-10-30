@@ -1,14 +1,14 @@
-use {
-    crate::{
-        logs::INFO,
-        rpc_client::types::{ConsensusStrategy, RpcApi, RpcError, RpcResult},
-    },
-    ic_canister_log::log,
-    serde::Serialize,
-    std::{
-        collections::{BTreeMap, BTreeSet},
-        fmt::Debug,
-    },
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Debug,
+};
+
+use ic_canister_log::log;
+use serde::Serialize;
+
+use crate::{
+    logs::INFO,
+    rpc_client::types::{ConsensusStrategy, RpcApi, RpcError, RpcResult},
 };
 
 /// Aggregates responses of different providers to the same query.
@@ -59,14 +59,21 @@ impl<T> MultiCallResults<T> {
         self.ok_results
             .into_iter()
             .map(|(provider, result)| (provider, Ok(result)))
-            .chain(self.errors.into_iter().map(|(provider, error)| (provider, Err(error))))
+            .chain(
+                self.errors
+                    .into_iter()
+                    .map(|(provider, error)| (provider, Err(error))),
+            )
             .collect()
     }
 
     fn group_errors(&self) -> BTreeMap<&RpcError, BTreeSet<&RpcApi>> {
         let mut errors: BTreeMap<_, _> = BTreeMap::new();
         for (provider, error) in self.errors.iter() {
-            errors.entry(error).or_insert_with(BTreeSet::new).insert(provider);
+            errors
+                .entry(error)
+                .or_insert_with(BTreeSet::new)
+                .insert(provider);
         }
         errors
     }
@@ -117,7 +124,9 @@ impl<T: Debug + PartialEq + Clone + Serialize> MultiCallResults<T> {
             .next()
             .expect("BUG: MultiCallResults is guaranteed to be non-empty");
 
-        let mut inconsistent_results: Vec<_> = results.filter(|(_, result)| result != &base_result).collect();
+        let mut inconsistent_results: Vec<_> = results
+            .filter(|(_, result)| result != &base_result)
+            .collect();
         if !inconsistent_results.is_empty() {
             inconsistent_results.push((base_node_provider, base_result));
             let error = MultiCallError::InconsistentResults(MultiCallResults::from_non_empty_iter(
@@ -125,7 +134,10 @@ impl<T: Debug + PartialEq + Clone + Serialize> MultiCallResults<T> {
                     .into_iter()
                     .map(|(provider, result)| (provider, Ok(result))),
             ));
-            log!(INFO, "[reduce_with_equality]: inconsistent results {error:?}");
+            log!(
+                INFO,
+                "[reduce_with_equality]: inconsistent results {error:?}"
+            );
             return Err(error);
         }
 
@@ -148,7 +160,8 @@ impl<T: Debug + PartialEq + Clone + Serialize> MultiCallResults<T> {
         } else {
             log!(
                 INFO,
-                "[reduce_with_threshold]: too many inconsistent ok responses to reach threshold of {min}, results: {self:?}"
+                "[reduce_with_threshold]: too many inconsistent ok responses to reach threshold \
+                 of {min}, results: {self:?}"
             );
             Err(MultiCallError::InconsistentResults(self))
         }
@@ -157,9 +170,10 @@ impl<T: Debug + PartialEq + Clone + Serialize> MultiCallResults<T> {
 
 /// Distribution of responses observed from different providers.
 ///
-/// From the API point of view, it emulates a map from a response instance to a set of providers that returned it.
-/// At the implementation level, to avoid requiring `T` to have a total order (i.e., must implements `Ord` if it were to be used as keys in a `BTreeMap`)
-/// which might not always be meaningful, we use as a key the hash of the serialized response instance.
+/// From the API point of view, it emulates a map from a response instance to a set of providers
+/// that returned it. At the implementation level, to avoid requiring `T` to have a total order
+/// (i.e., must implements `Ord` if it were to be used as keys in a `BTreeMap`) which might not
+/// always be meaningful, we use as a key the hash of the serialized response instance.
 struct ResponseDistribution<T> {
     hashes: BTreeMap<[u8; 32], T>,
     responses: BTreeMap<[u8; 32], BTreeSet<RpcApi>>,
@@ -184,7 +198,12 @@ impl<T> ResponseDistribution<T> {
         self.responses
             .iter()
             .max_by_key(|(_hash, providers)| providers.len())
-            .map(|(hash, providers)| (self.hashes.get(hash).expect("BUG: hash should be present"), providers))
+            .map(|(hash, providers)| {
+                (
+                    self.hashes.get(hash).expect("BUG: hash should be present"),
+                    providers,
+                )
+            })
     }
 }
 
@@ -198,7 +217,9 @@ impl<T: Debug + PartialEq + Serialize> ResponseDistribution<T> {
     }
 
     pub fn insert_once(&mut self, provider: RpcApi, result: T) {
-        let hash = ic_sha3::Keccak256::hash(serde_json::to_vec(&result).expect("BUG: failed to serialize"));
+        let hash = ic_sha3::Keccak256::hash(
+            serde_json::to_vec(&result).expect("BUG: failed to serialize"),
+        );
         match self.hashes.get(&hash) {
             Some(existing_result) => {
                 assert_eq!(
@@ -209,7 +230,10 @@ impl<T: Debug + PartialEq + Serialize> ResponseDistribution<T> {
                     .responses
                     .get_mut(&hash)
                     .expect("BUG: hash is guaranteed to be present");
-                assert!(providers.insert(provider), "BUG: provider is already present");
+                assert!(
+                    providers.insert(provider),
+                    "BUG: provider is already present"
+                );
             }
             None => {
                 assert_eq!(self.hashes.insert(hash, result), None);

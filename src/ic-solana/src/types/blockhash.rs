@@ -1,7 +1,6 @@
-use {
-    serde::{Deserialize, Serialize},
-    std::{fmt, mem, str::FromStr},
-};
+use std::{fmt, mem, str::FromStr};
+
+use serde::{Deserialize, Serialize};
 
 /// Size of a hash in bytes.
 pub const HASH_BYTES: usize = 32;
@@ -58,7 +57,9 @@ impl FromStr for BlockHash {
         if s.len() > MAX_BASE58_LEN {
             return Err(ParseHashError::WrongSize);
         }
-        let bytes = bs58::decode(s).into_vec().map_err(|_| ParseHashError::Invalid)?;
+        let bytes = bs58::decode(s)
+            .into_vec()
+            .map_err(|_| ParseHashError::Invalid)?;
         if bytes.len() != mem::size_of::<BlockHash>() {
             Err(ParseHashError::WrongSize)
         } else {

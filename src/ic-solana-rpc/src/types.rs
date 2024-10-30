@@ -1,9 +1,8 @@
-use {
-    candid::{CandidType, Deserialize, Principal},
-    ic_stable_structures::{storable::Bound, Storable},
-    serde::Serialize,
-    std::borrow::Cow,
-};
+use std::borrow::Cow;
+
+use candid::{CandidType, Deserialize, Principal};
+use ic_stable_structures::{storable::Bound, Storable};
+use serde::Serialize;
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PrincipalStorable(pub Principal);

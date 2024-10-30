@@ -1,9 +1,8 @@
-use {
-    anyhow::{anyhow, Result},
-    serde::{Deserialize, Serialize},
-    std::str::FromStr,
-    url::Url,
-};
+use std::str::FromStr;
+
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
+use url::Url;
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Cluster {
@@ -35,15 +34,20 @@ impl FromStr for Cluster {
                         .map_err(|_| anyhow!("Unable to set port"))?;
                 }
                 if ws_url.scheme() == "https" {
-                    ws_url.set_scheme("wss").map_err(|_| anyhow!("Unable to set scheme"))?;
+                    ws_url
+                        .set_scheme("wss")
+                        .map_err(|_| anyhow!("Unable to set scheme"))?;
                 } else {
-                    ws_url.set_scheme("ws").map_err(|_| anyhow!("Unable to set scheme"))?;
+                    ws_url
+                        .set_scheme("ws")
+                        .map_err(|_| anyhow!("Unable to set scheme"))?;
                 }
 
                 Ok(Cluster::Custom(http_url.to_string(), ws_url.to_string()))
             }
             _ => Err(anyhow::Error::msg(
-                "Cluster must be one of [localnet, testnet, mainnet, devnet] or be an http or https url\n",
+                "Cluster must be one of [localnet, testnet, mainnet, devnet] or be an http or \
+                 https url\n",
             )),
         }
     }

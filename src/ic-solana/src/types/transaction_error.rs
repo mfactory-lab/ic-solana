@@ -1,8 +1,7 @@
-use {
-    crate::types::InstructionError,
-    candid::{CandidType, Deserialize},
-    serde::Serialize,
-};
+use candid::{CandidType, Deserialize};
+use serde::Serialize;
+
+use crate::types::InstructionError;
 
 /// Reasons a transaction might be rejected.
 #[derive(thiserror::Error, Serialize, Deserialize, Debug, PartialEq, Eq, Clone, CandidType)]
@@ -25,7 +24,8 @@ pub enum TransactionError {
     #[error("Attempt to load a program that does not exist")]
     ProgramAccountNotFound,
 
-    /// The from `Pubkey` does not have sufficient balance to pay the fee to schedule the transaction
+    /// The from `Pubkey` does not have sufficient balance to pay the fee to schedule the
+    /// transaction
     #[error("Insufficient funds for fee")]
     InsufficientFundsForFee,
 
@@ -139,7 +139,9 @@ pub enum TransactionError {
     DuplicateInstruction(u8),
 
     /// Transaction results in an account with insufficient funds for rent
-    #[error("Transaction results in an account ({account_index}) with insufficient funds for rent")]
+    #[error(
+        "Transaction results in an account ({account_index}) with insufficient funds for rent"
+    )]
     InsufficientFundsForRent { account_index: u8 },
 
     /// Transaction exceeded max loaded accounts data size cap
@@ -155,10 +157,14 @@ pub enum TransactionError {
     ResanitizationNeeded,
 
     /// Program execution is temporarily restricted on an account.
-    #[error("Execution of the program referenced by account at index {account_index} is temporarily restricted.")]
+    #[error(
+        "Execution of the program referenced by account at index {account_index} is temporarily \
+         restricted."
+    )]
     ProgramExecutionTemporarilyRestricted { account_index: u8 },
 
-    /// The total balance before the transaction does not equal the total balance after the transaction
+    /// The total balance before the transaction does not equal the total balance after the
+    /// transaction
     #[error("Sum of account balances before and after transaction do not match")]
     UnbalancedTransaction,
 }

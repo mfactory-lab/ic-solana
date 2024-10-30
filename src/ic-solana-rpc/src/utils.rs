@@ -1,12 +1,12 @@
-use {
-    crate::constants::RPC_HOSTS_BLOCKLIST,
-    ic_solana::{
-        rpc_client::{RpcError, RpcResult},
-        types::{Pubkey, Signature},
-    },
-    std::str::FromStr,
-    url::Host,
+use std::str::FromStr;
+
+use ic_solana::{
+    rpc_client::{RpcError, RpcResult},
+    types::{Pubkey, Signature},
 };
+use url::Host;
+
+use crate::constants::RPC_HOSTS_BLOCKLIST;
 
 pub fn hostname_from_url(url: &str) -> Option<String> {
     url::Url::parse(url).ok().and_then(|url| match url.host() {

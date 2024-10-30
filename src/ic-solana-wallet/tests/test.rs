@@ -1,11 +1,9 @@
 mod common;
 
-use {
-    candid::{encode_one, Decode},
-    common::{init, BASIC_IDENTITY},
-    ic_agent::Agent,
-    pocket_ic::PocketIcBuilder,
-};
+use candid::{encode_one, Decode};
+use common::{init, BASIC_IDENTITY};
+use ic_agent::Agent;
+use pocket_ic::PocketIcBuilder;
 
 #[tokio::test]
 async fn test_sol_address() {

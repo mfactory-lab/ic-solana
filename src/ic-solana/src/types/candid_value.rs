@@ -1,14 +1,12 @@
 //! Wrapper for serde_json::Value that implements Candid serialization as String.
 
-use {
-    candid::CandidType,
-    serde::{Deserialize, Serialize},
-};
+use candid::CandidType;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 /// Wrapper for serde_json::Value that implements Candid serialization as String.
-/// Note: in did file, this type is represented as `text`, thus you could also send a string directly to
-/// the method that expects `CandidValue`, without wrapping it in `CandidValue`.
+/// Note: in did file, this type is represented as `text`, thus you could also send a string
+/// directly to the method that expects `CandidValue`, without wrapping it in `CandidValue`.
 pub struct CandidValue(pub serde_json::Value);
 
 impl From<CandidValue> for serde_json::Value {
@@ -44,10 +42,9 @@ impl CandidType for CandidValue {
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        candid::{Decode, Encode},
-    };
+    use candid::{Decode, Encode};
+
+    use super::*;
 
     #[test]
     fn test_candid_value() {

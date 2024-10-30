@@ -1,8 +1,7 @@
-use {
-    ic_canister_log::{declare_log_buffer, export as export_logs, GlobalBuffer, Sink},
-    serde::Deserialize,
-    std::str::FromStr,
-};
+use std::str::FromStr;
+
+use ic_canister_log::{declare_log_buffer, export as export_logs, GlobalBuffer, Sink};
+use serde::Deserialize;
 
 // High-priority messages.
 declare_log_buffer!(name = INFO_BUF, capacity = 1000);
@@ -138,10 +137,9 @@ impl Log {
 
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        proptest::{prop_assert, proptest},
-    };
+    use proptest::{prop_assert, proptest};
+
+    use super::*;
 
     fn info_log_entry_with_timestamp(timestamp: u64) -> LogEntry {
         LogEntry {
@@ -285,10 +283,13 @@ mod tests {
                 entries
             },
         };
-        let log_with_3_entries = Log { entries: log_entries };
+        let log_with_3_entries = Log {
+            entries: log_entries,
+        };
 
         let serialized_log_with_2_entries = log_with_2_entries.serialize_logs(usize::MAX);
-        let serialized_log_with_3_entries = log_with_3_entries.serialize_logs(serialized_log_with_2_entries.len());
+        let serialized_log_with_3_entries =
+            log_with_3_entries.serialize_logs(serialized_log_with_2_entries.len());
 
         assert_eq!(serialized_log_with_3_entries, serialized_log_with_2_entries);
     }

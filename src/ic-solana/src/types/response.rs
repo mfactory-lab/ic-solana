@@ -1,11 +1,12 @@
-use {
-    crate::types::{
-        EncodedTransactionWithStatusMeta, Epoch, Rewards, Slot, TransactionConfirmationStatus, TransactionError,
-        UiAccount, UiInnerInstructions, UiTokenAmount, UiTransactionReturnData, UnixTimestamp,
-    },
-    candid::CandidType,
-    serde::{Deserialize, Serialize},
-    std::{collections::HashMap, fmt},
+use std::{collections::HashMap, fmt};
+
+use candid::CandidType;
+use serde::{Deserialize, Serialize};
+
+use crate::types::{
+    EncodedTransactionWithStatusMeta, Epoch, Rewards, Slot, TransactionConfirmationStatus,
+    TransactionError, UiAccount, UiInnerInstructions, UiTokenAmount, UiTransactionReturnData,
+    UnixTimestamp,
 };
 
 /// Wrapper for rpc returns types of methods that provide responses both with and without context.
@@ -132,7 +133,8 @@ pub struct RpcBlockProductionRange {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, CandidType)]
 #[serde(rename_all = "camelCase")]
 pub struct RpcBlockProduction {
-    /// Map of leader base58 identity pubkeys to a tuple of `(number of leader slots, number of blocks produced)`
+    /// Map of leader base58 identity pubkeys to a tuple of `(number of leader slots, number of
+    /// blocks produced)`
     #[serde(rename = "byIdentity")]
     pub by_identity: HashMap<String, (usize, usize)>,
     pub range: RpcBlockProductionRange,
@@ -202,8 +204,9 @@ pub struct RpcVoteAccountInfo {
     #[serde(rename = "epochVoteAccount")]
     pub epoch_vote_account: bool,
 
-    /// Latest history of earned credits for up to `MAX_RPC_VOTE_ACCOUNT_INFO_EPOCH_CREDITS_HISTORY` epochs
-    ///   each tuple is (Epoch, credits, prev_credits)
+    /// Latest history of earned credits for up to
+    /// `MAX_RPC_VOTE_ACCOUNT_INFO_EPOCH_CREDITS_HISTORY` epochs   each tuple is (Epoch,
+    /// credits, prev_credits)
     #[serde(rename = "epochCredits")]
     pub epoch_credits: Vec<(Epoch, u64, u64)>,
 
@@ -369,7 +372,6 @@ pub struct RpcPrioritizationFee {
 //     pub slot: Slot,
 // }
 
-//
 // PubSub Client types for future usage
 // https://github.com/solana-labs/solana/blob/master/pubsub-client/src/pubsub_client.rs
 //
