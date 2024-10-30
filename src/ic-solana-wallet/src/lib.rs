@@ -15,7 +15,7 @@ use {
 };
 
 mod eddsa;
-mod state;
+pub mod state;
 mod utils;
 
 /// Returns the public key of the Solana wallet associated with the caller.

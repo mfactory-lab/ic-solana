@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use {
     candid::{decode_args, encode_one, utils::ArgumentDecoder, Principal},
-    ic_solana_provider::state::InitArgs,
+    ic_solana_wallet::state::InitArgs,
     lazy_static::lazy_static,
     pocket_ic::{nonblocking::PocketIc, CanisterSettings, WasmResult},
     rand::distributions::{Distribution, Standard},
@@ -30,7 +30,7 @@ lazy_static! {
 
 #[ctor::ctor]
 fn init_vars() {
-    std::env::set_var("IC_SOLANA_PROVIDER_PATH", "ic-solana-provider.wasm.gz");
+    std::env::set_var("IC_SOLANA_WALLET_PATH", "ic-solana-wallet.wasm.gz");
 }
 
 // 2T cycles
@@ -56,16 +56,12 @@ pub const MAINNET_PROVIDER_ID: &str = "mainnet";
 pub const DEVNET_PROVIDER_ID: &str = "devnet";
 pub const TESTNET_PROVIDER_ID: &str = "testnet";
 
-pub const SOLANA_MAINNET_CLUSTER_URL: &str = "https://api.mainnet-beta.solana.com";
-pub const SOLANA_DEVNET_CLUSTER_URL: &str = "https://api.devnet.solana.com";
-pub const SOLANA_TESTNET_CLUSTER_URL: &str = "https://api.testnet.solana.com";
-
 pub async fn init(pic: &PocketIc) -> Principal {
     let (canister_id, wasm_module) = create_canister_with_id(pic, "IC_SOLANA_PROVIDER_PATH", *CANISTER_ID).await;
 
     let args = InitArgs {
-        demo: Some(true),
-        managers: Some(vec![*CONTROLLER_PRINCIPAL]),
+        // TODO: fixme
+        sol_canister: Principal::anonymous(),
         schnorr_key: None,
     };
 
