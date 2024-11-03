@@ -718,6 +718,29 @@ fn test_simulate_transaction() {
 }
 
 #[test]
+fn test_get_logs() {
+    type Logs = HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>;
+
+    let res = SolanaRpcSetup::new()
+        .call_update::<_, RpcResult<Logs>>(
+            "sol_getLogs",
+            (RpcServices::Mainnet, (), "83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri")
+        )
+        .mock_http_once(MockOutcallBuilder::new(
+            200,
+            r#"{"jsonrpc":"2.0","result":[{"blockTime":1730179716,"confirmationStatus":"finalized","err":null,"memo":null,"signature":"5HfJwpqxqDiNddNcCGo9ejXBcpzCGmjkYxwuuomYECYjvDWv3ZdcNevxZMMjeXpgKpwkvMw7w4A5Aabq734cjcE7","slot":336253303}],"id":1}"#,
+        ))
+        .mock_http_once(MockOutcallBuilder::new(
+            200,
+            r#"[{"jsonrpc":"2.0","result":{"blockTime":1730657183,"meta":{"computeUnitsConsumed":300,"err":null,"fee":5000,"innerInstructions":[],"loadedAddresses":{"readonly":[],"writable":[]},"logMessages":["Program 11111111111111111111111111111111 invoke [1]","Program 11111111111111111111111111111111 success","Program 11111111111111111111111111111111 invoke [1]","Program 11111111111111111111111111111111 success"],"postBalances":[0,998172448,8052016972,1],"postTokenBalances":[],"preBalances":[1200000,996978448,8052015972,1],"preTokenBalances":[],"rewards":[],"status":{"Ok":null}},"slot":299317916,"transaction":{"message":{"accountKeys":["6CY6QEogNW61ZHW7Uzt9rAprt4CJsop2ZGmn8TtrjS1b","DXMU5Xgs8Wc3qUKSSWwEv4mVnf1aEZ1FHL6JSQGjgo5","GiU1BqaWstzgbmMfksRc6Lx9cW4jQmTRCteodpSJeyMi","11111111111111111111111111111111"],"header":{"numReadonlySignedAccounts":0,"numReadonlyUnsignedAccounts":1,"numRequiredSignatures":1},"instructions":[{"accounts":[0,2],"data":"3Bxs4ffTu9T19DNF","programIdIndex":3,"stackHeight":null},{"accounts":[0,1],"data":"3Bxs43a1Fa6gnJDD","programIdIndex":3,"stackHeight":null}],"recentBlockhash":"BCKZ8D38Vb8PM5E7yPSCAjct585Z4DwdvMKZNJRxZjpQ"},"signatures":["5HfJwpqxqDiNddNcCGo9ejXBcpzCGmjkYxwuuomYECYjvDWv3ZdcNevxZMMjeXpgKpwkvMw7w4A5Aabq734cjcE7"]},"version":"legacy"},"id":2}]"#,
+        ))
+        .wait()
+        .unwrap();
+
+    assert!(res["5HfJwpqxqDiNddNcCGo9ejXBcpzCGmjkYxwuuomYECYjvDWv3ZdcNevxZMMjeXpgKpwkvMw7w4A5Aabq734cjcE7"].is_ok());
+}
+
+#[test]
 fn should_get_valid_request_cost() {
     assert_eq!(
         SolanaRpcSetup::new_with_args(InitArgs {

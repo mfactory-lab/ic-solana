@@ -758,9 +758,8 @@ pub async fn sol_simulate_transaction(
 
 /// Retrieves transaction logs for a given public key.
 ///
-/// This asynchronous function connects to the specified RPC `provider`, fetches transaction
-/// signatures associated with the provided `pubkey`, and then retrieves detailed transaction
-/// data based on those signatures.
+/// This function fetches transaction signatures associated with the provided `pubkey` and then
+/// retrieves detailed transaction data based on those signatures.
 #[update(name = "sol_getLogs")]
 #[candid_method(rename = "sol_getLogs")]
 pub async fn sol_get_logs(
@@ -774,18 +773,20 @@ pub async fn sol_get_logs(
     let commitment = params.as_ref().and_then(|p| p.commitment);
     let signatures = client.get_signatures_for_address(&pubkey, params).await?;
 
-    client
+    let transactions = client
         .get_transactions(
-            signatures
-                .iter()
-                .map(|s| s.signature.as_str())
-                .collect::<Vec<_>>(),
+            signatures.iter().map(|s| s.signature.as_str()).collect(),
             Some(RpcTransactionConfig {
                 commitment,
-                ..RpcTransactionConfig::default()
+                ..Default::default()
             }),
         )
-        .await
+        .await?;
+
+    Ok(transactions
+        .into_iter()
+        .map(|(k, v)| (k, v.map(|opt| opt.map(Into::into))))
+        .collect())
 }
 
 /// Sends a JSON-RPC request to a specified Solana node provider,

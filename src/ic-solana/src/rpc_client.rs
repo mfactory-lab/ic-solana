@@ -1123,18 +1123,18 @@ impl RpcClient {
     ///    {"jsonrpc":"2.0","id":1,"method":"getTransaction","params":["1"]}
     ///    {"jsonrpc":"2.0","id":2,"method":"getTransaction","params":["2"]}
     /// ]' http://localhost:8899
-    pub async fn get_transactions<T: DeserializeOwned>(
+    pub async fn get_transactions(
         &self,
         signatures: Vec<&str>,
         config: Option<RpcTransactionConfig>,
-    ) -> RpcResult<HashMap<String, RpcResult<Option<T>>>> {
+    ) -> RpcResult<HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>> {
         let requests = signatures
             .iter()
-            .map(|signature| (RpcRequest::GetTransaction, (signature, config)))
+            .map(|signature| (RpcRequest::GetTransaction, (signature, config.unwrap_or_default())))
             .collect::<Vec<_>>();
 
         let response = self
-            .batch_call::<_, T>(
+            .batch_call::<_, EncodedConfirmedTransactionWithStatusMeta>(
                 &requests,
                 Some(signatures.len() as u64 * TRANSACTION_RESPONSE_SIZE_ESTIMATE),
             )
