@@ -15,7 +15,7 @@ pub fn load_wasm_using_env_var(env_var: &str) -> Vec<u8> {
     });
     std::fs::read(&wasm_path).unwrap_or_else(|e| {
         panic!(
-            "failed to load Wasm file from path {} (env var {}): {}",
+            "Failed to load Wasm file from path {} (env var {}): {}",
             wasm_path, env_var, e
         )
     })

@@ -86,11 +86,13 @@ impl SolanaRpcSetup {
         }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn as_controller(mut self) -> Self {
         self.caller = self.controller;
         self
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn as_caller<T: Into<Principal>>(mut self, id: T) -> Self {
         self.caller = id.into();
         self
@@ -124,11 +126,7 @@ impl SolanaRpcSetup {
         CallFlow::from_update(self.clone(), method, input)
     }
 
-    pub fn call_query<A: ArgumentEncoder, R: CandidType + DeserializeOwned>(
-        &self,
-        method: &str,
-        args: A,
-    ) -> R {
+    pub fn call_query<A: ArgumentEncoder, R: CandidType + DeserializeOwned>(&self, method: &str, args: A) -> R {
         let input = encode_args(args).unwrap();
         let candid = &assert_reply(
             self.env
@@ -296,9 +294,12 @@ impl<R: CandidType + DeserializeOwned> CallFlow<R> {
     }
 
     pub fn wait(self) -> R {
-        let candid = &assert_reply(self.setup.env.await_call(self.message_id).unwrap_or_else(
-            |err| panic!("error during update call to `{}()`: {}", self.method, err),
-        ));
+        let candid = &assert_reply(
+            self.setup
+                .env
+                .await_call(self.message_id)
+                .unwrap_or_else(|err| panic!("error during update call to `{}()`: {}", self.method, err)),
+        );
         Decode!(candid, R).expect("error while decoding Candid response from update call")
     }
 }
