@@ -131,7 +131,7 @@ function build_canister() {
 
       # Optimize WASM and set metadata
       ic-wasm \
-          "$CARGO_TARGET_DIR/$TARGET/release/${canister//-/_}.wasm" \
+          "$CARGO_TARGET_DIR/$TARGET/release/${canister}.wasm" \
           -o "./$canister.wasm" \
           shrink
 
