@@ -30,9 +30,7 @@ pub async fn address() -> String {
     let key_name = read_state(|s| s.schnorr_key.to_owned());
     let derived_path = vec![ByteBuf::from(caller.as_slice())];
     let pk = eddsa_public_key(key_name, derived_path).await;
-    Pubkey::try_from(pk.as_slice())
-        .expect("Invalid public key")
-        .to_string()
+    Pubkey::try_from(pk.as_slice()).expect("Invalid public key").to_string()
 }
 
 /// Signs a provided message using the caller's Eddsa key.
@@ -86,14 +84,9 @@ pub async fn send_transaction(
 
     // Fetch the recent blockhash if it's not set
     if tx.message.recent_blockhash == BlockHash::default() {
-        let response = ic_cdk::call::<_, (RpcResult<String>,)>(
-            sol_canister,
-            "sol_getLatestBlockhash",
-            (&source,),
-        )
-        .await?;
-        tx.message.recent_blockhash =
-            BlockHash::from_str(&response.0?).expect("Invalid recent blockhash");
+        let response =
+            ic_cdk::call::<_, (RpcResult<String>,)>(sol_canister, "sol_getLatestBlockhash", (&source,)).await?;
+        tx.message.recent_blockhash = BlockHash::from_str(&response.0?).expect("Invalid recent blockhash");
     }
 
     let key_name = read_state(|s| s.schnorr_key.to_owned());
@@ -118,12 +111,16 @@ pub async fn send_transaction(
 
 #[ic_cdk::init]
 fn init(args: InitArgs) {
+    post_upgrade(args)
+}
+
+#[ic_cdk::post_upgrade]
+fn post_upgrade(args: InitArgs) {
     STATE.with(|s| {
         *s.borrow_mut() = Some(args.into());
     });
 }
 
-#[ic_cdk::post_upgrade]
-fn post_upgrade(_args: InitArgs) {}
+fn main() {}
 
 ic_cdk::export_candid!();

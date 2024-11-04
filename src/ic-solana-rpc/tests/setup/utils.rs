@@ -1,4 +1,3 @@
-use candid::Principal;
 use ic_test_utilities_load_wasm::load_wasm;
 use pocket_ic::WasmResult;
 
@@ -7,12 +6,8 @@ pub fn load_wasm_by_name(name: &str) -> Vec<u8> {
 }
 
 pub fn load_wasm_using_env_var(env_var: &str) -> Vec<u8> {
-    let wasm_path = std::env::var(env_var).unwrap_or_else(|e| {
-        panic!(
-            "The wasm path must be set using the env variable {} ({})",
-            env_var, e
-        )
-    });
+    let wasm_path = std::env::var(env_var)
+        .unwrap_or_else(|e| panic!("The wasm path must be set using the env variable {} ({})", env_var, e));
     std::fs::read(&wasm_path).unwrap_or_else(|e| {
         panic!(
             "Failed to load Wasm file from path {} (env var {}): {}",
@@ -29,10 +24,4 @@ pub fn assert_reply(result: WasmResult) -> Vec<u8> {
             panic!("Expected a successful reply, got {:?}", result)
         }
     }
-}
-
-/// Generates a random principal.
-pub fn random_principal() -> Principal {
-    let random_bytes = rand::random::<u32>().to_ne_bytes();
-    Principal::from_slice(&random_bytes)
 }
