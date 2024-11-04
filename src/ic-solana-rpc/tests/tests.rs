@@ -907,3 +907,38 @@ fn should_recognize_rate_limit() {
         }
     );
 }
+
+#[test]
+fn upgrade_should_keep_data() {
+    let setup = SolanaRpcSetup::new();
+
+    setup
+        .clone()
+        .as_controller()
+        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
+        .wait();
+
+    let principals = setup.get_authorized(Auth::RegisterProvider);
+    assert!(principals.contains(&SOME_CALLER_ID));
+
+    setup
+        .clone()
+        .as_controller()
+        .register_provider(RegisterProviderArgs {
+            id: "test_mainnet1".to_string(),
+            url: Cluster::Mainnet.url().into(),
+            auth: None,
+        })
+        .wait();
+
+    let providers = setup.get_providers();
+    assert!(providers.contains(&"test_mainnet1".to_string()));
+
+    setup.upgrade_canister(InitArgs::default());
+
+    let principals = setup.get_authorized(Auth::RegisterProvider);
+    assert!(principals.contains(&SOME_CALLER_ID));
+
+    let providers = setup.get_providers();
+    assert!(providers.contains(&"test_mainnet1".to_string()));
+}

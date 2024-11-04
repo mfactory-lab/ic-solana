@@ -842,16 +842,14 @@ fn __transform_json_rpc(mut args: TransformArgs) -> HttpResponse {
 
 #[ic_cdk::init]
 fn init(args: InitArgs) {
-    STATE.with(|s| {
-        *s.borrow_mut() = Some(args.into());
-    });
+    post_upgrade(args)
 }
 
 #[ic_cdk::post_upgrade]
-fn post_upgrade(_args: InitArgs) {
-    // if let Some(v) = args.rpc_url {
-    //     mutate_state(|s| s.rpc_url = v);
-    // }
+fn post_upgrade(args: InitArgs) {
+    STATE.with(|s| {
+        *s.borrow_mut() = Some(args.into());
+    });
 }
 
 fn main() {}
