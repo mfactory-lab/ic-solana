@@ -38,7 +38,7 @@ metrics: ## Fetch metrics
 .PHONY: test
 test: build ## Run tests
 	@echo "Running tests..."
-	@if [ ! -f "$(POCKET_IC_BIN)" ]; then \
+	@if [! -f "$(POCKET_IC_BIN)"]; then \
 		echo "Pocket IC binary not found. Fetching..."; \
 		$(MAKE) fetch-pocket-ic; \
 	fi
@@ -47,7 +47,7 @@ test: build ## Run tests
 .PHONY: test-e2e
 test-e2e: build ## Run end-to-end tests
 	@echo "Running end-to-end tests..."
-	dfx canister call test_canister test
+	dfx canister call e2e test
 
 .PHONY: fetch-pocket-ic
 fetch-pocket-ic: ## Fetch the pocket-ic binary for tests if not already present

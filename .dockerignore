@@ -11,8 +11,3 @@ Dockerfile
 # filter out all "hidden" files and directories
 # (.git, .dfx, .*ignore, etc)
 .*
-
-# Scripts are added explicitly as needed
-scripts/
-!scripts/build
-!scripts/bootstrap
