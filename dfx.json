@@ -1,13 +1,13 @@
 {
   "canisters": {
-    "rpc": {
+    "solana_rpc": {
       "type": "rust",
       "package": "ic-solana-rpc",
       "candid": "src/ic-solana-rpc/ic-solana-rpc.did",
       "gzip": true,
       "optimize": "cycles"
     },
-    "wallet": {
+    "solana_wallet": {
       "type": "rust",
       "package": "ic-solana-wallet",
       "candid": "src/ic-solana-wallet/ic-solana-wallet.did",
@@ -16,8 +16,8 @@
     },
     "e2e": {
       "dependencies": [
-        "rpc",
-        "wallet"
+        "solana_rpc",
+        "solana_wallet"
       ],
       "type": "rust",
       "package": "e2e",
