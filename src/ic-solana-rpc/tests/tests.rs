@@ -2,7 +2,6 @@ mod setup;
 
 use std::collections::HashMap;
 
-use candid::{utils::ArgumentEncoder, CandidType};
 use ic_solana::{
     metrics::{MetricRpcHost, Metrics},
     request::RpcRequest,
@@ -21,25 +20,13 @@ use ic_solana::{
     },
 };
 use ic_solana_rpc::{auth::Auth, state::InitArgs, types::RegisterProviderArgs};
-use serde::de::DeserializeOwned;
-use setup::{MockOutcallBuilder, SolanaRpcSetup, MOCK_RAW_TX};
+use test_utils::{MockOutcallBuilder, TestSetup};
 
-use crate::setup::SOME_CALLER_ID;
-
-fn mock_update<A: ArgumentEncoder, R: DeserializeOwned + CandidType>(
-    method: &str,
-    args: A,
-    response: &str,
-) -> RpcResult<R> {
-    SolanaRpcSetup::new()
-        .call_update::<A, RpcResult<R>>(method, args)
-        .mock_http(MockOutcallBuilder::new(200, response))
-        .wait()
-}
+use crate::setup::{mock_update, SolanaRpcSetup, MOCK_RAW_TX};
 
 #[test]
 fn should_canonicalize_json_response() {
-    let setup = SolanaRpcSetup::new();
+    let setup = SolanaRpcSetup::default();
     let responses = [
         r#"{"id":1,"jsonrpc":"2.0","result":"ok"}"#,
         r#"{"result":"ok","id":1,"jsonrpc":"2.0"}"#,
@@ -704,7 +691,7 @@ fn test_simulate_transaction() {
 fn test_get_logs() {
     type Logs = HashMap<String, RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>>>;
 
-    let res = SolanaRpcSetup::new()
+    let res = SolanaRpcSetup::default()
         .call_update::<_, RpcResult<Logs>>(
             "sol_getLogs",
             (RpcServices::Mainnet, (), "83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri")
@@ -726,7 +713,7 @@ fn test_get_logs() {
 #[test]
 fn should_get_valid_request_cost() {
     assert_eq!(
-        SolanaRpcSetup::new_with_args(InitArgs {
+        SolanaRpcSetup::new(InitArgs {
             demo: None,
             ..Default::default()
         })
@@ -737,47 +724,49 @@ fn should_get_valid_request_cost() {
 
 #[test]
 fn should_get_notes_in_subnet() {
-    assert_eq!(SolanaRpcSetup::new().call_query::<_, u32>("getNodesInSubnet", ()), 34);
+    assert_eq!(SolanaRpcSetup::default().get_nodes_in_subnet(), 34);
 }
 
 #[test]
 fn should_allow_manager_to_authorize_and_deauthorize_user() {
-    let setup = SolanaRpcSetup::new();
+    let setup = SolanaRpcSetup::default();
+    let principal = TestSetup::principal(3);
+
     setup
         .clone()
         .as_controller()
-        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
+        .authorize(principal, Auth::RegisterProvider)
         .wait();
     let principals = setup.get_authorized(Auth::RegisterProvider);
-    assert!(principals.contains(&SOME_CALLER_ID));
+    assert!(principals.contains(&principal));
     setup
         .clone()
         .as_controller()
-        .deauthorize(SOME_CALLER_ID, Auth::RegisterProvider)
+        .deauthorize(principal, Auth::RegisterProvider)
         .wait();
     let principals = setup.get_authorized(Auth::RegisterProvider);
-    assert!(!principals.contains(&SOME_CALLER_ID));
+    assert!(!principals.contains(&principal));
 }
 
 #[test]
 #[should_panic(expected = "Unauthorized")]
 fn should_not_allow_caller_without_access_authorize_users() {
-    SolanaRpcSetup::new()
-        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
+    SolanaRpcSetup::default()
+        .authorize(TestSetup::principal(9), Auth::RegisterProvider)
         .wait();
 }
 
 #[test]
 #[should_panic(expected = "Unauthorized")]
 fn should_not_allow_caller_without_access_deauthorize_users() {
-    SolanaRpcSetup::new()
-        .deauthorize(SOME_CALLER_ID, Auth::RegisterProvider)
+    SolanaRpcSetup::default()
+        .deauthorize(TestSetup::principal(9), Auth::RegisterProvider)
         .wait();
 }
 
 #[test]
 fn should_allow_manager_to_register_and_unregister_providers() {
-    let setup = SolanaRpcSetup::new();
+    let setup = SolanaRpcSetup::default();
     let provider_id = "test_mainnet1".to_string();
     setup
         .clone()
@@ -797,17 +786,19 @@ fn should_allow_manager_to_register_and_unregister_providers() {
 
 #[test]
 fn should_allow_caller_with_access_register_provider() {
-    let setup = SolanaRpcSetup::new();
+    let setup = SolanaRpcSetup::default();
+    let principal = TestSetup::principal(3);
+
     setup
         .clone()
         .as_controller()
-        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
+        .authorize(principal, Auth::RegisterProvider)
         .wait();
 
     let provider_id = "test_mainnet1".to_string();
     setup
         .clone()
-        .as_caller(SOME_CALLER_ID)
+        .as_caller(principal)
         .register_provider(RegisterProviderArgs {
             id: provider_id.clone(),
             url: Cluster::Mainnet.url().into(),
@@ -818,7 +809,7 @@ fn should_allow_caller_with_access_register_provider() {
     assert!(providers.contains(&provider_id));
     setup
         .clone()
-        .as_caller(SOME_CALLER_ID)
+        .as_caller(principal)
         .unregister_provider(&provider_id)
         .wait();
     let providers = setup.get_providers();
@@ -828,7 +819,7 @@ fn should_allow_caller_with_access_register_provider() {
 #[test]
 #[should_panic(expected = "Unauthorized")]
 fn should_not_allow_caller_without_access_to_register_provider() {
-    SolanaRpcSetup::new()
+    SolanaRpcSetup::default()
         .register_provider(RegisterProviderArgs {
             id: "test_mainnet1".to_string(),
             url: Cluster::Mainnet.url().into(),
@@ -840,22 +831,24 @@ fn should_not_allow_caller_without_access_to_register_provider() {
 #[test]
 #[should_panic(expected = "Unauthorized")]
 fn should_not_allow_caller_without_access_to_unregister_provider() {
-    SolanaRpcSetup::new().unregister_provider("mainnet").wait();
+    SolanaRpcSetup::default().unregister_provider("mainnet").wait();
 }
 
 #[test]
 fn should_retrieve_logs() {
-    let setup = SolanaRpcSetup::new_with_args(InitArgs {
+    let setup = SolanaRpcSetup::new(InitArgs {
         demo: None,
         ..Default::default()
     });
     assert_eq!(setup.http_get_logs("DEBUG"), vec![]);
     assert_eq!(setup.http_get_logs("INFO"), vec![]);
 
+    let principal = TestSetup::principal(3);
+
     setup
         .clone()
         .as_controller()
-        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
+        .authorize(principal, Auth::RegisterProvider)
         .wait();
 
     assert_eq!(setup.http_get_logs("DEBUG"), vec![]);
@@ -863,7 +856,7 @@ fn should_retrieve_logs() {
         format!(
             "Authorizing `{:?}` for principal: {}",
             Auth::RegisterProvider,
-            SOME_CALLER_ID
+            principal
         )
         .as_str()
     ));
@@ -871,7 +864,7 @@ fn should_retrieve_logs() {
 
 #[test]
 fn should_recognize_rate_limit() {
-    let setup = SolanaRpcSetup::new();
+    let setup = SolanaRpcSetup::default();
     let result = setup
         .request(RpcServices::Mainnet, "getHealth", "", 1000)
         .mock_http(MockOutcallBuilder::new(
@@ -909,17 +902,18 @@ fn should_recognize_rate_limit() {
 }
 
 #[test]
-fn upgrade_should_keep_data() {
-    let setup = SolanaRpcSetup::new();
+fn upgrade_should_keep_state() {
+    let setup = SolanaRpcSetup::default();
+    let principal = TestSetup::principal(3);
 
     setup
         .clone()
         .as_controller()
-        .authorize(SOME_CALLER_ID, Auth::RegisterProvider)
+        .authorize(principal, Auth::RegisterProvider)
         .wait();
 
     let principals = setup.get_authorized(Auth::RegisterProvider);
-    assert!(principals.contains(&SOME_CALLER_ID));
+    assert!(principals.contains(&principal));
 
     setup
         .clone()
@@ -937,7 +931,7 @@ fn upgrade_should_keep_data() {
     setup.upgrade_canister(InitArgs::default());
 
     let principals = setup.get_authorized(Auth::RegisterProvider);
-    assert!(principals.contains(&SOME_CALLER_ID));
+    assert!(principals.contains(&principal));
 
     let providers = setup.get_providers();
     assert!(providers.contains(&"test_mainnet1".to_string()));
