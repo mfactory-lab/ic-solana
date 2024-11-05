@@ -1,4 +1,4 @@
-# SOLANA RPC Canister &nbsp;[![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+# SOLANA RPC &nbsp;[![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 > #### A canister for interaction between [Solana](https://solana.com) and [Internet Computer (ICP)](https://internetcomputer.org/) blockchains.
 
@@ -11,8 +11,8 @@ This canister sends API requests to [JSON-RPC](https://solana.com/docs/rpc) serv
 using [HTTPS outcalls](https://internetcomputer.org/https-outcalls). This enables functionality similar to traditional
 Solana dApps, including querying Solana smart contract states and submitting raw transactions.
 
-The canister runs on the 28-node fiduciary subnet with the following principal: [
-`bkyz2-fmaaa-aaaaa-qaaaq-cai`](https://dashboard.internetcomputer.org/canister/bkyz2-fmaaa-aaaaa-qaaaq-cai).
+The canister runs on the 34-node fiduciary subnet with the following principal: [
+`bd3sg-teaaa-aaaaa-qaaba-cai`](https://dashboard.internetcomputer.org/canister/bd3sg-teaaa-aaaaa-qaaba-cai).
 
 For information on how to verify a hash of a deployed WebAssembly module, please refer to
 the [Reproducible Builds](#reproducible-builds) section.
@@ -25,14 +25,14 @@ available canisters above):
 ```json
 {
   "canisters": {
-    "ic-solana": {
+    "solana_rpc": {
       "type": "custom",
       "candid": "https://github.com/mfactory-lab/ic-solana/raw/main/src/ic-solana-provider/ic-solana-provider.did",
       "wasm": "https://github.com/mfactory-lab/ic-solana/raw/main/src/ic-solana-provider/ic-solana-provider.wasm.gz",
       "remote": {
         "id": {
-          "ic": "bkyz2-fmaaa-aaaaa-qaaaq-cai",
-          "playground": "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+          "ic": "bd3sg-teaaa-aaaaa-qaaba-cai",
+          "playground": "bd3sg-teaaa-aaaaa-qaaba-cai"
         }
       }
     }
@@ -48,8 +48,8 @@ If you want to test your project locally, you can use the following commands:
 # Starts the replica, which then runs in the background
 dfx start --clean --background
 
-# Build and deploy your canisters to the replica and generates your candid interface
-make build
+# Locally deploy the `evm_rpc` canister
+dfx deploy solana_rpc --argument '(record {})'
 ```
 
 Once the job is completed, your application will be available at `http://localhost:4943?canisterId={asset_canister_id}`.
@@ -102,7 +102,6 @@ code from the latest GitHub release.
 
 ## Related projects
 
-* [Schnorr Signature](https://github.com/domwoe/schnorr_canister) Schnorr Signature Canister
 * [Solana Galactic Bridge](https://github.com/weichain/galactic-bridge-sol): This program implements a secure deposit
   and withdrawal functionality for a Solana treasury account.
 * [Bitcoin canister](https://github.com/dfinity/bitcoin-canister): interact with the Bitcoin blockchain from the
