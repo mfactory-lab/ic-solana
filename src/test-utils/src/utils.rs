@@ -5,7 +5,7 @@ pub fn load_wasm_by_name(name: &str) -> Vec<u8> {
     load_wasm(std::env::var("CARGO_MANIFEST_DIR").unwrap(), name, &[])
 }
 
-pub fn load_wasm_using_env_var(env_var: &str) -> Vec<u8> {
+pub fn load_wasm_by_env_var(env_var: &str) -> Vec<u8> {
     let wasm_path = std::env::var(env_var)
         .unwrap_or_else(|e| panic!("The wasm path must be set using the env variable {} ({})", env_var, e));
     std::fs::read(&wasm_path).unwrap_or_else(|e| {

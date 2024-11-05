@@ -1,10 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
+    "src/e2e",
+    "src/test-utils",
     "src/ic-solana",
     "src/ic-solana-rpc",
     "src/ic-solana-wallet",
-    "src/e2e",
 ]
 
 [workspace.package]
@@ -25,6 +26,7 @@ edition = "2021"
 ic-solana = { path = "src/ic-solana" }
 ic-solana-rpc = { path = "src/ic-solana-rpc" }
 ic-solana-wallet = { path = "src/ic-solana-wallet" }
+test-utils = { path = "src/test-utils" }
 
 # ic dependencies
 candid = "0.10"
@@ -66,6 +68,6 @@ panic = "abort"
 lto = true
 opt-level = 'z'
 
-[patch.crates-io]
-# Required by `solana-client` v2.0
-curve25519-dalek = { git = "https://github.com/solana-labs/curve25519-dalek.git", rev = "b500cdc2a920cd5bff9e2dd974d7b97349d61464" }
+#[patch.crates-io]
+## Required by `solana-client` v2.0
+#curve25519-dalek = { git = "https://github.com/solana-labs/curve25519-dalek.git", rev = "b500cdc2a920cd5bff9e2dd974d7b97349d61464" }

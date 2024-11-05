@@ -1,0 +1,19 @@
+[package]
+name = "test-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+candid = { workspace = true }
+ic-cdk = { workspace = true }
+ic-canister-log = { workspace = true }
+ic-canisters-http-types = { workspace = true }
+ic-management-canister-types = { workspace = true }
+ic-metrics-encoder = { workspace = true }
+ic-stable-structures = { workspace = true }
+url = { workspace = true }
+pocket-ic = { workspace = true }
+ic-test-utilities-load-wasm = { workspace = true }
+serde_bytes = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
