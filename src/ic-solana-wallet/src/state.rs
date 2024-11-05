@@ -1,6 +1,11 @@
 use std::{cell::RefCell, str::FromStr};
 
-use candid::{CandidType, Deserialize, Principal};
+use candid::{CandidType, Deserialize};
+use ic_cdk::{
+    api::management_canister::main::CanisterId,
+    storage::{stable_restore, stable_save},
+};
+use serde::Serialize;
 
 use crate::eddsa::SchnorrKey;
 
@@ -8,27 +13,44 @@ thread_local! {
     pub static STATE: RefCell<Option<State>> = const { RefCell::new(None) };
 }
 
-/// Solana RPC canister initialization data.
 #[derive(Debug, Deserialize, CandidType, Clone)]
 pub struct InitArgs {
-    pub sol_canister: Principal,
+    pub sol_canister: Option<CanisterId>,
     pub schnorr_key: Option<String>,
 }
 
+#[derive(CandidType, Clone, Debug, Deserialize, Serialize)]
 pub struct State {
-    pub sol_canister: Principal,
+    pub sol_canister: CanisterId,
     pub schnorr_key: SchnorrKey,
 }
 
-impl From<InitArgs> for State {
-    fn from(value: InitArgs) -> Self {
-        take_state(|s| Self {
-            sol_canister: value.sol_canister,
-            schnorr_key: value
+impl State {
+    pub fn init(args: InitArgs) {
+        replace_state(Self {
+            sol_canister: args.sol_canister.expect("Missing sol_canister"),
+            schnorr_key: args
                 .schnorr_key
                 .and_then(|s| SchnorrKey::from_str(&s).ok())
-                .unwrap_or(s.schnorr_key),
-        })
+                .unwrap_or(SchnorrKey::TestKey1),
+        });
+    }
+
+    pub fn pre_upgrade() {
+        take_state(|state| stable_save((state,)).expect("failed to save state"))
+    }
+
+    pub fn post_upgrade(args: Option<InitArgs>) {
+        let (mut state,): (State,) = stable_restore().expect("failed to restore state");
+        if let Some(args) = args {
+            if let Some(sol_canister) = args.sol_canister {
+                state.sol_canister = sol_canister;
+            }
+            if let Some(schnorr_key) = args.schnorr_key {
+                state.schnorr_key = SchnorrKey::from_str(&schnorr_key).expect("Invalid schnorr key");
+            }
+        }
+        replace_state(state);
     }
 }
 
@@ -66,4 +88,11 @@ where
     F: FnOnce(&mut State) -> R,
 {
     STATE.with(|s| f(s.borrow_mut().as_mut().expect("State not initialized!")))
+}
+
+/// Replaces the current state.
+pub fn replace_state(state: State) {
+    STATE.with(|s| {
+        *s.borrow_mut() = Some(state);
+    });
 }

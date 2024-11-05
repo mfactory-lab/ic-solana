@@ -3,17 +3,18 @@ use std::{
     str::FromStr,
 };
 
-use candid::Principal;
+use candid::{CandidType, Principal};
 use ic_management_canister_types::{
     DerivationPath, SchnorrAlgorithm, SchnorrKeyId, SchnorrPublicKeyArgs, SchnorrPublicKeyResponse,
     SignWithSchnorrArgs, SignWithSchnorrReply,
 };
+use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 
 // https://internetcomputer.org/docs/current/references/t-sigs-how-it-works/#fees-for-the-t-schnorr-production-key
 pub const EDDSA_SIGN_COST: u128 = 26_153_846_153;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, CandidType)]
 pub enum SchnorrKey {
     TestKeyLocal,
     TestKey1,
@@ -62,17 +63,11 @@ pub async fn eddsa_public_key(key: SchnorrKey, derivation_path: Vec<ByteBuf>) ->
     )
     .await;
 
-    res.expect("Failed to fetch ed25519 public key")
-        .0
-        .public_key
+    res.expect("Failed to fetch ed25519 public key").0.public_key
 }
 
 /// Signs a message with an ed25519 key.
-pub async fn sign_with_eddsa(
-    key: SchnorrKey,
-    derivation_path: Vec<ByteBuf>,
-    message: Vec<u8>,
-) -> Vec<u8> {
+pub async fn sign_with_eddsa(key: SchnorrKey, derivation_path: Vec<ByteBuf>, message: Vec<u8>) -> Vec<u8> {
     ic_cdk::api::call::msg_cycles_accept128(EDDSA_SIGN_COST);
 
     let res: Result<(SignWithSchnorrReply,), _> = ic_cdk::api::call::call_with_payment(

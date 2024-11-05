@@ -4,19 +4,14 @@ use candid::candid_method;
 use ic_cdk::update;
 use ic_solana::{
     rpc_client::{RpcConfig, RpcResult, RpcServices},
-    types::{BlockHash, Pubkey, RpcSendTransactionConfig, Signature, Transaction},
+    types::{BlockHash, Pubkey, RpcSendTransactionConfig, Transaction},
 };
-use serde_bytes::ByteBuf;
-
-use crate::{
+use ic_solana_wallet::{
     eddsa::{eddsa_public_key, sign_with_eddsa},
-    state::{read_state, InitArgs, STATE},
+    state::{read_state, InitArgs, State},
     utils::validate_caller_not_anonymous,
 };
-
-mod eddsa;
-pub mod state;
-mod utils;
+use serde_bytes::ByteBuf;
 
 /// Returns the public key of the Solana wallet associated with the caller.
 ///
@@ -43,17 +38,13 @@ pub async fn address() -> String {
 ///
 /// - `RpcResult<String>`: The signature as a base58 encoded string on success, or an `RpcError` on
 ///   failure.
-#[update]
-#[candid_method]
-pub async fn sign_message(message: String) -> RpcResult<String> {
+#[update(name = "signMessage")]
+#[candid_method(query, rename = "signMessage")]
+pub async fn sign_message(message: String) -> Vec<u8> {
     let caller = validate_caller_not_anonymous();
     let key_name = read_state(|s| s.schnorr_key.to_owned());
     let derived_path = vec![ByteBuf::from(caller.as_slice())];
-    let signature: Signature = sign_with_eddsa(key_name, derived_path, message.as_bytes().into())
-        .await
-        .try_into()
-        .expect("Invalid signature");
-    Ok(signature.to_string())
+    sign_with_eddsa(key_name, derived_path, message.as_bytes().into()).await
 }
 
 /// Signs and sends a transaction to the Solana network.
@@ -69,8 +60,8 @@ pub async fn sign_message(message: String) -> RpcResult<String> {
 ///
 /// - `RpcResult<String>`: The transaction signature as a string on success, or an `RpcError` on
 ///   failure.
-#[update]
-#[candid_method]
+#[update(name = "sendTransaction")]
+#[candid_method(query, rename = "sendTransaction")]
 pub async fn send_transaction(
     source: RpcServices,
     config: Option<RpcConfig>,
@@ -111,14 +102,17 @@ pub async fn send_transaction(
 
 #[ic_cdk::init]
 fn init(args: InitArgs) {
-    post_upgrade(args)
+    State::init(args)
+}
+
+#[ic_cdk::pre_upgrade]
+fn pre_upgrade() {
+    State::pre_upgrade()
 }
 
 #[ic_cdk::post_upgrade]
-fn post_upgrade(args: InitArgs) {
-    STATE.with(|s| {
-        *s.borrow_mut() = Some(args.into());
-    });
+fn post_upgrade(args: Option<InitArgs>) {
+    State::post_upgrade(args)
 }
 
 fn main() {}
