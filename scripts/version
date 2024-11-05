@@ -9,46 +9,42 @@
 set -euo pipefail
 
 log() {
-    >&2 echo "version: $@"
+  echo >&2 "version: $@"
 }
 
 # First, figure out the commit and error out if we can't
 commit=$(git rev-parse HEAD)
-if [[ -z $commit ]]
-then
-    log "no commit found"
-    exit 1
+if [[ -z $commit ]]; then
+  log "no commit found"
+  exit 1
 else
-    log "found commit '$commit'"
+  log "found commit '$commit'"
 fi
 
 # Try to infer the release based on either local git setup or CI environment
 release=
-if [[ -n ${CI:-} && ${GITHUB_REF_TYPE:-} == "tag" && ${GITHUB_REF_NAME:-} == release-* ]]
-then
-    release=${GITHUB_REF_NAME:-}
+if [[ -n ${CI:-} && ${GITHUB_REF_TYPE:-} == "tag" && ${GITHUB_REF_NAME:-} == release-* ]]; then
+  release=${GITHUB_REF_NAME:-}
 else
-    # grep may fail so we may just print an empty line (like 'true', really)
-    # NOTE: '|' has higher precedence than '||'
-    release=$(git tag --points-at "$commit" | grep '^release-' | head -n1 || echo -n "")
+  # grep may fail so we may just print an empty line (like 'true', really)
+  # NOTE: '|' has higher precedence than '||'
+  release=$(git tag --points-at "$commit" | grep '^release-' | head -n1 || echo -n "")
 fi
 
-if [[ -z $release ]]
-then
-    log "no release found for commit '$commit'"
+if [[ -z $release ]]; then
+  log "no release found for commit '$commit'"
 else
-    log "found release '$release'"
+  log "found release '$release'"
 fi
 
 # Figure out if the workspace is dirty
 dirty=
-if [ -n "$(git status --porcelain)" ]
-then
-    log "commit is dirty"
-    dirty="dirty"
+if [ -n "$(git status --porcelain)" ]; then
+  log "commit is dirty"
+  dirty="dirty"
 else
-    log "commit is clean"
-    dirty="clean"
+  log "commit is clean"
+  dirty="clean"
 fi
 
 echo "$commit,$release,$dirty"

@@ -1,98 +1,133 @@
 #!/usr/bin/env bash
-# vim: ft=bash
-# Build Solana inside docker. This outputs ic-solana-rpc.wasm.gz.
 
-set -euo pipefail
+set -eEuo pipefail
 
-# Make sure we always run from the root
-SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPTS_DIR/.."
+SCRIPT_NAME=$(basename "$0")
+ARTIFACTS_DIR="./artifacts"
+BUILD_MODE=${BUILD_MODE:-"production"}
 
-function title() {
-    echo "Build Solana inside Docker"
+title() {
+  echo -e "IC Solana Reproducible Builds"
 }
 
 function usage() {
-    cat << EOF
+  cat <<EOF
 
 Usage:
-  $0
+  ${SCRIPT_NAME} [OPTIONS]
 
+Options:
+  --rpc         Build the RPC canister
+  --wallet      Build the Wallet canister
+
+  -h, --help    Show this help message
 EOF
 }
 
 function help() {
-    cat << EOF
+  cat <<EOF
 
-This will create (and override) "./ic-solana-rpc.wasm.gz".
+Helper script to facilitate the building of the canisters in the IC Solana project in a reproducible way.
+
+NOTE: This requires a working Docker installation.
 EOF
 }
 
-## Building
-
-function build() {
-    local canister="$1"
-
-    # image name and build args, made global because they're used in
-    # check_feature()
-    image_name="ic-solana-docker-build"
-    docker_build_args=( --target "scratch_${canister//-/_}" )
-
-    docker_build_args+=(--tag "$image_name" .)
-
-    echo "The following image name will be used: $image_name"
-
-    tmp_outdir=$(mktemp -d)
-
-    set -x
-    DOCKER_BUILDKIT=1 docker build \
-        "${docker_build_args[@]}" \
-        --output "$tmp_outdir"
-    set +x
-
-    echo "Copying build output from $tmp_outdir to $PWD"
-    cp "$tmp_outdir/$canister.wasm.gz" .
-
-    echo "Removing $tmp_outdir"
-    rm -rf "$tmp_outdir"
+exec_function() {
+  local function_name="$1"
+  shift
+  echo "------------------------------------------------------"
+  echo -e "\033[1mSTART:\033[0m $function_name"
+  "$function_name" "$@"
+  echo -e "\033[1mCOMPLETED:\033[0m $function_name"
 }
 
-# ARGUMENT PARSING
+# Check if Docker is installed
+check_docker() {
+  if ! command -v docker &>/dev/null; then
+    echo "ERROR: Docker is not installed or not in PATH." >&2
+    exit 1
+  fi
 
-CANISTERS=()
-while [[ $# -gt 0 ]]
-do
-    case $1 in
-        -h|--help)
-            title
-            usage
-            help
-            exit 0
-            ;;
-        --rpc)
-            CANISTERS+=("ic-solana-rpc")
-            shift
-            ;;
-        --wallet)
-            CANISTERS+=("ic-solana-wallet")
-            shift
-            ;;
-        *)
-            echo "ERROR: unknown argument $1"
-            usage
-            echo
-            echo "Use '$0 --help' for more information"
-            exit 1
-            ;;
-    esac
-done
+  if ! docker info >/dev/null 2>&1; then
+    echo "ERROR: Docker daemon is not running or you don't have permissions." >&2
+    exit 1
+  fi
+}
 
-# build solana rpc by default
-if [ ${#CANISTERS[@]} -eq 0 ]; then
-    CANISTERS=("ic-solana-rpc")
+#############################################
+# FEATURES                                  #
+#############################################
+
+function build() {
+  local project_name=$1
+  local target=$2
+
+  echo "Building the '$project_name' canister in '$BUILD_MODE' mode..."
+
+  # Build the canister
+  docker build --build-arg BUILD_MODE=$BUILD_MODE -t ic-solana-$project_name --target $target .
+
+  local container_id
+  container_id=$(docker create "ic-solana-${project_name}")
+
+  # Ensure the artifacts directory exists
+  mkdir -p "${ARTIFACTS_DIR}/${project_name}"
+
+  # Copy artifacts from the container to the host
+  docker cp "${container_id}:/code/artifacts/." "${ARTIFACTS_DIR}/${project_name}/"
+
+  # Clean up the container
+  docker rm "$container_id"
+
+  # Remove the Docker image to save space
+  docker rmi "ic-solana-${project_name}" --force
+
+  echo "Artifacts for '$project_name' have been copied to '${ARTIFACTS_DIR}/${project_name}/'"
+}
+
+function build_rpc() {
+  build rpc build_rpc
+}
+
+function build_wallet() {
+  build wallet build_wallet
+}
+
+#############################################
+# SCRIPT OPTIONS                            #
+#############################################
+
+if [[ $# -eq 0 ]]; then
+  title
+  usage
+  exit 0
 fi
 
-for canister in "${CANISTERS[@]}"
-do
-    build "$canister"
+check_docker
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  -h | --help)
+    title
+    usage
+    help_info
+    exit 0
+    ;;
+  --rpc)
+    exec_function build_rpc
+    shift
+    ;;
+  --wallet)
+    exec_function build_wallet
+    shift
+    ;;
+  *)
+    echo -e "ERROR: Unknown argument '$1'" >&2
+    usage
+    echo -e "\nUse '${SCRIPT_NAME} --help' for more information." >&2
+    exit 1
+    ;;
+  esac
 done

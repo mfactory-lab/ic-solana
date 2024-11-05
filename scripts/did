@@ -1,37 +1,35 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-set -x
 
 function generate_did() {
   local canister=$1
   canister_root="src/$canister"
 
   cargo build --manifest-path="$canister_root/Cargo.toml" \
-      --target wasm32-unknown-unknown \
-      --release --package "$canister"
+    --target wasm32-unknown-unknown \
+    --release --package "$canister"
 
   local target_dir="${CARGO_TARGET_DIR:-target}"
   local wasm_path="$target_dir/wasm32-unknown-unknown/release/${canister}.wasm"
 
   if [[ ! -f "$wasm_path" ]]; then
-      echo "WASM file not found: $wasm_path"
-      exit 1
+    echo "WASM file not found: $wasm_path"
+    exit 1
   fi
 
-  candid-extractor "$wasm_path" > "$canister_root/$canister.did"
+  candid-extractor "$wasm_path" >"$canister_root/$canister.did"
 }
 
 # Check if at least one argument is provided
 if [[ $# -lt 1 ]]; then
-    echo "Usage: $0 ic-solana-rpc,ic-solana-wallet,..."
-    exit 1
+  echo "Usage: $0 ic-solana-rpc,ic-solana-wallet,..."
+  exit 1
 fi
 
 # The list of canisters of your project
 CANISTERS=$1
 
-for canister in $(echo $CANISTERS | sed "s/,/ /g")
-do
-    generate_did "$canister"
+for canister in $(echo $CANISTERS | sed "s/,/ /g"); do
+  generate_did "$canister"
 done

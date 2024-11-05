@@ -5,17 +5,16 @@ set -euo pipefail
 
 IC_WASM_VERSION="0.9.0"
 
-SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPTS_DIR/.."
 
 function run() {
-    1>&2 echo "running $@"
-    rc=0 && "$@" || rc="$?"
-    if ! [ "$rc" -eq 0 ]
-    then
-        1>&2 echo "Bootstrap command failed: $@"
-        exit "$rc"
-    fi
+  echo 1>&2 "running $@"
+  rc=0 && "$@" || rc="$?"
+  if ! [ "$rc" -eq 0 ]; then
+    echo 1>&2 "Bootstrap command failed: $@"
+    exit "$rc"
+  fi
 }
 
 rust_version=$(cat ./rust-toolchain.toml | sed -n 's/^channel[[:space:]]*=[[:space:]]"\(.*\)"/\1/p')
@@ -25,10 +24,9 @@ echo "using rust version '$rust_version'"
 run curl --fail https://sh.rustup.rs -sSf | run sh -s -- -y --default-toolchain "none" --no-modify-path
 
 echo "looking for ic-wasm $IC_WASM_VERSION"
-if [[ ! "$(command -v ic-wasm)" || "$(ic-wasm --version)" != "ic-wasm $IC_WASM_VERSION" ]]
-then
-    echo "installing ic-wasm $IC_WASM_VERSION"
-    run cargo install ic-wasm --version $IC_WASM_VERSION --locked
+if [[ ! "$(command -v ic-wasm)" || "$(ic-wasm --version)" != "ic-wasm $IC_WASM_VERSION" ]]; then
+  echo "installing ic-wasm $IC_WASM_VERSION"
+  run cargo install ic-wasm --version $IC_WASM_VERSION --locked
 fi
 
 echo "installing candid-extractor"
