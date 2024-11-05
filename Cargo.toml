@@ -44,7 +44,6 @@ ic-utils = "0.39"
 pocket-ic = "5.0"
 
 # other dependencies
-anyhow = "1"
 base64 = "0.22"
 futures = "0.3"
 thiserror = "1"
