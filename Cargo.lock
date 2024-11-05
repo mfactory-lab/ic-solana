@@ -1123,7 +1123,6 @@ dependencies = [
 name = "ic-solana"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "base64 0.22.1",
  "bincode",
  "bs58",
@@ -1131,9 +1130,7 @@ dependencies = [
  "flate2",
  "futures",
  "getrandom",
- "hex",
  "ic-canister-log",
- "ic-canisters-http-types",
  "ic-cdk 0.16.0",
  "ic-crypto-ed25519",
  "ic-metrics-encoder",
