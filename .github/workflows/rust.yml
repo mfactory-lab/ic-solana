@@ -10,12 +10,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          components: rustfmt, clippy
-
       - uses: Swatinem/rust-cache@v2
 
       - name: Check formatting
