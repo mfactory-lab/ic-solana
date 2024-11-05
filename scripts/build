@@ -56,10 +56,6 @@ do
             ONLY_DEPS=1
             shift
             ;;
-        --all)
-            CANISTERS+=("ic-solana-rpc" "ic-solana-wallet")
-            shift
-            ;;
         --rpc)
             CANISTERS+=("ic-solana-rpc")
             shift
@@ -115,7 +111,6 @@ function build_canister() {
         --target "$TARGET"
         --release
         --locked
-        -j1
         )
     # XXX: for bash > 4.4, empty arrays are considered unset, so do some substitution
     cargo_build_args+=(${extra_build_args[@]+"${extra_build_args[@]}"})
@@ -129,25 +124,33 @@ function build_canister() {
     then
         CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$SRC_DIR/../../target/}"
 
-      # Optimize WASM and set metadata
-      ic-wasm \
-          "$CARGO_TARGET_DIR/$TARGET/release/${canister}.wasm" \
-          -o "./$canister.wasm" \
-          shrink
+      package_version=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | select(.name == "'$canister'") | .version')
 
+      # Optimize WASM and set metadata
+
+      echo Optimising wasm
+      ic-wasm "$CARGO_TARGET_DIR/$TARGET/release/${canister}.wasm" -o "./$canister.wasm" shrink
+#      ic-wasm "$canister.wasm" -o "./$canister.wasm" optimize O3
+
+      echo Adding wasm metadata: \"candid:service\"
       ic-wasm "$canister.wasm" -o "$canister.wasm" metadata candid:service -f "$SRC_DIR/$canister.did" -v public
 
-      # indicate support for certificate version 1 and 2 in the canister metadata
-      ic-wasm "$canister.wasm" -o "$canister.wasm" metadata supported_certificate_versions -d "1,2" -v public
+      if [ -n "$package_version" ]; then
+        echo Adding wasm metadata: \"app:version\"
+        ic-wasm "$canister.wasm" -o "$canister.wasm" metadata app:version -d "$package_version" -v public
+      fi
+
+#      # indicate support for certificate version 1 and 2 in the canister metadata
+#      ic-wasm "$canister.wasm" -o "$canister.wasm" metadata supported_certificate_versions -d "1,2" -v public
 
       if [ "$canister" == "ic-solana-rpc" ]
       then
-        ic-wasm "$canister.wasm" -o "$canister.wasm" metadata candid:args -d "(opt InitArgs)" -v public
+        ic-wasm "$canister.wasm" -o "$canister.wasm" metadata candid:args -d "(InitArgs)" -v public
       fi
 
       if [ "$canister" == "ic-solana-wallet" ]
       then
-        ic-wasm "$canister.wasm" -o "$canister.wasm" metadata candid:args -d "(opt InitArgs)" -v public
+        ic-wasm "$canister.wasm" -o "$canister.wasm" metadata candid:args -d "(InitArgs)" -v public
       fi
 
       gzip --no-name --force "$canister.wasm"

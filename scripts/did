@@ -12,7 +12,7 @@ function generate_did() {
       --release --package "$canister"
 
   local target_dir="${CARGO_TARGET_DIR:-target}"
-  local wasm_path="$target_dir/wasm32-unknown-unknown/release/${canister//-/_}.wasm"
+  local wasm_path="$target_dir/wasm32-unknown-unknown/release/${canister}.wasm"
 
   if [[ ! -f "$wasm_path" ]]; then
       echo "WASM file not found: $wasm_path"
