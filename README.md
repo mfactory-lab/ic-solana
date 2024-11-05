@@ -70,7 +70,7 @@ To test the project locally, follow these steps:
 
 1. **Start the Replica:**
 
-   ```bash
+   ```shell
    dfx start --clean --background
    ```
 
@@ -78,7 +78,7 @@ To test the project locally, follow these steps:
 
 2. **Build and Deploy Canisters:**
 
-   ```bash
+   ```shell
    dfx deploy solana_rpc --argument '(record {})'
    ```
 
@@ -105,13 +105,13 @@ You can run the tests with the following commands:
 
 - **Run All Tests:**
 
-  ```bash
+  ```shell
   make test
   ```
 
 - **Run a Specific Test:**
 
-  ```bash
+  ```shell
   make test TEST="specified_test_here"
   ```
 
