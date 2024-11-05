@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+    paths-ignore:
+      - "README.md"
+
+jobs:
+
+  cargo-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install PocketIC server
+        uses: dfinity/pocketic@main
+        with:
+          pocket-ic-server-version: "6.0.0"
+      - uses: Swatinem/rust-cache@v2
+      - name: Cargo test
+        run: unset CI && cargo test
+
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - project: rpc
+            artifact: ic-solana-rpc.wasm.gz
+          - project: wallet
+            artifact: ic-solana-wallet.wasm.gz
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: docker-practice/actions-setup-docker@master
+        timeout-minutes: 12
+      - name: 'Deterministic build'
+        run: ./scripts/docker-build.sh --${{ matrix.project }}
+      - name: Archive Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: artifacts/${{ matrix.project }}/${{ matrix.artifact }}
+      - name: Add summary
+        run: |
+          hash=`cat artifacts/${{ matrix.project }}/${{ matrix.artifact }}.sha256`
+          echo "SHA-256 hash: ${hash}" >> $GITHUB_STEP_SUMMARY
+
+#  e2e:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@master
+#
+#      - uses: Swatinem/rust-cache@v2
+#
+#      - name: Install dfx
+#        uses: dfinity/setup-dfx@main
+#
+#      - name: Start dfx
+#        run: dfx start --background
+#
+#      - name: Run E2E tests
+#        run: scripts/e2e
+#
+#      - name: Run examples
+#        run: scripts/examples
+#
