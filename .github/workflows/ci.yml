@@ -40,7 +40,7 @@ jobs:
       - uses: docker-practice/actions-setup-docker@master
         timeout-minutes: 12
       - name: 'Deterministic build'
-        run: ./scripts/docker-build.sh --${{ matrix.project }}
+        run: ./scripts/docker-build --${{ matrix.project }}
       - name: Archive Artifact
         uses: actions/upload-artifact@v4
         with:
