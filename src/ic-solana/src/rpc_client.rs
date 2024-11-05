@@ -5,7 +5,6 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::Result;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use ic_canister_log::log;
 use ic_cdk::api::management_canister::http_request::{

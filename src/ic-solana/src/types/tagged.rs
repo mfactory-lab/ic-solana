@@ -785,11 +785,6 @@ mod tests {
         }]}, "id":1}"#;
         let res =
             serde_json::from_str::<JsonRpcResponse<OptionalContext<Vec<super::super::RpcKeyedAccount>>>>(json).unwrap();
-
-        println!("{:#?}", res);
-
-        // let encoded = Encode!(&block).unwrap();
-        // let decoded = Decode!(&encoded, UiConfirmedBlock).unwrap();
-        // assert_eq!(block, decoded);
+        assert!(res.result.is_some())
     }
 }
