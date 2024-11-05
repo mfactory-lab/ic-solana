@@ -1,7 +1,6 @@
 #!/usr/bin/make
 
 POCKET_IC_BIN := $(shell pwd)/pocket-ic
-IC_SOLANA_RPC_WASM := ./target/wasm32-unknown-unknown/release/ic_solana_rpc.wasm.gz
 
 .DEFAULT_GOAL: help
 
