@@ -4,9 +4,8 @@ use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
 use crate::types::{
-    EncodedTransactionWithStatusMeta, Epoch, Rewards, Slot, TransactionConfirmationStatus,
-    TransactionError, UiAccount, UiInnerInstructions, UiTokenAmount, UiTransactionReturnData,
-    UnixTimestamp,
+    EncodedTransactionWithStatusMeta, Epoch, Rewards, Slot, TransactionConfirmationStatus, TransactionError, UiAccount,
+    UiInnerInstructions, UiTokenAmount, UiTransactionReturnData, UnixTimestamp,
 };
 
 /// Wrapper for rpc returns types of methods that provide responses both with and without context.

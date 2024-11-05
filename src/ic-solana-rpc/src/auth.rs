@@ -112,9 +112,7 @@ pub fn require_manage_or_controller() -> Result<(), String> {
 }
 
 pub fn require_register_provider() -> Result<(), String> {
-    if is_authorized(&ic_cdk::caller(), Auth::RegisterProvider)
-        || require_manage_or_controller().is_ok()
-    {
+    if is_authorized(&ic_cdk::caller(), Auth::RegisterProvider) || require_manage_or_controller().is_ok() {
         Ok(())
     } else {
         let auth = MetricAuth(Auth::RegisterProvider.to_string());

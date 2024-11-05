@@ -139,6 +139,7 @@ impl SolanaRpcSetup {
         self.setup.call_update("unregisterProvider", (id,))
     }
 
+    #[allow(dead_code)]
     pub fn update_provider(&self, args: UpdateProviderArgs) -> CallFlow<()> {
         self.setup.call_update("updateProvider", (args,))
     }

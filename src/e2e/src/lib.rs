@@ -11,8 +11,7 @@ thread_local! {
 }
 
 fn sol_canister_id() -> Principal {
-    SOL_PROVIDER_CANISTER
-        .with_borrow(|canister| canister.expect("Solana provider canister not initialized"))
+    SOL_PROVIDER_CANISTER.with_borrow(|canister| canister.expect("Solana provider canister not initialized"))
 }
 
 #[derive(CandidType, Debug)]
@@ -35,12 +34,8 @@ async fn test() {
     ic_cdk::println!("solana_address: {}", solana_address);
 
     // Get the balance
-    let response: Result<(RpcResult<u64>,), _> = ic_cdk::call(
-        sol_canister,
-        "sol_getBalance",
-        (cluster, solana_address.to_string()),
-    )
-    .await;
+    let response: Result<(RpcResult<u64>,), _> =
+        ic_cdk::call(sol_canister, "sol_getBalance", (cluster, solana_address.to_string())).await;
 
     let lamports = response.unwrap().0.unwrap();
     ic_cdk::println!("Balance: {} lamports", lamports);
@@ -62,8 +57,7 @@ async fn test() {
     }
 
     // Get the latest blockhash
-    let response: Result<(RpcResult<String>,), _> =
-        ic_cdk::call(sol_canister, "sol_latestBlockhash", (cluster,)).await;
+    let response: Result<(RpcResult<String>,), _> = ic_cdk::call(sol_canister, "sol_latestBlockhash", (cluster,)).await;
 
     let blockhash = BlockHash::from_str(&response.unwrap().0.unwrap()).unwrap();
     ic_cdk::println!("Latest Blockhash: {:?}", blockhash);
@@ -110,7 +104,6 @@ async fn test() {
 #[ic_cdk::init]
 async fn init(sol_canister: String) {
     SOL_PROVIDER_CANISTER.with(|canister| {
-        *canister.borrow_mut() =
-            Some(Principal::from_text(sol_canister).expect("Invalid principal"));
+        *canister.borrow_mut() = Some(Principal::from_text(sol_canister).expect("Invalid principal"));
     });
 }

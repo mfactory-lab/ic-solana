@@ -95,10 +95,7 @@ pub enum RpcError {
     ValidationError(String),
 
     #[error("HTTP outcall error: (code: {code:?}): {message}")]
-    HttpOutcallError {
-        code: RejectionCode,
-        message: String,
-    },
+    HttpOutcallError { code: RejectionCode, message: String },
 
     #[error("JSON-RPC error: {0}")]
     JsonRpcError(JsonRpcError),
@@ -113,9 +110,7 @@ pub enum RpcError {
     Text(String),
 }
 
-#[derive(
-    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, CandidType, Serialize, Deserialize, Error,
-)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, CandidType, Serialize, Deserialize, Error)]
 #[error("JSON-RPC error (code: {code}): {message}")]
 pub struct JsonRpcError {
     pub code: i64,

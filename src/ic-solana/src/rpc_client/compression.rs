@@ -10,26 +10,20 @@ pub fn decompress_if_needed(body: Vec<u8>) -> Result<Vec<u8>, RpcError> {
     let bytes = body.as_slice();
 
     if let Some(compression) = detect_compression(bytes) {
-        log!(
-            DEBUG,
-            "Decompressing response with compression type: {:?}",
-            compression
-        );
+        log!(DEBUG, "Decompressing response with compression type: {:?}", compression);
         match compression {
             CompressionType::Zlib | CompressionType::Deflate => {
                 let mut d = ZlibDecoder::new(body.as_slice());
                 let mut decompressed = Vec::new();
-                d.read_to_end(&mut decompressed).map_err(|e| {
-                    RpcError::ParseError(format!("Deflate decompression failed: {}", e))
-                })?;
+                d.read_to_end(&mut decompressed)
+                    .map_err(|e| RpcError::ParseError(format!("Deflate decompression failed: {}", e)))?;
                 Ok(decompressed)
             }
             CompressionType::Gzip => {
                 let mut d = GzDecoder::new(body.as_slice());
                 let mut decompressed = Vec::new();
-                d.read_to_end(&mut decompressed).map_err(|e| {
-                    RpcError::ParseError(format!("Gzip decompression failed: {}", e))
-                })?;
+                d.read_to_end(&mut decompressed)
+                    .map_err(|e| RpcError::ParseError(format!("Gzip decompression failed: {}", e)))?;
                 Ok(decompressed)
             }
             _ => Err(RpcError::ParseError(format!(

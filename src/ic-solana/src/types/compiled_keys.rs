@@ -47,15 +47,10 @@ impl CompiledKeys {
             meta.is_signer = true;
             meta.is_writable = true;
         }
-        Self {
-            payer,
-            key_meta_map,
-        }
+        Self { payer, key_meta_map }
     }
 
-    pub(crate) fn try_into_message_components(
-        self,
-    ) -> Result<(MessageHeader, Vec<Pubkey>), CompileError> {
+    pub(crate) fn try_into_message_components(self) -> Result<(MessageHeader, Vec<Pubkey>), CompileError> {
         let try_into_u8 = |num: usize| -> Result<u8, CompileError> {
             u8::try_from(num).map_err(|_| CompileError::AccountIndexOverflow)
         };
@@ -90,9 +85,7 @@ impl CompiledKeys {
             .filter_map(|(key, meta)| (!meta.is_signer && !meta.is_writable).then_some(*key))
             .collect();
 
-        let signers_len = writable_signer_keys
-            .len()
-            .saturating_add(readonly_signer_keys.len());
+        let signers_len = writable_signer_keys.len().saturating_add(readonly_signer_keys.len());
 
         let header = MessageHeader {
             num_required_signatures: try_into_u8(signers_len)?,

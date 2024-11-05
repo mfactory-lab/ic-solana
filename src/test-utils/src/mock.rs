@@ -1,8 +1,6 @@
 use std::collections::BTreeSet;
 
-use pocket_ic::common::rest::{
-    CanisterHttpHeader, CanisterHttpMethod, CanisterHttpReply, CanisterHttpRequest,
-};
+use pocket_ic::common::rest::{CanisterHttpHeader, CanisterHttpMethod, CanisterHttpReply, CanisterHttpRequest};
 
 pub struct MockOutcallBody(pub Vec<u8>);
 
@@ -90,10 +88,7 @@ impl MockOutcallBuilder {
     }
 
     pub fn with_response_header(mut self, name: String, value: String) -> Self {
-        self.0
-            .response
-            .headers
-            .push(CanisterHttpHeader { name, value });
+        self.0.response.headers.push(CanisterHttpHeader { name, value });
         self
     }
 
@@ -133,8 +128,8 @@ impl MockOutcall {
             );
         }
         if let Some(ref expected_body) = self.request_body {
-            let actual_body: serde_json::Value = serde_json::from_slice(&request.body)
-                .expect("Error: failed to parse JSON request body");
+            let actual_body: serde_json::Value =
+                serde_json::from_slice(&request.body).expect("Error: failed to parse JSON request body");
             expected_body.assert_matches(&actual_body);
         }
         if let Some(max_response_bytes) = self.max_response_bytes {
@@ -186,30 +181,19 @@ impl MockJsonRequestBody {
     pub fn assert_matches(&self, request_body: &serde_json::Value) {
         assert_eq!(
             self.jsonrpc,
-            request_body["jsonrpc"]
-                .as_str()
-                .expect("Error: missing jsonrpc field")
+            request_body["jsonrpc"].as_str().expect("Error: missing jsonrpc field")
         );
         assert_eq!(
             self.method,
-            request_body["method"]
-                .as_str()
-                .expect("Error: missing method field")
+            request_body["method"].as_str().expect("Error: missing method field")
         );
         if let Some(id) = self.id {
-            assert_eq!(
-                id,
-                request_body["id"]
-                    .as_u64()
-                    .expect("Error: missing id field")
-            );
+            assert_eq!(id, request_body["id"].as_u64().expect("Error: missing id field"));
         }
         if let Some(expected_params) = &self.params {
             assert_eq!(
                 expected_params,
-                request_body
-                    .get("params")
-                    .expect("Error: missing params field")
+                request_body.get("params").expect("Error: missing params field")
             );
         }
     }

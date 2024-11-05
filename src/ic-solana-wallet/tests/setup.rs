@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::path::PathBuf;
 
 use candid::{utils::ArgumentEncoder, CandidType, Principal};
@@ -15,6 +17,12 @@ thread_local! {
 pub struct SolanaWalletSetup {
     rpc_setup: TestSetup,
     setup: TestSetup,
+}
+
+impl Default for SolanaWalletSetup {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SolanaWalletSetup {

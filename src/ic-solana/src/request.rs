@@ -140,8 +140,7 @@ impl fmt::Display for RpcRequest {
 
 impl RpcRequest {
     pub fn build_json<P: Serialize>(&self, id: u64, params: P) -> Value {
-        serde_json::to_value(JsonRpcRequest::new(self, params, id))
-            .expect("Failed to serialize request")
+        serde_json::to_value(JsonRpcRequest::new(self, params, id)).expect("Failed to serialize request")
     }
 
     pub fn batch<P: Serialize>(requests: Vec<(Self, P, u64)>) -> Value {

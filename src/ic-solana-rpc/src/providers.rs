@@ -59,10 +59,7 @@ impl RpcProvider {
             }
         }
 
-        RpcApi {
-            network: url,
-            headers,
-        }
+        RpcApi { network: url, headers }
     }
 
     pub fn validate(&self) {
@@ -143,12 +140,7 @@ pub fn do_unregister_provider(caller: Principal, provider_id: &str) -> bool {
         let id = ProviderId::new(provider_id);
         if let Some(provider) = s.rpc_providers.get(&id) {
             if provider.owner == caller || is_controller(&caller) || is_manager {
-                log!(
-                    INFO,
-                    "[{}] Unregistering provider: {:?}",
-                    caller,
-                    provider_id
-                );
+                log!(INFO, "[{}] Unregistering provider: {:?}", caller, provider_id);
                 s.rpc_providers.remove(&id).is_some()
             } else {
                 ic_cdk::trap("Unauthorized");

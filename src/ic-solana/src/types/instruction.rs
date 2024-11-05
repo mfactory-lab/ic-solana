@@ -260,11 +260,7 @@ pub struct Instruction {
 }
 
 impl Instruction {
-    pub fn new_with_bincode<T: Serialize>(
-        program_id: Pubkey,
-        data: &T,
-        accounts: Vec<AccountMeta>,
-    ) -> Self {
+    pub fn new_with_bincode<T: Serialize>(program_id: Pubkey, data: &T, accounts: Vec<AccountMeta>) -> Self {
         let data = bincode::serialize(data).unwrap();
         Self {
             program_id,
@@ -287,8 +283,7 @@ impl Display for Instruction {
         write!(
             f,
             "{}",
-            bs58::encode(bincode::serialize(self).expect("Instruction serialization failed"))
-                .into_string()
+            bs58::encode(bincode::serialize(self).expect("Instruction serialization failed")).into_string()
         )
     }
 }
