@@ -119,3 +119,10 @@ where
 {
     STATE.with(|s| f(s.borrow_mut().as_mut().expect("State not initialized!")))
 }
+
+/// Replaces the current state.
+pub fn replace_state(state: State) {
+    STATE.with(|s| {
+        *s.borrow_mut() = Some(state);
+    });
+}

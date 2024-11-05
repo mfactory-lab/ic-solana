@@ -25,7 +25,7 @@ thread_local! {
 }
 
 pub fn get_memory(memory_id: MemoryId) -> StableMemory {
-    MEMORY_MANAGER.with(|m| m.borrow().get(memory_id))
+    MEMORY_MANAGER.with_borrow(|m| m.get(memory_id))
 }
 
 pub fn init_auth_memory() -> AuthMemory {

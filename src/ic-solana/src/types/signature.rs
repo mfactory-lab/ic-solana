@@ -77,9 +77,7 @@ impl FromStr for Signature {
         if s.len() > MAX_BASE58_SIGNATURE_LEN {
             return Err(ParseSignatureError::WrongSize);
         }
-        let bytes = bs58::decode(s)
-            .into_vec()
-            .map_err(|_| ParseSignatureError::Invalid)?;
+        let bytes = bs58::decode(s).into_vec().map_err(|_| ParseSignatureError::Invalid)?;
         Signature::try_from(bytes).map_err(|_| ParseSignatureError::WrongSize)
     }
 }

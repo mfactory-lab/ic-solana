@@ -35,7 +35,7 @@ use ic_solana_rpc::{
     constants::NODES_IN_SUBNET,
     http::{get_http_request_cost, rpc_client, serve_logs, serve_metrics},
     providers::{do_register_provider, do_unregister_provider, do_update_provider},
-    state::{read_state, InitArgs, STATE},
+    state::{read_state, replace_state, InitArgs},
     types::{RegisterProviderArgs, UpdateProviderArgs},
     utils::{parse_pubkey, parse_pubkeys, parse_signature, parse_signatures},
 };
@@ -847,9 +847,7 @@ fn init(args: InitArgs) {
 
 #[ic_cdk::post_upgrade]
 fn post_upgrade(args: InitArgs) {
-    STATE.with(|s| {
-        *s.borrow_mut() = Some(args.into());
-    });
+    replace_state(args.into());
 }
 
 fn main() {}
