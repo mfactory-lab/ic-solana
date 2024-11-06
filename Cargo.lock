@@ -1126,7 +1126,7 @@ dependencies = [
 
 [[package]]
 name = "ic-solana"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.22.1",
  "bincode",
@@ -1151,7 +1151,7 @@ dependencies = [
 
 [[package]]
 name = "ic-solana-rpc"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "candid",
  "ic-canister-log",
@@ -1171,7 +1171,7 @@ dependencies = [
 
 [[package]]
 name = "ic-solana-wallet"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "candid",
  "ic-cdk 0.17.0",
