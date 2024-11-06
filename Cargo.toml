@@ -31,7 +31,7 @@ test-utils = { path = "src/test-utils" }
 # ic dependencies
 candid = "0.10"
 ic-agent = "0.39"
-ic-cdk = "0.16"
+ic-cdk = "0.17"
 ic-canister-log = "0.2"
 ic-canisters-http-types = { git = "https://github.com/dfinity/ic", package = "ic-canisters-http-types" }
 ic-crypto-ed25519 = { git = "https://github.com/dfinity/ic", package = "ic-crypto-ed25519" }
