@@ -1,47 +1,26 @@
 # SOLANA RPC &nbsp;[![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-> #### Interact with [Solana blockchain](https://solana.com) from the [Internet Computer](https://internetcomputer.org/).
+The **SOLANA RPC** is an Internet Computer (ICP) canister designed to facilitate communication between the [Solana](https://solana.com/) blockchain and the [Internet Computer](https://internetcomputer.org/) using an on-chain API.
 
-## Overview
+This canister sends API requests to [JSON-RPC](https://solana.com/docs/rpc) services via [HTTPS outcalls](https://internetcomputer.org/https-outcalls). It enables functionalities similar to traditional Solana decentralized applications (dApps), including querying Solana smart contract states and submitting raw transactions.
 
-The **SOLANA RPC** is an Internet Computer (ICP) canister designed to facilitate robust communication
-between the [Solana](https://solana.com/) blockchain and the [Internet Computer (ICP)](https://internetcomputer.org/)
-using an on-chain API.
+The canister runs on the 34-node [fiduciary subnet](https://internetcomputer.org/docs/current/references/subnets/subnet-types#fiduciary-subnets) with the following principal: [bd3sg-teaaa-aaaaa-qaaba-cai](https://dashboard.internetcomputer.org/canister/bd3sg-teaaa-aaaaa-qaaba-cai).
 
-This canister sends API requests to [JSON-RPC](https://solana.com/docs/rpc)
-services via [HTTPS outcalls](https://internetcomputer.org/https-outcalls).
-It enables functionalities similar to traditional Solana decentralized applications (dApps),
-including querying Solana smart contract states and submitting raw transactions.
-
-The canister runs on the 34-node
-[`fiduciary subnet`](https://internetcomputer.org/docs/current/references/subnets/subnet-types#fiduciary-subnets)
-with the following principal:
-[`bd3sg-teaaa-aaaaa-qaaba-cai`](https://dashboard.internetcomputer.org/canister/bd3sg-teaaa-aaaaa-qaaba-cai).
-
-Refer to the [Reproducible Builds](#reproducible-builds) section for information on how to verify the hash of the deployed WebAssembly module.
-
-## Features
-
-- 🔗 **Seamless Blockchain Interaction:** Communicate effortlessly between Solana and ICP blockchains.
-- 📝 **Comprehensive Logging:** Enhanced logging capabilities for better monitoring and debugging.
-- 🧪 **Robust Testing Suite:** Extensive integration and unit tests to ensure reliability and stability.
-- 🏗️ **Reproducible Builds:** Ensures the integrity and security of the deployed WebAssembly module.
-- 🔒 **Secure HTTPS Outcalls:** Guarantees data confidentiality and integrity during cross-chain communications.
+Refer to the [Reproducible Builds](#reproducible-builds) section for information on how to verify a hash of a deployed WebAssembly module.
 
 ## Prerequisites
 
-Before getting started, ensure you have the following installed on your machine:
+Before getting started, make sure to install the following on your machine:
 
 - [DFINITY SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
 - [Docker](https://www.docker.com/get-started/)
 - [PocketIC](https://github.com/dfinity/pocketic) (for testing)
 
-Additionally, ensure that the `POCKET_IC_BIN` environment variable is set to the path of the `pocket-ic` binary.
+Additionally, make sure that the `POCKET_IC_BIN` environment variable is set to the path of the `pocket-ic` binary.
 
 ## Quick start
 
-Add the following configuration to your `dfx.json` file.
-Replace the `ic` principal with the appropriate canister principal from the deployed canisters.
+Add the following configuration to your `dfx.json` file. Replace the `ic` principal with the appropriate canister principal from the deployed canisters.
 
 ```json
 {
@@ -61,30 +40,29 @@ Replace the `ic` principal with the appropriate canister principal from the depl
 }
 ```
 
-**Note:** Ensure you use the correct principal ID corresponding to your environment (e.g., `ic`,`playground`).
-Refer to the [Deployment](#deployment-on-the-internet-computer) section for more details.
+**Note:** Make sure to use the correct principal ID corresponding to your environment (e.g., `ic`,`playground`). Refer to the [Deployment](#deployment-on-the-internet-computer) section for more details.
 
-## Running the Project Locally
+## Running the project locally
 
-To test the project locally, follow these steps:
+To run the project locally, follow these steps:
 
-1. **Start the Replica:**
+1. Start a replica:
 
    ```shell
    dfx start --clean --background
    ```
 
-   This command starts the local Internet Computer replica in the background.
+   This command starts a local Internet Computer replica in the background.
 
-2. **Build and Deploy Canisters:**
+2. Build and deploy canisters:
 
    ```shell
    dfx deploy solana_rpc --argument '(record {})'
    ```
 
-   This command builds and deploys your canisters to the local replica and generates the Candid interface.
+   This command builds and deploys your canisters to the local replica and generates a Candid interface.
 
-3. **Access the Application:**
+3. Access the application:
 
    Once the build and deployment are complete, your application will be accessible at:
 
@@ -94,22 +72,20 @@ To test the project locally, follow these steps:
 
    Replace `{asset_canister_id}` with the actual canister ID generated during deployment.
 
-### Testing
+## Testing
 
 We use [PocketIC](https://github.com/dfinity/pocketic) for integration testing. Please make sure to have it installed and the
 `POCKET_IC_BIN` environment variable set to the path of the `pocket-ic` binary.
 
 You can run the tests with the following commands:
 
-**Running Tests:**
-
-- **Run All Tests:**
+- Run all tests:
 
   ```shell
   make test
   ```
 
-- **Run a Specific Test:**
+- Run a specific test:
 
   ```shell
   make test TEST="specified_test_here"
@@ -132,9 +108,9 @@ The SOLANA RPC canister supports [reproducible builds](https://internetcomputer.
 
 Compare the generated SHA-256 hash with the hash provided in the repository to verify the build's integrity.
 
-## Learn More
+## Learn more
 
-To deepen your understanding of the SOLANA RPC Canister and its integration with Solana and ICP, explore the following resources:
+To learn more about the SOLANA RPC Canister and its integration with Solana and ICP, explore the following resources:
 
 - [Candid Interface](https://github.com/mfactory-lab/ic-solana/blob/main/src/ic-solana-rpc/ic-solana-rpc.did)
 - [Solana JSON-RPC API](https://solana.com/docs/rpc)
