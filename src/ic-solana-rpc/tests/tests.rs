@@ -723,7 +723,7 @@ fn should_get_valid_request_cost() {
 }
 
 #[test]
-fn should_get_notes_in_subnet() {
+fn should_get_nodes_in_subnet() {
     assert_eq!(SolanaRpcSetup::default().get_nodes_in_subnet(), 34);
 }
 
