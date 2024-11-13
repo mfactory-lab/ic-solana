@@ -16,12 +16,19 @@ bootstrap: ## Bootstrap
 	./scripts/bootstrap
 
 .PHONY: start
-start: ## Start the canisters
+start: ## Start local replica
 	@RUST_BACKTRACE=1 dfx start --clean
 
 .PHONY: build
-build: ## Build all canisters
-	./scripts/build
+build: build.rpc build.wallet  ## Build all canisters
+
+.PHONY: build.rpc
+build.rpc: ## Build RPC canister
+	./scripts/build --rpc
+
+.PHONY: build.wallet
+build.wallet: ## Build wallet canister
+	./scripts/build --wallet
 
 .PHONY: did
 did: ## Generate did
