@@ -115,8 +115,7 @@ impl RpcClient {
     ///
     /// # Returns
     ///
-    /// * `RpcResult<String>` - A result type that contains the response body as a string if the
-    ///   request is successful, or an `RpcError` if the request fails.
+    /// * `RpcResult<Vec<u8>>` - The response body as a vector of bytes.
     async fn call_internal(
         &self,
         provider: &RpcApi,
