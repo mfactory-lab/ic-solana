@@ -11,15 +11,11 @@ edition = { workspace = true }
 candid = { workspace = true }
 ic-cdk = { workspace = true }
 ic-management-canister-types = { workspace = true }
-ic-stable-structures = { workspace = true }
 ic-solana = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 serde_bytes = { workspace = true }
-url = { workspace = true }
 
 [dev-dependencies]
-pocket-ic = { workspace = true }
 #solana-sdk = "2.0"
 #solana-client = "2.0"
 ic-test-utilities-load-wasm = { workspace = true }

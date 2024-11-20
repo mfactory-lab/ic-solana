@@ -1178,14 +1178,10 @@ dependencies = [
  "ic-management-canister-types",
  "ic-solana",
  "ic-solana-rpc",
- "ic-stable-structures",
  "ic-test-utilities-load-wasm",
- "pocket-ic",
  "serde",
  "serde_bytes",
- "serde_json",
  "test-utils",
- "url",
 ]
 
 [[package]]
