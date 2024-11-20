@@ -129,12 +129,12 @@ Key functionalities include:
 
 Rust library that provides the necessary tools for integrating with Solana into IC canisters.
 
-### Access control
+## Access control
 
 The Solana RPC canister stores a list of registered Solana JSON RPC providers, to which transactions and messages can be submitted.
 Access to the list is controlled by admin(s) who can assign managers with specific rights to add, remove, and update Solana JSON RPC providers.
 
-### Reproducible builds
+## Reproducible builds
 
 The SOLANA RPC canister supports [reproducible builds](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/test/reproducible-builds):
 
