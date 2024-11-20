@@ -41,12 +41,12 @@ ic-metrics-encoder = "1"
 ic-stable-structures = "0.6"
 ic-types = "0.7"
 ic-utils = "0.39"
-pocket-ic = "5.0"
+pocket-ic = "6.0"
 
 # other dependencies
 base64 = "0.22"
 futures = "0.3"
-thiserror = "1"
+thiserror = "2"
 serde = "1"
 serde_json = "1.0"
 serde_bytes = "0.11"
@@ -62,10 +62,6 @@ opt-level = 'z'
 # Required by `ic-test-utilities-load-wasm`
 [profile.canister-release]
 inherits = "release"
-debug = false
-panic = "abort"
-lto = true
-opt-level = 'z'
 
 #[patch.crates-io]
 ## Required by `solana-client` v2.0
