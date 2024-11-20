@@ -84,14 +84,23 @@ Replace `{asset_canister_id}` with the actual canister ID generated during deplo
 
 ## Examples
 
-JSON-RPC (mainnet)
-
 ```bash
-# Use Solana Mainnet
-dfx canister call solana_rpc sol_getLatestBlockhash '(variant {Mainnet})' --wallet $(dfx identity get-wallet --ic) --with-cycles 1000000000
 
-# Use Custom RPC
-dfx canister call solana_rpc sol_getLatestBlockhash '(variant {Custom=record {url="https://example-rpc.com"}})' --wallet $(dfx identity get-wallet --ic) --with-cycles 1000000000
+# Use Solana mainnet cluster
+dfx canister call solana_rpc sol_getHealth '(variant{Mainnet},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+
+# Use Solana devnet cluster
+dfx canister call solana_rpc sol_getHealth '(variant{Devnet},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+
+# Use single custom RPC
+dfx canister call solana_rpc sol_getHealth '(variant{Custom=vec{record{network="https://mainnet.helius-rpc.com/"}}},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+
+# Use multiple custom RPCs
+dfx canister call solana_rpc sol_getHealth '(variant{Custom=vec{record{network="mainnet"},record{network="https://mainnet.helius-rpc.com/"}}},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+
+# Use single provider RPC (predefined providers: mainnet|m, devnet|d, testnet|t)
+dfx canister call solana_rpc sol_getHealth '(variant{Provider=vec{"mainnet"}},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+
 ```
 
 ## Resources
