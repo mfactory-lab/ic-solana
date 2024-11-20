@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION=6.0.0
+VERSION=7.0.0
 POCKET_IC_BIN=pocket-ic
 
 if [ -f "$POCKET_IC_BIN" ]; then
