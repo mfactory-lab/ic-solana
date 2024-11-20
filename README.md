@@ -122,8 +122,8 @@ Key functionalities include:
 
 ### [Wallet Canister](./src/ic-solana-wallet)
 
-The **Wallet Canister
-** is used for managing addresses and for securely signing transactions/messages for the Solana blockchain using the [threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr).
+The **Wallet Canister** is used for managing addresses and for securely signing transactions/messages for the Solana blockchain
+using the [threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr).
 
 Key functionalities include:
 
