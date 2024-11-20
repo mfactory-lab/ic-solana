@@ -10,11 +10,13 @@
 
 ## Overview
 
-**IC-Solana** is a solution that bridges [Solana](https://solana.com/) with the [Internet Computer](https://internetcomputer.org/). It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps. This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
+**IC-Solana
+** is a solution that bridges [Solana](https://solana.com/) with the [Internet Computer](https://internetcomputer.org/). It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps. This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
 
 ## Quick start
 
-Add the following configuration to your `dfx.json` file (replace the `ic` principal with any option from the list of available canisters):
+Add the following configuration to your `dfx.json` file (replace the
+`ic` principal with any option from the list of available canisters):
 
 ```json
 {
@@ -96,7 +98,7 @@ dfx canister call solana_rpc sol_getHealth '(variant{Provider=vec{"mainnet"}},nu
 
 ```
 
-## Resources
+## Components Overview
 
 ### [RPC Canister](./src/ic-solana-rpc)
 
@@ -118,7 +120,8 @@ Key functionalities include:
 
 ### [Wallet Canister](./src/ic-solana-wallet)
 
-The **Wallet Canister** is used for managing addresses and for securely signing transactions/messages for the Solana blockchain using the [threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr).
+The **Wallet Canister
+** is used for managing addresses and for securely signing transactions/messages for the Solana blockchain using the [threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr).
 
 Key functionalities include:
 
