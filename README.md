@@ -6,22 +6,15 @@
 
 > #### Interact with [Solana](https://solana.com) from the [Internet Computer](https://internetcomputer.org/).
 
-> This project is a work in progress, and is not yet ready for production use. We are happy to answer questions if they are raised as issues in this github repo.
+> This project is a work in progress, and is not yet ready for production use. We are happy to answer questions if they are raised as issues in this GitHub repo.
 
 ## Overview
 
-**IC-Solana** is a seamless integration solution that bridges the [Solana](https://solana.com/) blockchain
-with the [Internet Computer](https://internetcomputer.org/).
-It empowers developers to build decentralized applications (dApps)
-on the Internet Computer with functionality comparable to traditional Solana dApps.
-
-This integration combines the capabilities of both platforms,
-making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
+**IC-Solana** is a solution that bridges [Solana](https://solana.com/) with the [Internet Computer](https://internetcomputer.org/). It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps. This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
 
 ## Quick start
 
-Add the following configuration to your `dfx.json` file (replace the
-`ic` principal with any option from the list of available canisters above):
+Add the following configuration to your `dfx.json` file (replace the `ic` principal with any option from the list of available canisters):
 
 ```json
 {
@@ -46,29 +39,29 @@ Add the following configuration to your `dfx.json` file (replace the
 
 ### Requirements
 
-Please make sure you have the following installed:
+Make sure you have the following installed:
 
 - [Rust](https://www.rust-lang.org/learn/get-started)
 - [Docker](https://www.docker.com/get-started/) (Optional for [reproducible builds](#reproducible-builds))
 - [PocketIC](https://github.com/dfinity/pocketic) (Optional for testing)
 - [DFINITY SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
 
-### Building the Code
+### Building the code
 
 Start a local replica listening on port 4943:
 
 ```bash
-# Start the local replica
+# Start a local replica
 dfx start --clean --host 127.0.0.1:4943
 ```
 
 Build and deploy canisters:
 
 ```bash
-# Locally deploy the `solana_rpc` canister
+# Deploy the `solana_rpc` canister locally
 dfx deploy solana_rpc --argument '(record {})'
 
-# Locally deploy the `solana_wallet` canister
+# Deploy the `solana_wallet` canister locally
 dfx deploy solana_wallet --argument '(record {})'
 ```
 
@@ -80,7 +73,7 @@ Once the build and deployment are complete, your application will be accessible 
 http://localhost:4943?canisterId={asset_canister_id}
 ```
 
-Replace `{asset_canister_id}` with the actual canister ID generated during deployment.
+Replace `{asset_canister_id}` with the actual canister's ID generated during deployment.
 
 ## Examples
 
@@ -107,42 +100,39 @@ dfx canister call solana_rpc sol_getHealth '(variant{Provider=vec{"mainnet"}},nu
 
 ### [RPC Canister](./src/ic-solana-rpc)
 
-The **RPC Canister** enables seamless communication with the Solana blockchain
-by utilizing [HTTPS outcalls](https://internetcomputer.org/https-outcalls)
-to transmit raw transactions and messages via the on-chain APIs
-provided by [Solana JSON RPC](https://solana.com/docs/rpc) services,
-such as [Helius](https://www.helius.dev/) or [Quicknode](https://www.quicknode.com/).
+The **RPC Canister** enables communication with the Solana blockchain,
+using [HTTPS outcalls](https://internetcomputer.org/https-outcalls)
+to transmit raw transactions and messages via on-chain APIs
+of [Solana JSON RPC](https://solana.com/docs/rpc) providers,
+for example [Helius](https://www.helius.dev/) or [Quicknode](https://www.quicknode.com/).
 
 Key functionalities include:
 
-1. Retrieving Solana-specific data, such as block details, account information, node statistics, and more.
+1. Retrieving Solana-specific data, such as block details, account information, node statistics, etc.
 2. Managing Solana RPC providers, including registration, updates, and provider configurations.
-3. Calculating and managing the cost of RPC requests for efficient resource utilization.
+3. Calculating and managing the cost of RPC requests.
 
-[//]: # (The RPC canister runs on the 34-node [fiduciary subnet]&#40;https://internetcomputer.org/docs/current/references/subnets/subnet-types#fiduciary-subnets&#41;)
+[//]: # (The RPC Canister runs on the 34-node [fiduciary subnet]&#40;https://internetcomputer.org/docs/current/references/subnets/subnet-types#fiduciary-subnets&#41;)
 
 [//]: # (with the following principal: [bd3sg-teaaa-aaaaa-qaaba-cai]&#40;https://dashboard.internetcomputer.org/canister/bd3sg-teaaa-aaaaa-qaaba-cai&#41;.)
 
 ### [Wallet Canister](./src/ic-solana-wallet)
 
-The **Wallet Canister** serves as the core component for managing addresses
-and signing transactions or messages on the Solana blockchain.
-It leverages the [Threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr) to perform secure and distributed signing of messages and transactions.
+The **Wallet Canister** is used for managing addresses and for securely signing transactions/messages for the Solana blockchain using the [threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr).
 
 Key functionalities include:
 
 1. Generating a Solana public key (Ed25519) for a user on the Internet Computer (ICP).
-2. Signing messages using distributed keys based on the Threshold Schnorr protocol.
+2. Signing messages using distributed keys based on the `Threshold Schnorr` protocol.
 3. Signing and sending raw transactions to the Solana blockchain via the [RPC Canister](#rpc-canister).
 
 ### [IC-Solana](./src/ic-solana)
 
-Rust library that provides the necessary tools for integrating with Solana into IC canisters.
+A Rust library that provides the necessary tools for integrating Solana into ICP canisters.
 
 ## Access control
 
-The Solana RPC canister stores a list of registered Solana JSON RPC providers, to which transactions and messages can be submitted.
-Access to the list is controlled by admin(s) who can assign managers with specific rights to add, remove, and update Solana JSON RPC providers.
+The Solana RPC canister stores a list of registered Solana JSON RPC providers, to which transactions and messages can be submitted. Access to the list is controlled by admin(s) who can assign managers with specific rights to add, remove, and update Solana JSON RPC providers.
 
 ## Reproducible builds
 
