@@ -1,104 +1,140 @@
-# SOLANA RPC &nbsp;[![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+# IC-Solana Gateway for the Internet Computer
 
-The **SOLANA RPC** is an Internet Computer (ICP) canister designed to facilitate communication between the [Solana](https://solana.com/) blockchain and the [Internet Computer](https://internetcomputer.org/) using an on-chain API.
+[![Internet Computer portal](https://img.shields.io/badge/InternetComputer-grey?logo=internet%20computer&style=for-the-badge)](https://internetcomputer.org)
+[![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg?logo=apache&style=for-the-badge)](LICENSE)
+[![Tests Status](https://img.shields.io/github/actions/workflow/status/mfactory-lab/ic-solana/ci.yml?logo=githubactions&logoColor=white&style=for-the-badge&label=tests)](./.github/workflows/ci.yml)
 
-This canister sends API requests to [JSON-RPC](https://solana.com/docs/rpc) services via [HTTPS outcalls](https://internetcomputer.org/https-outcalls). It enables functionalities similar to traditional Solana decentralized applications (dApps), including querying Solana smart contract states and submitting raw transactions.
+> #### Interact with [Solana](https://solana.com) from the [Internet Computer](https://internetcomputer.org/).
 
-The canister runs on the 34-node [fiduciary subnet](https://internetcomputer.org/docs/current/references/subnets/subnet-types#fiduciary-subnets) with the following principal: [bd3sg-teaaa-aaaaa-qaaba-cai](https://dashboard.internetcomputer.org/canister/bd3sg-teaaa-aaaaa-qaaba-cai).
+> This project is a work in progress, and is not yet ready for production use. We are happy to answer questions if they are raised as issues in this github repo.
 
-Refer to the [Reproducible Builds](#reproducible-builds) section for information on how to verify a hash of a deployed WebAssembly module.
+## Overview
 
-## Prerequisites
+**IC-Solana** is a seamless integration solution that bridges the [Solana](https://solana.com/) blockchain
+with the [Internet Computer](https://internetcomputer.org/).
+It empowers developers to build decentralized applications (dApps)
+on the Internet Computer with functionality comparable to traditional Solana dApps.
 
-Before getting started, make sure to install the following on your machine:
-
-- [DFINITY SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
-- [Docker](https://www.docker.com/get-started/)
-- [PocketIC](https://github.com/dfinity/pocketic) (for testing)
-
-Additionally, make sure that the `POCKET_IC_BIN` environment variable is set to the path of the `pocket-ic` binary.
+This integration combines the capabilities of both platforms,
+making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
 
 ## Quick start
 
-Add the following configuration to your `dfx.json` file. Replace the `ic` principal with the appropriate canister principal from the deployed canisters.
+Add the following configuration to your `dfx.json` file (replace the
+`ic` principal with any option from the list of available canisters above):
 
 ```json
 {
   "canisters": {
     "solana_rpc": {
       "type": "custom",
-      "candid": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/ic-solana-rpc.did",
-      "wasm": "https://github.com/mfactory-lab/ic-solana/releases/latest/download/ic-solana-rpc.wasm.gz",
-      "remote": {
-        "id": {
-          "ic": "bd3sg-teaaa-aaaaa-qaaba-cai",
-          "playground": "bd3sg-teaaa-aaaaa-qaaba-cai"
-        }
-      }
+      "candid": "https://github.com/mfactory-lab/ic-solana/blob/main/src/ic-solana-rpc/ic-solana-rpc.did",
+      "wasm": "https://github.com/mfactory-lab/ic-solana/blob/main/ic-solana-rpc.wasm.gz",
+      "init_arg": "(record {})"
+    },
+    "solana_wallet": {
+      "type": "custom",
+      "candid": "https://github.com/mfactory-lab/ic-solana/blob/main/src/ic-solana-wallet/ic-solana-wallet.did",
+      "wasm": "https://github.com/mfactory-lab/ic-solana/blob/main/ic-solana-wallet.wasm.gz",
+      "init_arg": "(record {})"
     }
   }
 }
 ```
 
-**Note:** Make sure to use the correct principal ID corresponding to your environment (e.g., `ic`,`playground`). Refer to the [Deployment](#deployment-on-the-internet-computer) section for more details.
-
 ## Running the project locally
 
-To run the project locally, follow these steps:
+### Requirements
 
-1. Start a replica:
+Please make sure you have the following installed:
 
-   ```shell
-   dfx start --clean --background
-   ```
+- [Rust](https://www.rust-lang.org/learn/get-started)
+- [Docker](https://www.docker.com/get-started/)
+- [DFINITY SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
 
-   This command starts a local Internet Computer replica in the background.
+### Building the Code
 
-2. Build and deploy canisters:
+Start a local replica listening on port 4943:
 
-   ```shell
-   dfx deploy solana_rpc --argument '(record {})'
-   ```
+```bash
+# Start the local replica
+dfx start --clean --host 127.0.0.1:4943
+```
 
-   This command builds and deploys your canisters to the local replica and generates a Candid interface.
+Build and deploy canisters:
 
-3. Access the application:
+```bash
+# Locally deploy the `solana_rpc` canister
+dfx deploy solana_rpc --argument '(record {})'
 
-   Once the build and deployment are complete, your application will be accessible at:
+# Locally deploy the `solana_wallet` canister
+dfx deploy solana_wallet --argument '(record {})'
+```
 
-   ```
-   http://localhost:4943?canisterId={asset_canister_id}
-   ```
+All the canisters will be deployed to the `local` network with their fixed canister ids.
 
-   Replace `{asset_canister_id}` with the actual canister ID generated during deployment.
+Once the build and deployment are complete, your application will be accessible at:
 
-## Testing
+```
+http://localhost:4943?canisterId={asset_canister_id}
+```
 
-We use [PocketIC](https://github.com/dfinity/pocketic) for integration testing. Please make sure to have it installed and the
-`POCKET_IC_BIN` environment variable set to the path of the `pocket-ic` binary.
+Replace `{asset_canister_id}` with the actual canister ID generated during deployment.
 
-You can run the tests with the following commands:
+## Examples
 
-- Run all tests:
+JSON-RPC (mainnet)
 
-  ```shell
-  make test
-  ```
+```bash
+# Use Solana Mainnet
+dfx canister call solana_rpc sol_getLatestBlockhash '(variant {Mainnet})' --wallet $(dfx identity get-wallet --ic) --with-cycles 1000000000
 
-- Run a specific test:
+# Use Custom RPC
+dfx canister call solana_rpc sol_getLatestBlockhash '(variant {Custom=record {url="https://example-rpc.com"}})' --wallet $(dfx identity get-wallet --ic) --with-cycles 1000000000
+```
 
-  ```shell
-  make test TEST="specified_test_here"
-  ```
+## Resources
 
-## Deployment on the Internet Computer
+### [RPC Canister](./src/ic-solana-rpc)
 
-The canister is deployed to `bd3sg-teaaa-aaaaa-qaaba-cai`.
+The **RPC Canister** enables seamless communication with the Solana blockchain
+by utilizing [HTTPS outcalls](https://internetcomputer.org/https-outcalls)
+to transmit raw transactions and messages via the on-chain APIs
+provided by [Solana JSON RPC](https://solana.com/docs/rpc) services,
+such as [Helius](https://www.helius.dev/) or [Quicknode](https://www.quicknode.com/).
 
-You can check the Candid UI at [
-`https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=bd3sg-teaaa-aaaaa-qaaba-cai`](https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=bd3sg-teaaa-aaaaa-qaaba-cai).
+Key functionalities include:
 
-## Reproducible builds
+1. Retrieving Solana-specific data, such as block details, account information, node statistics, and more.
+2. Managing Solana RPC providers, including registration, updates, and provider configurations.
+3. Calculating and managing the cost of RPC requests for efficient resource utilization.
+
+[//]: # (The RPC canister runs on the 34-node [fiduciary subnet]&#40;https://internetcomputer.org/docs/current/references/subnets/subnet-types#fiduciary-subnets&#41;)
+
+[//]: # (with the following principal: [bd3sg-teaaa-aaaaa-qaaba-cai]&#40;https://dashboard.internetcomputer.org/canister/bd3sg-teaaa-aaaaa-qaaba-cai&#41;.)
+
+### [Wallet Canister](./src/ic-solana-wallet)
+
+The **Wallet Canister** serves as the core component for managing addresses
+and signing transactions or messages on the Solana blockchain.
+It leverages the [Threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr) to perform secure and distributed signing of messages and transactions.
+
+Key functionalities include:
+
+1. Generating a Solana public key (Ed25519) for a user on the Internet Computer (ICP).
+2. Signing messages using distributed keys based on the Threshold Schnorr protocol.
+3. Signing and sending raw transactions to the Solana blockchain via the [RPC Canister](#rpc-canister).
+
+### [IC-Solana](./src/ic-solana)
+
+Rust library that provides the necessary tools for integrating with Solana into IC canisters.
+
+### Access control
+
+The Solana RPC canister stores a list of registered Solana JSON RPC providers, to which transactions and messages can be submitted.
+Access to the list is controlled by admin(s) who can assign managers with specific rights to add, remove, and update Solana JSON RPC providers.
+
+### Reproducible builds
 
 The SOLANA RPC canister supports [reproducible builds](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/test/reproducible-builds):
 
@@ -113,10 +149,15 @@ Compare the generated SHA-256 hash with the hash provided in the repository to v
 To learn more about the SOLANA RPC Canister and its integration with Solana and ICP, explore the following resources:
 
 - [Candid Interface](https://github.com/mfactory-lab/ic-solana/blob/main/src/ic-solana-rpc/ic-solana-rpc.did)
-- [Solana JSON-RPC API](https://solana.com/docs/rpc)
+- [Solana JSON RPC API](https://solana.com/docs/rpc)
 - [Internet Computer Developer Docs](https://internetcomputer.org/docs/current/developer-docs/)
 - [DFINITY SDK Documentation](https://sdk.dfinity.org/docs/)
 - [Internet Computer HTTPS Outcalls](https://internetcomputer.org/https-outcalls)
+
+## Contributing
+
+Contributions are welcome!
+Please check out the [contributor guidelines](https://github.com/mfactory-lab/ic-solana/blob/main/.github/CONTRIBUTING.md) for more information.
 
 ## License
 
