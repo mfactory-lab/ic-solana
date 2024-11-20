@@ -10,8 +10,10 @@
 
 ## Overview
 
-**IC-Solana
-** is a solution that bridges [Solana](https://solana.com/) with the [Internet Computer](https://internetcomputer.org/). It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps. This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
+**IC-Solana** is a solution that bridges [Solana](https://solana.com/) with the [Internet Computer](https://internetcomputer.org/).
+It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps.
+This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the
+possibilities for decentralized solutions.
 
 ## Quick start
 
@@ -106,7 +108,7 @@ The **RPC Canister** enables communication with the Solana blockchain,
 using [HTTPS outcalls](https://internetcomputer.org/https-outcalls)
 to transmit raw transactions and messages via on-chain APIs
 of [Solana JSON RPC](https://solana.com/docs/rpc) providers,
-for example [Helius](https://www.helius.dev/) or [Quicknode](https://www.quicknode.com/).
+for example, [Helius](https://www.helius.dev/) or [Quicknode](https://www.quicknode.com/).
 
 Key functionalities include:
 
