@@ -1,16 +1,23 @@
 {
   "canisters": {
     "solana_rpc": {
-      "type": "rust",
-      "package": "ic-solana-rpc",
+      "type": "custom",
       "candid": "src/ic-solana-rpc/ic-solana-rpc.did",
+      "wasm": "ic-solana-rpc.wasm.gz",
+      "init_arg": "(record {})",
+      "gzip": true
+    },
+    "solana_rpc_demo": {
+      "type": "custom",
+      "candid": "src/ic-solana-rpc/ic-solana-rpc.did",
+      "wasm": "ic-solana-rpc.wasm.gz",
       "gzip": true,
-      "optimize": "cycles"
+      "init_arg": "(record {demo = opt true})"
     },
     "solana_wallet": {
-      "type": "rust",
-      "package": "ic-solana-wallet",
+      "type": "custom",
       "candid": "src/ic-solana-wallet/ic-solana-wallet.did",
+      "wasm": "ic-solana-wallet.wasm.gz",
       "gzip": true,
       "optimize": "cycles"
     },
