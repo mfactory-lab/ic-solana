@@ -10,7 +10,8 @@ use ic_cdk::api::management_canister::main::CanisterId;
 pub use mock::*;
 use pocket_ic::{
     common::rest::{CanisterHttpResponse, MockCanisterHttpResponse, RawMessageId},
-    CanisterSettings, PocketIc, PocketIcBuilder,
+    management_canister::CanisterSettings,
+    PocketIc, PocketIcBuilder,
 };
 use serde::de::DeserializeOwned;
 use utils::assert_reply;
