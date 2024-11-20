@@ -29,5 +29,5 @@ pocket-ic
 
 # built canisters
 *.wasm
-*.wasm.gz
+#*.wasm.gz
 ic-test-state-machine
