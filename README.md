@@ -133,7 +133,7 @@ Key functionalities include:
 
 ### [IC-Solana](./src/ic-solana)
 
-A Rust library that provides the necessary tools for integrating Solana into ICP canisters.
+A Rust library that provides the necessary tools for integrating Solana with ICP canisters.
 
 ## Access control
 
