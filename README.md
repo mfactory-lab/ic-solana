@@ -6,7 +6,8 @@
 
 > #### Interact with [Solana](https://solana.com) from the [Internet Computer](https://internetcomputer.org/).
 
-> This project is a work in progress, and is not yet ready for production use. We are happy to answer questions if they are raised as issues in this GitHub repo.
+> [!Note]
+> This project is a work in progress and is not yet ready for production use. We are happy to answer questions if they are raised as issues in this GitHub repo.
 
 ## Overview
 
