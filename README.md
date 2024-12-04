@@ -67,7 +67,7 @@ Build and deploy canisters:
 dfx deploy solana_rpc --argument '(record {})'
 
 # Deploy the `solana_wallet` canister locally
-dfx deploy solana_wallet --argument '(record {})'
+dfx deploy solana_wallet --argument "(record { sol_canister = opt principal \"`dfx canister id solana_rpc`\"; schnorr_key = null })"
 ```
 
 All the canisters will be deployed to the `local` network with their fixed canister ids.
