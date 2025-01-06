@@ -39,9 +39,6 @@ pub async fn address() -> String {
 #[candid_method(query, rename = "signMessage")]
 pub async fn sign_message(message: String) -> Vec<u8> {
     let caller = validate_caller_not_anonymous();
-    let key_name = read_state(|s| s.schnorr_key.to_owned());
-    let derived_path = vec![ByteBuf::from(caller.as_slice())];
-    sign_with_eddsa(key_name, derived_path, message.as_bytes().into()).await
     caller_sign(caller, message.as_bytes()).await
 }
 
@@ -65,8 +62,9 @@ pub async fn balance(source: RpcServices, config: Option<RpcConfig>) -> RpcResul
 /// # Parameters
 ///
 /// - `provider` (`String`): The Solana RPC provider ID.
+/// - `config` (`Option<RpcConfig>`): The serialized unsigned transaction.
 /// - `raw_transaction` (`String`): The serialized unsigned transaction.
-/// - `config` (`Option<RpcSendTransactionConfig>`): Optional configuration for sending the
+/// - `params` (`Option<RpcSendTransactionConfig>`): Optional configuration for sending the
 ///   transaction.
 ///
 /// # Returns
