@@ -28,7 +28,7 @@ pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
                 RpcServices::Localnet => Cluster::Localnet,
                 _ => unreachable!(),
             };
-            vec![get_provider_rpc_api(&cluster.to_string())]
+            vec![get_provider_rpc_api(cluster.as_ref())]
         }
         RpcServices::Provider(ids) => ids.iter().map(|id| get_provider_rpc_api(id)).collect(),
         RpcServices::Custom(apis) => apis, // Use the custom APIs directly

@@ -46,7 +46,7 @@ pub struct RegisterProviderArgs {
     pub auth: Option<RpcAuth>,
 }
 
-#[derive(Clone, CandidType, Deserialize)]
+#[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct UpdateProviderArgs {
     /// The id of the provider to update
     pub id: String,

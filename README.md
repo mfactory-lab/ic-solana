@@ -47,9 +47,9 @@ Add the following configuration to your `dfx.json` file (replace the
 Make sure you have the following installed:
 
 - [Rust](https://www.rust-lang.org/learn/get-started)
+- [DFINITY SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
 - [Docker](https://www.docker.com/get-started/) (Optional for [reproducible builds](#reproducible-builds))
 - [PocketIC](https://github.com/dfinity/pocketic) (Optional for testing)
-- [DFINITY SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
 
 ### Building the code
 
