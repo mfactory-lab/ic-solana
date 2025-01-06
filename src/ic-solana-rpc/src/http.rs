@@ -192,11 +192,4 @@ mod test {
             [176350350, 182008596, 124425270996, 124439692130]
         );
     }
-
-    #[test]
-    fn test1() {
-        let payload = r#"{"jsonrpc":"2.0","method":"sol_getHealth","params":[],"id":1}"#;
-        let cost = get_http_request_cost(payload.len() as u64, 128u64);
-        println!("cost: {}", cost);
-    }
 }
