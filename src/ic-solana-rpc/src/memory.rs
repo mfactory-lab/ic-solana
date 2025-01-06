@@ -11,8 +11,8 @@ use crate::{
     types::PrincipalStorable,
 };
 
-const AUTH_MEMORY_ID: MemoryId = MemoryId::new(2);
-const PROVIDERS_MEMORY_ID: MemoryId = MemoryId::new(3);
+pub const AUTH_MEMORY_ID: MemoryId = MemoryId::new(2);
+pub const PROVIDERS_MEMORY_ID: MemoryId = MemoryId::new(3);
 
 pub type StableMemory = VirtualMemory<DefaultMemoryImpl>;
 pub type AuthMemory = StableBTreeMap<PrincipalStorable, AuthSet, StableMemory>;

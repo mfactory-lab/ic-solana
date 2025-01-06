@@ -7,7 +7,7 @@ use crate::types::{
     filter::RpcFilterType,
     response::RpcBlockProductionRange,
     transaction::{TransactionDetails, UiTransactionEncoding},
-    Epoch, Slot,
+    Epoch, Slot, TransactionBinaryEncoding,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, CandidType)]
@@ -38,7 +38,7 @@ pub struct RpcSendTransactionConfig {
     pub preflight_commitment: Option<CommitmentLevel>,
     /// Encoding used for the transaction data.
     /// Default: `Base64`
-    pub encoding: Option<UiTransactionEncoding>,
+    pub encoding: Option<TransactionBinaryEncoding>,
     /// Maximum number of times for the RPC node to retry sending the transaction to the leader.
     /// If this parameter is not provided, the RPC node will retry the transaction until it is
     /// finalized or until the blockhash expires.
@@ -64,7 +64,7 @@ pub struct RpcSimulateTransactionConfig {
     #[serde(default, rename = "replaceRecentBlockhash")]
     pub replace_recent_blockhash: bool,
     pub commitment: Option<CommitmentLevel>,
-    pub encoding: Option<UiTransactionEncoding>,
+    pub encoding: Option<TransactionBinaryEncoding>,
     pub accounts: Option<RpcSimulateTransactionAccountsConfig>,
     #[serde(rename = "minContextSlot")]
     pub min_context_slot: Option<Slot>,

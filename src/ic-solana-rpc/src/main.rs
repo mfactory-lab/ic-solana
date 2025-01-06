@@ -37,7 +37,7 @@ use ic_solana_rpc::{
     providers::{do_register_provider, do_unregister_provider, do_update_provider},
     state::{read_state, replace_state, InitArgs},
     types::{RegisterProviderArgs, UpdateProviderArgs},
-    utils::{parse_pubkey, parse_pubkeys, parse_signature, parse_signatures},
+    utils::{parse_pubkey, parse_pubkeys, parse_signature, parse_signatures, transform_http_request},
 };
 
 /// Returns all information associated with the account of the provided Pubkey.
@@ -657,10 +657,11 @@ pub async fn sol_request_airdrop(
     config: Option<RpcConfig>,
     pubkey: String,
     lamports: u64,
+    params: Option<CommitmentConfig>,
 ) -> RpcResult<String> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
-    client.request_airdrop(&pubkey, lamports).await
+    client.request_airdrop(&pubkey, lamports, params).await
 }
 
 /// Submits a signed transaction to the cluster for processing.
@@ -832,12 +833,8 @@ fn get_metrics() -> Metrics {
 ///
 /// * `args` - Transformation arguments containing the HTTP response.
 #[query(hidden = true)]
-fn __transform_json_rpc(mut args: TransformArgs) -> HttpResponse {
-    // The response header contains non-deterministic fields that make it impossible to reach
-    // consensus! Errors seem deterministic and do not contain data that can break consensus.
-    // Clear non-deterministic fields from the response headers.
-    args.response.headers.clear();
-    args.response
+fn __transform_json_rpc(args: TransformArgs) -> HttpResponse {
+    transform_http_request(args)
 }
 
 #[ic_cdk::init]

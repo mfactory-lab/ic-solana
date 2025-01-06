@@ -1,5 +1,4 @@
 use ic_canisters_http_types::{HttpRequest, HttpResponse, HttpResponseBuilder};
-use ic_cdk::api::management_canister::http_request::TransformContext;
 use ic_solana::{
     constants::HTTP_MAX_SIZE,
     logs::{Log, Priority, Sort},
@@ -9,10 +8,9 @@ use ic_solana::{
 
 use crate::{
     constants::{
-        CANISTER_OVERHEAD, COLLATERAL_CYCLES_PER_NODE, HTTP_OUTCALL_REQUEST_BASE_COST,
-        HTTP_OUTCALL_REQUEST_COST_PER_BYTE, HTTP_OUTCALL_REQUEST_PER_NODE_COST, HTTP_OUTCALL_RESPONSE_COST_PER_BYTE,
-        INGRESS_MESSAGE_BYTE_RECEIVED_COST, INGRESS_MESSAGE_RECEIVED_COST, INGRESS_OVERHEAD_BYTES, NODES_IN_SUBNET,
-        RPC_URL_COST_BYTES,
+        COLLATERAL_CYCLES_PER_NODE, DEFAULT_SUBNET_SIZE, HTTP_REQUEST_LINEAR_BASELINE_FEE, HTTP_REQUEST_PER_BYTE_FEE,
+        HTTP_REQUEST_QUADRATIC_BASELINE_FEE, HTTP_RESPONSE_PER_BYTE_FEE, INGRESS_BYTE_RECEPTION_FEE,
+        INGRESS_MESSAGE_RECEPTION_FEE, INGRESS_OVERHEAD_BYTES, NODES_IN_SUBNET, RPC_URL_COST_BYTES,
     },
     providers::find_provider,
     state::read_state,
@@ -30,7 +28,7 @@ pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
                 RpcServices::Localnet => Cluster::Localnet,
                 _ => unreachable!(),
             };
-            vec![get_provider_rpc_api(&cluster.to_string())]
+            vec![get_provider_rpc_api(cluster.as_ref())]
         }
         RpcServices::Provider(ids) => ids.iter().map(|id| get_provider_rpc_api(id)).collect(),
         RpcServices::Custom(apis) => apis, // Use the custom APIs directly
@@ -50,7 +48,7 @@ pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
                 (cycles_cost, get_cost_with_collateral(cycles_cost))
             }),
             host_validator: Some(|host| validate_hostname(host).is_ok()),
-            transform_context: Some(TransformContext::from_name("__transform_json_rpc".to_owned(), vec![])),
+            transform_function_name: Some("__transform_json_rpc".to_owned()),
             is_demo_active: s.is_demo_active,
             use_compression: false,
         };
@@ -65,18 +63,22 @@ fn get_provider_rpc_api(provider_id: &str) -> RpcApi {
         .api()
 }
 
-/// Calculates the cost of sending a JSON-RPC request using HTTP outcalls.
+/// Calculates the baseline cost of sending a request using HTTP outcalls.
+/// The corresponding code in replica:
+/// https://github.com/dfinity/ic/blob/master/rs/cycles_account_manager/src/lib.rs#L1153
 pub fn get_http_request_cost(payload_size_bytes: u64, max_response_bytes: u64) -> u128 {
-    let nodes_in_subnet = NODES_IN_SUBNET as u128;
-    let ingress_bytes = payload_size_bytes as u128 + RPC_URL_COST_BYTES as u128 + INGRESS_OVERHEAD_BYTES;
-    let cost_per_node = INGRESS_MESSAGE_RECEIVED_COST
-        + INGRESS_MESSAGE_BYTE_RECEIVED_COST * ingress_bytes
-        + HTTP_OUTCALL_REQUEST_BASE_COST
-        + HTTP_OUTCALL_REQUEST_PER_NODE_COST * nodes_in_subnet
-        + HTTP_OUTCALL_REQUEST_COST_PER_BYTE * payload_size_bytes as u128
-        + HTTP_OUTCALL_RESPONSE_COST_PER_BYTE * max_response_bytes as u128
-        + CANISTER_OVERHEAD;
-    cost_per_node * nodes_in_subnet
+    let subnet_size = NODES_IN_SUBNET as u128;
+    let request_size = payload_size_bytes as u128;
+    let response_size = max_response_bytes as u128;
+    let ingress_size = request_size + RPC_URL_COST_BYTES as u128 + INGRESS_OVERHEAD_BYTES;
+
+    (INGRESS_MESSAGE_RECEPTION_FEE / DEFAULT_SUBNET_SIZE as u128
+        + INGRESS_BYTE_RECEPTION_FEE / DEFAULT_SUBNET_SIZE as u128 * ingress_size
+        + HTTP_REQUEST_LINEAR_BASELINE_FEE
+        + HTTP_REQUEST_QUADRATIC_BASELINE_FEE * subnet_size
+        + HTTP_REQUEST_PER_BYTE_FEE * request_size
+        + HTTP_RESPONSE_PER_BYTE_FEE * response_size)
+        * subnet_size
 }
 
 /// Calculate the cost + collateral cycles for an HTTP request.
@@ -161,4 +163,33 @@ pub fn serve_logs(request: HttpRequest) -> HttpResponse {
         .header("Content-Type", "application/json; charset=utf-8")
         .with_body_and_content_length(log.serialize_logs(MAX_BODY_SIZE))
         .build()
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_request_cost() {
+        let payload = r#"{"jsonrpc":"2.0","method":"sol_getHealth","params":[],"id":1}"#;
+        let base_cost = get_http_request_cost(payload.len() as u64, 1000);
+        let base_cost_10_extra_bytes = get_http_request_cost(payload.len() as u64 + 10, 1000);
+        let estimated_cost_10_extra_bytes = base_cost
+            + 10 * (HTTP_REQUEST_PER_BYTE_FEE + INGRESS_BYTE_RECEPTION_FEE / DEFAULT_SUBNET_SIZE as u128)
+                * NODES_IN_SUBNET as u128;
+        assert_eq!(base_cost_10_extra_bytes, estimated_cost_10_extra_bytes);
+    }
+
+    #[test]
+    fn test_candid_rpc_cost() {
+        assert_eq!(
+            [
+                get_http_request_cost(0, 0),
+                get_http_request_cost(123, 123),
+                get_http_request_cost(123, 4567890),
+                get_http_request_cost(890, 4567890),
+            ],
+            [176350350, 182008596, 124425270996, 124439692130]
+        );
+    }
 }

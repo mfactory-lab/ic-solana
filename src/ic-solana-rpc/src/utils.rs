@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
+use ic_cdk::api::management_canister::http_request::{HttpResponse, TransformArgs};
 use ic_solana::{
+    request::RpcRequest,
     rpc_client::{RpcError, RpcResult},
     types::{Pubkey, Signature},
 };
@@ -43,6 +45,34 @@ pub fn parse_signature(signature: &str) -> RpcResult<Signature> {
 
 pub fn parse_signatures(signatures: Vec<String>) -> RpcResult<Vec<Signature>> {
     signatures.iter().map(|s| parse_signature(s)).collect()
+}
+
+pub fn transform_http_request(mut args: TransformArgs) -> HttpResponse {
+    // Remove headers (which may contain a timestamp) for consensus
+    args.response.headers.clear();
+
+    let response = serde_json::from_slice::<serde_json::Value>(&args.response.body).ok();
+    if response.is_none() {
+        return args.response;
+    }
+
+    let mut response = response.unwrap();
+
+    let request = serde_json::from_slice::<serde_json::Value>(&args.context).unwrap_or_default();
+
+    if request["method"] == RpcRequest::GetEpochInfo.to_string() {
+        response["result"]["absoluteSlot"] = serde_json::Value::Number(0.into());
+    }
+
+    args.response.body = serde_json::to_vec(&response).unwrap_or(args.response.body);
+    args.response
+
+    // HttpResponse {
+    //     status: args.response.status,
+    //     body: canonicalize_json(&args.response.body).unwrap_or(args.response.body),
+    //     // Remove headers (which may contain a timestamp) for consensus
+    //     headers: vec![],
+    // }
 }
 
 #[cfg(test)]

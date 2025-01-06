@@ -355,7 +355,7 @@ type RpcProgramAccountsConfig = record {
   commitment : opt CommitmentLevel;
 };
 type RpcSendTransactionConfig = record {
-  encoding : opt UiTransactionEncoding;
+  encoding : opt TransactionBinaryEncoding;
   preflightCommitment : opt CommitmentLevel;
   maxRetries : opt nat64;
   minContextSlot : opt nat64;
@@ -383,7 +383,7 @@ type RpcSimulateTransactionAccountsConfig = record {
 };
 type RpcSimulateTransactionConfig = record {
   replaceRecentBlockhash : bool;
-  encoding : opt UiTransactionEncoding;
+  encoding : opt TransactionBinaryEncoding;
   innerInstructions : bool;
   accounts : opt RpcSimulateTransactionAccountsConfig;
   sigVerify : bool;
@@ -832,7 +832,13 @@ service : (InitArgs) -> {
       opt RpcContextConfig,
     ) -> (Result_34);
   sol_minimumLedgerSlot : (RpcServices, opt RpcConfig) -> (Result_2);
-  sol_requestAirdrop : (RpcServices, opt RpcConfig, text, nat64) -> (Result);
+  sol_requestAirdrop : (
+      RpcServices,
+      opt RpcConfig,
+      text,
+      nat64,
+      opt CommitmentConfig,
+    ) -> (Result);
   sol_sendTransaction : (
       RpcServices,
       opt RpcConfig,

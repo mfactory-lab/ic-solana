@@ -24,8 +24,7 @@ use crate::{
         RpcGetVoteAccountsConfig, RpcLargestAccountsConfig, RpcLeaderScheduleConfig, RpcProgramAccountsConfig,
         RpcSendTransactionConfig, RpcSignatureStatusConfig, RpcSignaturesForAddressConfig,
         RpcSimulateTransactionConfig, RpcSupplyConfig, RpcTokenAccountsFilter, RpcTransactionConfig, Signature, Slot,
-        Transaction, TransactionStatus, UiAccount, UiConfirmedBlock, UiTokenAmount, UiTransactionEncoding,
-        UnixTimestamp,
+        Transaction, TransactionStatus, UiAccount, UiConfirmedBlock, UiTokenAmount, UnixTimestamp,
     },
 };
 
@@ -48,6 +47,7 @@ use crate::{
             RpcVersionInfo, RpcVoteAccountStatus,
         },
         tagged::RpcTokenAccountBalance,
+        TransactionBinaryEncoding,
     },
 };
 
@@ -61,7 +61,7 @@ pub struct RpcClientConfig {
     pub response_size_estimate: Option<u64>,
     pub request_cost_calculator: Option<RequestCostCalculator>,
     pub host_validator: Option<HostValidator>,
-    pub transform_context: Option<TransformContext>,
+    pub transform_function_name: Option<String>,
     pub use_compression: bool,
     pub is_demo_active: bool,
 }
@@ -145,14 +145,19 @@ impl RpcClient {
         }
 
         let body = serde_json::to_vec(payload).map_err(|e| RpcError::ParseError(e.to_string()))?;
+        let transform = self
+            .config
+            .transform_function_name
+            .as_ref()
+            .map(|name| TransformContext::from_name(name.into(), body.clone()));
 
         let request = CanisterHttpRequestArgument {
-            url: url.to_string(),
             max_response_bytes,
-            method: HttpMethod::POST,
             headers,
+            transform,
+            url: url.to_string(),
+            method: HttpMethod::POST,
             body: Some(body),
-            transform: self.config.transform_context.clone(),
         };
 
         // Calculate cycles if a calculator is provided
@@ -334,6 +339,10 @@ impl RpcClient {
     /// Method relies on the `getBlock` RPC call to get the block:
     ///   https://solana.com/docs/rpc/http/getBlock
     pub async fn get_block(&self, slot: Slot, config: Option<RpcBlockConfig>) -> RpcResult<UiConfirmedBlock> {
+        if let Some(commitment) = config.as_ref().and_then(|c| c.commitment) {
+            ensure_at_least_confirmed(commitment.into())?;
+        }
+
         self.call(
             RpcRequest::GetBlock,
             (slot, config.unwrap_or_default()),
@@ -410,6 +419,10 @@ impl RpcClient {
             json!([start_slot, commitment_config])
         };
 
+        if let Some(commitment_config) = commitment_config {
+            ensure_at_least_confirmed(commitment_config)?;
+        }
+
         let end_slot = end_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE);
         let limit = end_slot.saturating_sub(start_slot);
 
@@ -444,6 +457,10 @@ impl RpcClient {
                 "Limit too large, must be less or equal than {}",
                 MAX_GET_BLOCKS_RANGE
             )));
+        }
+
+        if let Some(commitment_config) = commitment_config {
+            ensure_at_least_confirmed(commitment_config)?;
         }
 
         self.call(
@@ -918,10 +935,19 @@ impl RpcClient {
     ///
     /// Method relies on the `requestAirdrop` RPC call to request the airdrop:
     ///   https://solana.com/docs/rpc/http/requestAirdrop
-    pub async fn request_airdrop(&self, pubkey: &Pubkey, lamports: u64) -> RpcResult<String> {
-        self.call(RpcRequest::RequestAirdrop, (pubkey.to_string(), lamports), Some(156))
-            .await?
-            .into()
+    pub async fn request_airdrop(
+        &self,
+        pubkey: &Pubkey,
+        lamports: u64,
+        commitment_config: Option<CommitmentConfig>,
+    ) -> RpcResult<String> {
+        self.call(
+            RpcRequest::RequestAirdrop,
+            (pubkey.to_string(), lamports, commitment_config),
+            Some(156),
+        )
+        .await?
+        .into()
     }
 
     /// Returns signatures for confirmed transactions that include the given address in their
@@ -983,6 +1009,10 @@ impl RpcClient {
         signature: &Signature,
         config: Option<RpcTransactionConfig>,
     ) -> RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>> {
+        if let Some(commitment) = config.as_ref().and_then(|c| c.commitment) {
+            ensure_at_least_confirmed(commitment.into())?;
+        }
+
         self.call(
             RpcRequest::GetTransaction,
             (signature.to_string(), config.unwrap_or_default()),
@@ -1060,13 +1090,8 @@ impl RpcClient {
         let serialized = tx.serialize();
 
         let raw_tx = match config.encoding {
-            None | Some(UiTransactionEncoding::Base58) => bs58::encode(serialized).into_string(),
-            Some(UiTransactionEncoding::Base64) => BASE64_STANDARD.encode(serialized),
-            Some(e) => {
-                return Err(RpcError::Text(format!(
-                    "Unsupported encoding: {e}. Supported encodings: base58, base64"
-                )));
-            }
+            Some(TransactionBinaryEncoding::Base58) => bs58::encode(serialized).into_string(),
+            Some(TransactionBinaryEncoding::Base64) | None => BASE64_STANDARD.encode(serialized),
         };
 
         let response: RpcResult<String> = self
@@ -1090,13 +1115,8 @@ impl RpcClient {
         let serialized = tx.serialize();
 
         let raw_tx = match config.encoding {
-            None | Some(UiTransactionEncoding::Base58) => bs58::encode(serialized).into_string(),
-            Some(UiTransactionEncoding::Base64) => BASE64_STANDARD.encode(serialized),
-            Some(e) => {
-                return Err(RpcError::Text(format!(
-                    "Unsupported encoding: {e}. Supported encodings: base58, base64"
-                )));
-            }
+            Some(TransactionBinaryEncoding::Base58) => bs58::encode(serialized).into_string(),
+            Some(TransactionBinaryEncoding::Base64) | None => BASE64_STANDARD.encode(serialized),
         };
 
         self.call(RpcRequest::SimulateTransaction, (raw_tx, config), None)
@@ -1157,6 +1177,17 @@ impl RpcClient {
             .and_then(Value::as_str)
             .unwrap_or("unknown")
     }
+}
+
+/// Ensures that the provided commitment configuration meets the minimum required level of
+/// 'confirmed'.
+fn ensure_at_least_confirmed(commitment_config: CommitmentConfig) -> RpcResult<()> {
+    if !commitment_config.is_at_least_confirmed() {
+        return Err(RpcError::ValidationError(
+            "This method requires a commitment level of 'confirmed' or higher.".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 // TODO:

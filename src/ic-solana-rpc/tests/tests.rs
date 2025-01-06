@@ -16,10 +16,16 @@ use ic_solana::{
         RpcInflationGovernor, RpcInflationRate, RpcInflationReward, RpcLargestAccountsConfig, RpcLargestAccountsFilter,
         RpcLeaderSchedule, RpcPerfSample, RpcPrioritizationFee, RpcSignatureStatusConfig, RpcSimulateTransactionConfig,
         RpcSnapshotSlotInfo, RpcSupply, RpcTokenAccountsFilter, RpcVersionInfo, RpcVoteAccountStatus,
-        TransactionDetails, TransactionStatus, UiDataSliceConfig, UiTokenAmount, UiTransactionEncoding,
+        TransactionBinaryEncoding, TransactionDetails, TransactionStatus, UiDataSliceConfig, UiTokenAmount,
     },
 };
-use ic_solana_rpc::{auth::Auth, state::InitArgs, types::RegisterProviderArgs};
+use ic_solana_rpc::{
+    auth::Auth,
+    http::get_http_request_cost,
+    providers::ProviderId,
+    state::InitArgs,
+    types::{RegisterProviderArgs, UpdateProviderArgs},
+};
 use test_utils::{MockOutcallBuilder, TestSetup};
 
 use crate::setup::{mock_update, SolanaRpcSetup, MOCK_RAW_TX};
@@ -641,7 +647,7 @@ fn test_request_airdrop() {
             RpcServices::Mainnet,
             (),
             "83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri",
-            1000000000u64,
+            1000000000u64
         ),
         r#"{"jsonrpc":"2.0","result":"5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW","id":1}"#,
     )
@@ -675,7 +681,7 @@ fn test_simulate_transaction() {
             (),
             MOCK_RAW_TX,
             RpcSimulateTransactionConfig {
-                encoding: Some(UiTransactionEncoding::Base64),
+                encoding: Some(TransactionBinaryEncoding::Base64),
                 ..Default::default()
             }
         ),
@@ -712,13 +718,23 @@ fn test_get_logs() {
 
 #[test]
 fn should_get_valid_request_cost() {
+    let payload = r#"{"jsonrpc":"2.0","method":"sol_getHealth","params":[],"id":1}"#;
+    let max_response_size = 128u64;
+    assert_eq!(
+        SolanaRpcSetup::new(InitArgs {
+            demo: Some(true),
+            ..Default::default()
+        })
+        .call_query::<_, u128>("requestCost", (payload, max_response_size)),
+        0
+    );
     assert_eq!(
         SolanaRpcSetup::new(InitArgs {
             demo: None,
             ..Default::default()
         })
-        .call_query::<_, u128>("requestCost", (MOCK_RAW_TX, 1000u64)),
-        321476800
+        .call_query::<_, u128>("requestCost", (payload, max_response_size)),
+        get_http_request_cost(payload.len() as u64, max_response_size)
     );
 }
 
@@ -782,6 +798,69 @@ fn should_allow_manager_to_register_and_unregister_providers() {
     setup.clone().as_controller().unregister_provider(&provider_id).wait();
     let providers = setup.get_providers();
     assert!(!providers.contains(&provider_id));
+}
+
+#[test]
+fn should_allow_controller_to_update_provider_url() {
+    let setup = SolanaRpcSetup::default();
+    let provider_id = "test_mainnet1".to_string();
+
+    setup
+        .clone()
+        .as_controller()
+        .register_provider(RegisterProviderArgs {
+            id: provider_id.clone(),
+            url: Cluster::Mainnet.url().to_string(),
+            auth: None,
+        })
+        .wait();
+    let providers = setup.get_providers();
+    assert!(providers.contains(&provider_id));
+
+    setup
+        .clone()
+        .as_controller()
+        .update_provider(UpdateProviderArgs {
+            id: provider_id.clone(),
+            url: Some(Cluster::Devnet.url().to_string()),
+            auth: None,
+        })
+        .wait();
+
+    let provider = setup.get_providers_memory().get(&ProviderId::new(provider_id)).unwrap();
+    assert_eq!(provider.url, Cluster::Devnet.url().to_string());
+}
+
+#[test]
+#[should_panic(expected = "You are not authorized to update the `url` field")]
+fn should_not_allow_manager_to_update_provider_url() {
+    let setup = SolanaRpcSetup::default();
+    let provider_id = "test_mainnet1".to_string();
+    let manager = TestSetup::principal(3);
+
+    setup.clone().as_controller().authorize(manager, Auth::Manage).wait();
+
+    setup
+        .clone()
+        .as_caller(manager)
+        .register_provider(RegisterProviderArgs {
+            id: provider_id.clone(),
+            url: Cluster::Mainnet.url().into(),
+            auth: None,
+        })
+        .wait();
+    let providers = setup.get_providers();
+    assert!(providers.contains(&provider_id));
+
+    setup
+        .clone()
+        .as_caller(manager)
+        .update_provider(UpdateProviderArgs {
+            id: provider_id.clone(),
+            url: Some(Cluster::Devnet.url().into()),
+            auth: None,
+        })
+        .wait();
 }
 
 #[test]

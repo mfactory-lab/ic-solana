@@ -79,15 +79,21 @@ impl FromStr for Cluster {
 
 impl fmt::Display for Cluster {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let cluster_str = match self {
+        let cluster_str = self.as_ref();
+        write!(f, "{cluster_str}")
+    }
+}
+
+impl AsRef<str> for Cluster {
+    fn as_ref(&self) -> &str {
+        match self {
             Cluster::Testnet => "testnet",
             Cluster::Mainnet => "mainnet",
             Cluster::Devnet => "devnet",
             Cluster::Localnet => "localnet",
             Cluster::Debug => "debug",
             Cluster::Custom(url, _ws_url) => url,
-        };
-        write!(f, "{cluster_str}")
+        }
     }
 }
 
