@@ -657,10 +657,11 @@ pub async fn sol_request_airdrop(
     config: Option<RpcConfig>,
     pubkey: String,
     lamports: u64,
+    params: Option<CommitmentConfig>,
 ) -> RpcResult<String> {
     let client = rpc_client(source, config);
     let pubkey = parse_pubkey(&pubkey)?;
-    client.request_airdrop(&pubkey, lamports).await
+    client.request_airdrop(&pubkey, lamports, params).await
 }
 
 /// Submits a signed transaction to the cluster for processing.

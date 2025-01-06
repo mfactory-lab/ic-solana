@@ -918,10 +918,19 @@ impl RpcClient {
     ///
     /// Method relies on the `requestAirdrop` RPC call to request the airdrop:
     ///   https://solana.com/docs/rpc/http/requestAirdrop
-    pub async fn request_airdrop(&self, pubkey: &Pubkey, lamports: u64) -> RpcResult<String> {
-        self.call(RpcRequest::RequestAirdrop, (pubkey.to_string(), lamports), Some(156))
-            .await?
-            .into()
+    pub async fn request_airdrop(
+        &self,
+        pubkey: &Pubkey,
+        lamports: u64,
+        commitment_config: Option<CommitmentConfig>,
+    ) -> RpcResult<String> {
+        self.call(
+            RpcRequest::RequestAirdrop,
+            (pubkey.to_string(), lamports, commitment_config),
+            Some(156),
+        )
+        .await?
+        .into()
     }
 
     /// Returns signatures for confirmed transactions that include the given address in their
