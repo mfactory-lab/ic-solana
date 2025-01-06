@@ -1,5 +1,4 @@
 use ic_canisters_http_types::{HttpRequest, HttpResponse, HttpResponseBuilder};
-use ic_cdk::api::management_canister::http_request::TransformContext;
 use ic_solana::{
     constants::HTTP_MAX_SIZE,
     logs::{Log, Priority, Sort},
@@ -49,7 +48,7 @@ pub fn rpc_client(source: RpcServices, config: Option<RpcConfig>) -> RpcClient {
                 (cycles_cost, get_cost_with_collateral(cycles_cost))
             }),
             host_validator: Some(|host| validate_hostname(host).is_ok()),
-            transform_context: Some(TransformContext::from_name("__transform_json_rpc".to_owned(), vec![])),
+            transform_function_name: Some("__transform_json_rpc".to_owned()),
             is_demo_active: s.is_demo_active,
             use_compression: false,
         };

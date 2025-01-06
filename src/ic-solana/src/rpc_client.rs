@@ -61,7 +61,7 @@ pub struct RpcClientConfig {
     pub response_size_estimate: Option<u64>,
     pub request_cost_calculator: Option<RequestCostCalculator>,
     pub host_validator: Option<HostValidator>,
-    pub transform_context: Option<TransformContext>,
+    pub transform_function_name: Option<String>,
     pub use_compression: bool,
     pub is_demo_active: bool,
 }
@@ -145,14 +145,19 @@ impl RpcClient {
         }
 
         let body = serde_json::to_vec(payload).map_err(|e| RpcError::ParseError(e.to_string()))?;
+        let transform = self
+            .config
+            .transform_function_name
+            .as_ref()
+            .map(|name| TransformContext::from_name(name.into(), body.clone()));
 
         let request = CanisterHttpRequestArgument {
-            url: url.to_string(),
             max_response_bytes,
-            method: HttpMethod::POST,
             headers,
+            transform,
+            url: url.to_string(),
+            method: HttpMethod::POST,
             body: Some(body),
-            transform: self.config.transform_context.clone(),
         };
 
         // Calculate cycles if a calculator is provided
