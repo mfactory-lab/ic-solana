@@ -200,8 +200,7 @@ pub struct UiAccountsList {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum EncodedTransaction {
-    LegacyBinary(String), /* Old way of expressing base-58, retained for RPC backwards
-                           * compatibility */
+    LegacyBinary(String), // Old way of expressing base-58, retained for RPC backwards compatibility
     Binary(String, TransactionBinaryEncoding),
     Json(UiTransaction),
     Accounts(UiAccountsList),
