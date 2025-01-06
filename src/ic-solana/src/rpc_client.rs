@@ -339,6 +339,10 @@ impl RpcClient {
     /// Method relies on the `getBlock` RPC call to get the block:
     ///   https://solana.com/docs/rpc/http/getBlock
     pub async fn get_block(&self, slot: Slot, config: Option<RpcBlockConfig>) -> RpcResult<UiConfirmedBlock> {
+        if let Some(commitment) = config.as_ref().and_then(|c| c.commitment) {
+            ensure_at_least_confirmed(commitment.into())?;
+        }
+
         self.call(
             RpcRequest::GetBlock,
             (slot, config.unwrap_or_default()),
@@ -415,6 +419,10 @@ impl RpcClient {
             json!([start_slot, commitment_config])
         };
 
+        if let Some(commitment_config) = commitment_config {
+            ensure_at_least_confirmed(commitment_config)?;
+        }
+
         let end_slot = end_slot.unwrap_or(start_slot + MAX_GET_BLOCKS_RANGE);
         let limit = end_slot.saturating_sub(start_slot);
 
@@ -449,6 +457,10 @@ impl RpcClient {
                 "Limit too large, must be less or equal than {}",
                 MAX_GET_BLOCKS_RANGE
             )));
+        }
+
+        if let Some(commitment_config) = commitment_config {
+            ensure_at_least_confirmed(commitment_config)?;
         }
 
         self.call(
@@ -997,6 +1009,10 @@ impl RpcClient {
         signature: &Signature,
         config: Option<RpcTransactionConfig>,
     ) -> RpcResult<Option<EncodedConfirmedTransactionWithStatusMeta>> {
+        if let Some(commitment) = config.as_ref().and_then(|c| c.commitment) {
+            ensure_at_least_confirmed(commitment.into())?;
+        }
+
         self.call(
             RpcRequest::GetTransaction,
             (signature.to_string(), config.unwrap_or_default()),
@@ -1161,6 +1177,17 @@ impl RpcClient {
             .and_then(Value::as_str)
             .unwrap_or("unknown")
     }
+}
+
+/// Ensures that the provided commitment configuration meets the minimum required level of
+/// 'confirmed'.
+fn ensure_at_least_confirmed(commitment_config: CommitmentConfig) -> RpcResult<()> {
+    if !commitment_config.is_at_least_confirmed() {
+        return Err(RpcError::ValidationError(
+            "This method requires a commitment level of 'confirmed' or higher.".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 // TODO:
