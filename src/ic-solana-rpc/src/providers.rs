@@ -133,18 +133,19 @@ pub fn do_register_provider(caller: Principal, args: RegisterProviderArgs) {
     });
 }
 
-/// Unregister provider. The caller must be the owner or administrator.
+/// Unregister provider.
+/// The caller must be the owner or administrator.
 pub fn do_unregister_provider(caller: Principal, provider_id: &str) -> bool {
+    let is_admin = is_controller(&caller);
     let is_manager = is_authorized(&caller, Auth::Manage);
     mutate_state(|s| {
         let id = ProviderId::new(provider_id);
         if let Some(provider) = s.rpc_providers.get(&id) {
-            if provider.owner == caller || is_controller(&caller) || is_manager {
-                log!(INFO, "[{}] Unregistering provider: {:?}", caller, provider_id);
-                s.rpc_providers.remove(&id).is_some()
-            } else {
+            if !(provider.owner == caller || is_admin || is_manager) {
                 ic_cdk::trap("Unauthorized");
             }
+            log!(INFO, "[{}] Unregistering provider: {:?}", caller, provider_id);
+            s.rpc_providers.remove(&id).is_some()
         } else {
             false
         }
@@ -159,16 +160,6 @@ pub fn do_update_provider(caller: Principal, args: UpdateProviderArgs) {
     let provider_id = ProviderId::new(&args.id);
     mutate_state(|s| match s.rpc_providers.get(&provider_id) {
         Some(mut provider) => {
-            if provider.owner == caller {
-                if args.url.is_some() {
-                    ic_cdk::trap("You are not authorized to update the `url` field");
-                }
-                if let Some(auth) = args.auth {
-                    provider.auth = Some(auth);
-                }
-                s.rpc_providers.insert(provider_id, provider);
-            } else if is_controller(&caller) || is_manager {
-                if let Some(url) = args.url {
             if !(provider.owner == caller || is_admin || is_manager) {
                 ic_cdk::trap("Unauthorized");
             }
