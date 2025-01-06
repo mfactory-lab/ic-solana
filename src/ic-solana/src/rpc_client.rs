@@ -24,8 +24,7 @@ use crate::{
         RpcGetVoteAccountsConfig, RpcLargestAccountsConfig, RpcLeaderScheduleConfig, RpcProgramAccountsConfig,
         RpcSendTransactionConfig, RpcSignatureStatusConfig, RpcSignaturesForAddressConfig,
         RpcSimulateTransactionConfig, RpcSupplyConfig, RpcTokenAccountsFilter, RpcTransactionConfig, Signature, Slot,
-        Transaction, TransactionStatus, UiAccount, UiConfirmedBlock, UiTokenAmount, UiTransactionEncoding,
-        UnixTimestamp,
+        Transaction, TransactionStatus, UiAccount, UiConfirmedBlock, UiTokenAmount, UnixTimestamp,
     },
 };
 
@@ -48,6 +47,7 @@ use crate::{
             RpcVersionInfo, RpcVoteAccountStatus,
         },
         tagged::RpcTokenAccountBalance,
+        TransactionBinaryEncoding,
     },
 };
 
@@ -1074,13 +1074,8 @@ impl RpcClient {
         let serialized = tx.serialize();
 
         let raw_tx = match config.encoding {
-            None | Some(UiTransactionEncoding::Base58) => bs58::encode(serialized).into_string(),
-            Some(UiTransactionEncoding::Base64) => BASE64_STANDARD.encode(serialized),
-            Some(e) => {
-                return Err(RpcError::Text(format!(
-                    "Unsupported encoding: {e}. Supported encodings: base58, base64"
-                )));
-            }
+            Some(TransactionBinaryEncoding::Base58) => bs58::encode(serialized).into_string(),
+            Some(TransactionBinaryEncoding::Base64) | None => BASE64_STANDARD.encode(serialized),
         };
 
         let response: RpcResult<String> = self
@@ -1104,13 +1099,8 @@ impl RpcClient {
         let serialized = tx.serialize();
 
         let raw_tx = match config.encoding {
-            None | Some(UiTransactionEncoding::Base58) => bs58::encode(serialized).into_string(),
-            Some(UiTransactionEncoding::Base64) => BASE64_STANDARD.encode(serialized),
-            Some(e) => {
-                return Err(RpcError::Text(format!(
-                    "Unsupported encoding: {e}. Supported encodings: base58, base64"
-                )));
-            }
+            Some(TransactionBinaryEncoding::Base58) => bs58::encode(serialized).into_string(),
+            Some(TransactionBinaryEncoding::Base64) | None => BASE64_STANDARD.encode(serialized),
         };
 
         self.call(RpcRequest::SimulateTransaction, (raw_tx, config), None)
