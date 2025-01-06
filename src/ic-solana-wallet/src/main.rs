@@ -45,6 +45,19 @@ pub async fn sign_message(message: String) -> Vec<u8> {
     caller_sign(caller, message.as_bytes()).await
 }
 
+/// Returns the current balance of the Solana wallet associated with the caller.
+#[update]
+#[candid_method]
+pub async fn balance(source: RpcServices, config: Option<RpcConfig>) -> RpcResult<u64> {
+    let caller = validate_caller_not_anonymous();
+    let sol_canister = read_state(|s| s.sol_canister);
+    let pubkey = caller_pubkey(caller).await;
+
+    let (response,) =
+        ic_cdk::call::<_, (RpcResult<u64>,)>(sol_canister, "sol_getBalance", (&source, config, pubkey.to_string()))
+            .await?;
+
+    response
 }
 
 /// Signs and sends a transaction to the Solana network.
