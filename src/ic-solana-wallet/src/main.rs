@@ -4,12 +4,12 @@ use candid::candid_method;
 use ic_cdk::update;
 use ic_solana::{
     rpc_client::{RpcConfig, RpcResult, RpcServices},
-    types::{BlockHash, Pubkey, RpcSendTransactionConfig, Transaction},
+    types::{BlockHash, RpcSendTransactionConfig, Transaction},
 };
 use ic_solana_wallet::{
-    eddsa::{eddsa_public_key, sign_with_eddsa},
+    eddsa::sign_with_eddsa,
     state::{read_state, InitArgs, State},
-    utils::validate_caller_not_anonymous,
+    utils::{caller_pubkey, caller_sign, validate_caller_not_anonymous},
 };
 use serde_bytes::ByteBuf;
 
@@ -22,10 +22,7 @@ use serde_bytes::ByteBuf;
 #[candid_method]
 pub async fn address() -> String {
     let caller = validate_caller_not_anonymous();
-    let key_name = read_state(|s| s.schnorr_key.to_owned());
-    let derived_path = vec![ByteBuf::from(caller.as_slice())];
-    let pk = eddsa_public_key(key_name, derived_path).await;
-    Pubkey::try_from(pk.as_slice()).expect("Invalid public key").to_string()
+    caller_pubkey(caller).await.to_string()
 }
 
 /// Signs a provided message using the caller's Eddsa key.
@@ -45,6 +42,9 @@ pub async fn sign_message(message: String) -> Vec<u8> {
     let key_name = read_state(|s| s.schnorr_key.to_owned());
     let derived_path = vec![ByteBuf::from(caller.as_slice())];
     sign_with_eddsa(key_name, derived_path, message.as_bytes().into()).await
+    caller_sign(caller, message.as_bytes()).await
+}
+
 }
 
 /// Signs and sends a transaction to the Solana network.
