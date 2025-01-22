@@ -178,9 +178,9 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ac0150caa2ae65ca5bd83f25c7de183dea78d4d366469f148435e2acfbad0da"
+checksum = "325918d6fe32f23b19878fe4b34794ae41fc19ddbe53b10571a4874d44ffd39b"
 
 [[package]]
 name = "camino"
@@ -443,7 +443,7 @@ dependencies = [
 [[package]]
 name = "dfn_candid"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "candid",
  "dfn_core",
@@ -455,7 +455,7 @@ dependencies = [
 [[package]]
 name = "dfn_core"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "ic-base-types",
  "on_wire",
@@ -919,7 +919,7 @@ dependencies = [
 [[package]]
 name = "ic-base-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "byte-unit",
  "bytes",
@@ -949,7 +949,7 @@ dependencies = [
 [[package]]
 name = "ic-btc-replica-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "candid",
  "ic-btc-interface",
@@ -971,7 +971,7 @@ dependencies = [
 [[package]]
 name = "ic-canisters-http-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "candid",
  "dfn_candid",
@@ -1021,21 +1021,21 @@ dependencies = [
 [[package]]
 name = "ic-crypto-ed25519"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "hkdf",
  "pem",
  "rand",
- "thiserror 1.0.69",
+ "thiserror 2.0.11",
  "zeroize",
 ]
 
 [[package]]
 name = "ic-crypto-internal-sha2"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "sha2",
 ]
@@ -1043,7 +1043,7 @@ dependencies = [
 [[package]]
 name = "ic-crypto-sha2"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "ic-crypto-internal-sha2",
 ]
@@ -1051,7 +1051,7 @@ dependencies = [
 [[package]]
 name = "ic-error-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "ic-protobuf",
  "ic-utils",
@@ -1063,7 +1063,7 @@ dependencies = [
 [[package]]
 name = "ic-management-canister-types"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "candid",
  "ic-base-types",
@@ -1089,7 +1089,7 @@ checksum = "8b5c7628eac357aecda461130f8074468be5aa4d258a002032d82d817f79f1f8"
 [[package]]
 name = "ic-protobuf"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "bincode",
  "candid",
@@ -1207,7 +1207,7 @@ dependencies = [
 [[package]]
 name = "ic-utils"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "hex",
  "scoped_threadpool",
@@ -1596,7 +1596,7 @@ dependencies = [
 [[package]]
 name = "on_wire"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 
 [[package]]
 name = "once_cell"
@@ -1672,7 +1672,7 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 [[package]]
 name = "phantom_newtype"
 version = "0.9.0"
-source = "git+https://github.com/dfinity/ic#7927c348c7acd1bd6433342bf6ebc9f7b34e6f3f"
+source = "git+https://github.com/dfinity/ic#744f4683df2ca79f5f537b3db48a1c03d4ff084e"
 dependencies = [
  "candid",
  "num-traits",
@@ -1880,7 +1880,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2463,7 +2463,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "psm",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
