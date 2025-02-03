@@ -1,4 +1,4 @@
-# IC-Solana Gateway for the Internet Computer
+# Solana RPC
 
 [![Internet Computer portal](https://img.shields.io/badge/InternetComputer-grey?logo=internet%20computer&style=for-the-badge)](https://internetcomputer.org)
 [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg?logo=apache&style=for-the-badge)](LICENSE)
@@ -11,15 +11,11 @@
 
 ## Overview
 
-**IC-Solana** is a solution that bridges [Solana](https://solana.com/) with the [Internet Computer](https://internetcomputer.org/).
-It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps.
-This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the
-possibilities for decentralized solutions.
+**Solana RPC** is a solution that bridges [Solana](https://solana.com/) with the [Internet Computer](https://internetcomputer.org/). It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps. This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
 
 ## Quick start
 
-Add the following configuration to your `dfx.json` file (replace the
-`ic` principal with any option from the list of available canisters):
+Add the following configuration to your `dfx.json` file (replace the `ic` principal with any option from the list of available canisters):
 
 ```json
 {
@@ -101,15 +97,11 @@ dfx canister call solana_rpc sol_getHealth '(variant{Provider=vec{"mainnet"}},nu
 
 ```
 
-## Components Overview
+## Components
 
 ### [RPC Canister](./src/ic-solana-rpc)
 
-The **RPC Canister** enables communication with the Solana blockchain,
-using [HTTPS outcalls](https://internetcomputer.org/https-outcalls)
-to transmit raw transactions and messages via on-chain APIs
-of [Solana JSON RPC](https://solana.com/docs/rpc) providers,
-for example, [Helius](https://www.helius.dev/) or [Quicknode](https://www.quicknode.com/).
+The **RPC Canister** enables communication with the Solana blockchain, using [HTTPS outcalls](https://internetcomputer.org/https-outcalls) to transmit raw transactions and messages via on-chain APIs of [Solana JSON RPC](https://solana.com/docs/rpc) providers, for example, [Helius](https://www.helius.dev/) or [Quicknode](https://www.quicknode.com/).
 
 Key functionalities include:
 
@@ -123,8 +115,7 @@ Key functionalities include:
 
 ### [Wallet Canister](./src/ic-solana-wallet)
 
-The **Wallet Canister** is used for managing addresses and for securely signing transactions/messages for the Solana blockchain
-using the [threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr).
+The **Wallet Canister** is used for managing addresses and for securely signing transactions/messages for the Solana blockchain using the [threshold Schnorr API](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/signatures/signing-messages-t-schnorr).
 
 Key functionalities include:
 
@@ -152,8 +143,6 @@ Compare the generated SHA-256 hash with the hash provided in the repository to v
 
 ## Learn more
 
-To learn more about the SOLANA RPC Canister and its integration with Solana and ICP, explore the following resources:
-
 - [Candid Interface](https://github.com/mfactory-lab/ic-solana/blob/main/src/ic-solana-rpc/ic-solana-rpc.did)
 - [Solana JSON RPC API](https://solana.com/docs/rpc)
 - [Internet Computer Developer Docs](https://internetcomputer.org/docs/current/developer-docs/)
@@ -162,8 +151,7 @@ To learn more about the SOLANA RPC Canister and its integration with Solana and 
 
 ## Contributing
 
-Contributions are welcome!
-Please check out the [contributor guidelines](https://github.com/mfactory-lab/ic-solana/blob/main/.github/CONTRIBUTING.md) for more information.
+Contributions are welcome! Please check out the [contributor guidelines](https://github.com/mfactory-lab/ic-solana/blob/main/.github/CONTRIBUTING.md) for more information.
 
 ## License
 
