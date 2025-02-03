@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use candid::{utils::ArgumentEncoder, CandidType, Decode, Encode, Principal};
 use ic_canisters_http_types::{HttpRequest, HttpResponse};
 use ic_solana::{
@@ -7,8 +9,13 @@ use ic_solana::{
 };
 use ic_solana_rpc::{
     auth::Auth,
+    memory::{ProvidersMemory, StableMemory, PROVIDERS_MEMORY_ID},
     state::InitArgs,
     types::{RegisterProviderArgs, UpdateProviderArgs},
+};
+use ic_stable_structures::{
+    memory_manager::{MemoryId, MemoryManager},
+    DefaultMemoryImpl,
 };
 use ic_test_utilities_load_wasm::load_wasm;
 use serde::de::DeserializeOwned;
@@ -85,6 +92,12 @@ impl SolanaRpcSetup {
         self.call_query("getMetrics", ())
     }
 
+    pub fn get_stable_memory(&self, id: MemoryId) -> StableMemory {
+        let bytes = self.setup.env.get_stable_memory(self.setup.canister_id);
+        let memory_manager = MemoryManager::init(DefaultMemoryImpl::from(RefCell::new(bytes)));
+        memory_manager.get(id)
+    }
+
     pub fn http_get_logs(&self, priority: &str) -> Vec<LogEntry> {
         let request = HttpRequest {
             method: "".to_string(),
@@ -125,6 +138,10 @@ impl SolanaRpcSetup {
     ) -> CallFlow<RpcResult<String>> {
         self.setup
             .call_update("request", (source, method, params, max_response_bytes))
+    }
+
+    pub fn get_providers_memory(&self) -> ProvidersMemory {
+        ProvidersMemory::init(self.get_stable_memory(PROVIDERS_MEMORY_ID))
     }
 
     pub fn get_providers(&self) -> Vec<String> {

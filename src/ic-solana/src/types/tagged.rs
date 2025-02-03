@@ -498,8 +498,7 @@ impl From<UiTransactionStatusMeta> for super::UiTransactionStatusMeta {
 #[serde(rename_all = "camelCase")]
 pub enum EncodedTransaction {
     #[serde(rename = "legacyBinary")]
-    LegacyBinary(String), /* Old way of expressing base-58, retained for RPC backwards
-                           * compatibility */
+    LegacyBinary(String), // Old way of expressing base-58, retained for RPC backwards compatibility
     #[serde(rename = "binary")]
     Binary(String, TransactionBinaryEncoding),
     #[serde(rename = "json")]
