@@ -1,4 +1,4 @@
-# Solana RPC
+# IC-Solana Gateway
 
 [![Internet Computer portal](https://img.shields.io/badge/InternetComputer-grey?logo=internet%20computer&style=for-the-badge)](https://internetcomputer.org)
 [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg?logo=apache&style=for-the-badge)](LICENSE)
@@ -11,7 +11,7 @@
 
 ## Overview
 
-**Solana RPC** is a solution that bridges [Solana](https://solana.com/) with the [Internet Computer](https://internetcomputer.org/). It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps. This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
+**IC-Solana** is a solution that connects the [Internet Computer](https://internetcomputer.org/) with [Solana](https://solana.com/). It allows developers to build decentralized applications (dApps) on the Internet Computer with functionality comparable to traditional Solana dApps. This integration combines the capabilities of both blockchain networks, making it easier to develop cross-chain applications and expand the possibilities for decentralized solutions.
 
 ## Quick start
 
@@ -43,8 +43,8 @@ Add the following configuration to your `dfx.json` file (replace the `ic` princi
 Make sure you have the following installed:
 
 - [Rust](https://www.rust-lang.org/learn/get-started)
-- [Docker](https://www.docker.com/get-started/) (Optional for [reproducible builds](#reproducible-builds))
-- [PocketIC](https://github.com/dfinity/pocketic) (Optional for testing)
+- [Docker](https://www.docker.com/get-started/) (optional for [reproducible builds](#reproducible-builds))
+- [PocketIC](https://github.com/dfinity/pocketic) (optional for testing)
 - [DFINITY SDK](https://sdk.dfinity.org/docs/quickstart/local-quickstart.html)
 
 ### Building the code
@@ -66,7 +66,7 @@ dfx deploy solana_rpc --argument '(record {})'
 dfx deploy solana_wallet --argument "(record { sol_canister = opt principal \"`dfx canister id solana_rpc`\"; schnorr_key = null })"
 ```
 
-All the canisters will be deployed to the `local` network with their fixed canister ids.
+All the canisters will be deployed to the local network with their fixed canister IDs.
 
 Once the build and deployment are complete, your application will be accessible at:
 
@@ -78,23 +78,34 @@ Replace `{asset_canister_id}` with the actual canister's ID generated during dep
 
 ## Examples
 
+Use the Solana mainnet cluster:
+
 ```bash
+dfx canister call solana_rpc sol_getHealth '(variant{Mainnet},null)' --wallet $(dfx identity get-wallet)
+```
 
-# Use Solana mainnet cluster
-dfx canister call solana_rpc sol_getHealth '(variant{Mainnet},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+Use the Solana devnet cluster:
 
-# Use Solana devnet cluster
-dfx canister call solana_rpc sol_getHealth '(variant{Devnet},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+```bash
+dfx canister call solana_rpc sol_getHealth '(variant{Devnet},null)' --wallet $(dfx identity get-wallet)
+```
 
-# Use single custom RPC
-dfx canister call solana_rpc sol_getHealth '(variant{Custom=vec{record{network="https://mainnet.helius-rpc.com/"}}},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+Use a single custom RPC:
 
-# Use multiple custom RPCs
-dfx canister call solana_rpc sol_getHealth '(variant{Custom=vec{record{network="mainnet"},record{network="https://mainnet.helius-rpc.com/"}}},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+```bash
+dfx canister call solana_rpc sol_getHealth '(variant{Custom=vec{record{network="https://mainnet.helius-rpc.com/"}}},null)' --wallet $(dfx identity get-wallet)
+```
 
-# Use single provider RPC (predefined providers: mainnet|m, devnet|d, testnet|t)
-dfx canister call solana_rpc sol_getHealth '(variant{Provider=vec{"mainnet"}},null)' --wallet $(dfx identity get-wallet) --with-cycles 1000000000
+Use multiple custom RPCs:
 
+```bash
+dfx canister call solana_rpc sol_getHealth '(variant{Custom=vec{record{network="mainnet"},record{network="https://mainnet.helius-rpc.com/"}}},null)' --wallet $(dfx identity get-wallet)
+```
+
+Use a single RPC provider (predefined providers: mainnet|m, devnet|d, testnet|t):
+
+```bash 
+dfx canister call solana_rpc sol_getHealth '(variant{Provider=vec{"mainnet"}},null)' --wallet $(dfx identity get-wallet)
 ```
 
 ## Components
@@ -129,11 +140,11 @@ A Rust library that provides the necessary tools for integrating Solana with ICP
 
 ## Access control
 
-The Solana RPC canister stores a list of registered Solana JSON RPC providers, to which transactions and messages can be submitted. Access to the list is controlled by admin(s) who can assign managers with specific rights to add, remove, and update Solana JSON RPC providers.
+IC-Solana stores a list of registered Solana JSON RPC providers, to which transactions and messages can be submitted. Access to the list is controlled by admin(s) who can assign managers with specific rights to add, remove, and update Solana JSON RPC providers.
 
 ## Reproducible builds
 
-The SOLANA RPC canister supports [reproducible builds](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/test/reproducible-builds):
+IC-Solana supports [reproducible builds](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/test/reproducible-builds):
 
 1. Ensure [Docker](https://www.docker.com/get-started/) is installed on your machine.
 2. Run `./scripts/docker-build --rpc` in your terminal.
