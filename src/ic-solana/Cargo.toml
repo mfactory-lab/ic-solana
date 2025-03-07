@@ -10,7 +10,7 @@ edition = { workspace = true }
 
 [dependencies]
 base64 = { workspace = true }
-bincode = "1.3.3"
+bincode = "2.0.0"
 bs58 = "0.5.1"
 candid = { workspace = true }
 flate2 = "1.0"
