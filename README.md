@@ -6,8 +6,10 @@
 
 > #### Interact with [Solana](https://solana.com) from the [Internet Computer](https://internetcomputer.org/).
 
-> [!Note]
-> This project is a work in progress and is not yet ready for production use. We are happy to answer questions if they are raised as issues in this GitHub repo.
+> [!Warning]
+> This repo (`mfactory-lab/ic-solana`) is **deprecated**.  
+> All users should migrate to the actively maintained replacement:  
+> [`dfinity/sol-rpc-canister`](https://github.com/dfinity/sol-rpc-canister)
 
 ## Overview
 
