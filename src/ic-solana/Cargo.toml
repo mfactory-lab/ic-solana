@@ -13,7 +13,7 @@ base64 = { workspace = true }
 bincode = "1.3.3"
 bs58 = "0.5.1"
 candid = { workspace = true }
-flate2 = "1.0"
+flate2 = "1.1"
 futures = { workspace = true }
 getrandom = { version = "0.2", features = ["custom"] }
 ic-canister-log = { workspace = true }
